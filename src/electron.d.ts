@@ -128,6 +128,7 @@ export interface NativeCommandMap {
   get_git_file_state: { args: { path: string }; result: ElectronGitFileState }
   cleanup_runtime: { args: undefined; result: void }
   set_window_background: { args: { color: string }; result: void }
+  set_titlebar_overlay_options: { args: { color?: string; symbolColor?: string; height?: number }; result: void }
   reveal_in_finder: { args: { path: string }; result: void }
   show_open_dialog: { args: ElectronOpenDialogOptions; result: string | string[] | null }
   open_external: { args: { url: string }; result: void }

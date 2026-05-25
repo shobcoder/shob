@@ -4070,7 +4070,7 @@
 
     "inquirer/strip-ansi/ansi-regex": ["ansi-regex@5.0.1", "", {}, "sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ=="],
 
-    "opencode/@opencode-ai/plugin/@opencode-ai/sdk": ["@opencode-ai/sdk@file:packages\\sdk\\js", {}],
+    "opencode/@opencode-ai/plugin/@opencode-ai/sdk": ["@opencode-ai/sdk@file:packages/sdk/js", {}],
 
     "opencode/chokidar/readdirp": ["readdirp@4.1.2", "", {}, "sha512-GDhwkLfywWL2s6vEjyhri+eXmfH6j1L7JE27WhqLeYzoh/A3DBaYGEj2H/HFZCn/kMfim73FXxEJTw06WtxQwg=="],
 

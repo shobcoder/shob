@@ -9,6 +9,40 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ═══════════════════════════════════════════════════
+   TITLE BAR & TRAFFIC LIGHT SAFE AREAS (macOS)
+   ═══════════════════════════════════════════════════ */
+
+/* env() CSS variables provided by Electron titleBarOverlay:
+   - titlebar-area-height: Height of the native title bar overlay
+   - titlebar-area-x: X offset where content area starts (right of traffic lights)
+   - titlebar-area-y: Y offset where content area starts
+   - titlebar-area-width: Width available for custom title bar content
+   Falls back to 0 on non-macOS platforms where overlay is not present. */
+
+/* Push content below the native title bar overlay on macOS.
+   On Windows/Linux, env() returns 0px so no effect. */
+body {
+  padding-top: env(titlebar-area-height, 0px);
+}
+
+/* Draggable region for the title bar */
+.drag-region {
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.drag-region > *,
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* macOS: ensure sidebar toggle clears the native traffic light area.
+   env(titlebar-area-x) gives the pixel offset from left edge. */
+.titlebar-safe-area {
+  padding-left: max(env(titlebar-area-x, 0px), 0px);
+}
+
+/* ═══════════════════════════════════════════════════
    DESIGN TOKENS
    ═══════════════════════════════════════════════════ */
 :root,

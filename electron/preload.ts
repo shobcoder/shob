@@ -22,6 +22,7 @@ const allowedCommands = new Set([
   "switch_git_branch",
   "cleanup_runtime",
   "set_window_background",
+  "set_titlebar_overlay_options",
   "minimize_window",
   "toggle_maximize_window",
   "is_window_maximized",

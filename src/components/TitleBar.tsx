@@ -443,9 +443,10 @@ export function TitleBar() {
   const navButtonClass = "text-muted-foreground hover:bg-accent hover:text-foreground"
 
   return (
-    <header class={`relative z-50 flex h-[40px] shrink-0 select-none items-center border-b ${headerClass}`}>
-      {osPlatform() === "macos" && <MacControls />}
-
+    <header
+      class={`relative z-50 flex h-[40px] shrink-0 select-none items-center border-b ${headerClass}`}
+      style={{ "-webkit-app-region": "drag" }}
+    >
       <div class="flex min-w-0 items-center gap-3 px-3" style={{ "-webkit-app-region": "no-drag" }}>
         <div class="flex items-center gap-2">
           <Button

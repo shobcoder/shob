@@ -565,6 +565,16 @@ const handlers: Record<string, (payload?: any) => Promise<any> | any> = {
     if (typeof color !== "string" || !color.trim()) return;
     mainWindow?.setBackgroundColor(color);
   },
+  set_titlebar_overlay_options: async ({ color, symbolColor, height }) => {
+    if (!mainWindow) return;
+    const opts: Electron.TitleBarOverlay = {};
+    if (typeof color === "string") opts.color = color;
+    if (typeof symbolColor === "string") opts.symbolColor = symbolColor;
+    if (typeof height === "number") opts.height = height;
+    if (Object.keys(opts).length > 0) {
+      mainWindow.setTitleBarOverlay(opts);
+    }
+  },
   minimize_window: async () => mainWindow?.minimize(),
   toggle_maximize_window: async () => {
     if (!mainWindow) return false;
@@ -686,8 +696,12 @@ async function createWindow() {
     height: 820,
     minWidth: 920,
     minHeight: 600,
-    frame: false,
-    titleBarStyle: "hidden",
+    titleBarStyle: "hiddenInset",
+    titleBarOverlay: {
+      color: "#09090b",
+      symbolColor: "#ffffff",
+      height: 38,
+    },
     backgroundColor: "#09090b",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
