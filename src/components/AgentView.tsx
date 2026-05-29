@@ -126,11 +126,6 @@ function AgentViewInner(props: AgentViewProps) {
   let scrollRef: HTMLDivElement | undefined
   let rafId: number | undefined
   const composerState = createSessionComposerState({ closeMs: 320 })
-  const autoScroll = createAutoScroll({
-    working: () => true,
-    overflowAnchor: "dynamic",
-    onUserInteracted: () => scheduleJumpStateUpdate(),
-  })
 
   const activeSessionId = createMemo(() => {
     const id = params.id || props.sessionId
@@ -157,6 +152,12 @@ function AgentViewInner(props: AgentViewProps) {
   })
   const status = createMemo(() => statusInfo().type)
   const working = createMemo(() => status() !== "idle")
+
+  const autoScroll = createAutoScroll({
+    working,
+    overflowAnchor: "dynamic",
+    onUserInteracted: () => scheduleJumpStateUpdate(),
+  })
   const sessionEventError = createMemo(() => {
     const sessionID = activeSessionId()
     const error = sessionID ? sync.data.session_error[sessionID] : undefined
