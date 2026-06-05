@@ -1140,6 +1140,8 @@ export function Sidebar(props: {
     const client = globalSDK.createClient({ directory: project.path, throwOnError: true })
     const created = await client.session.create().then((response) => response.data)
     if (!created) return
+    if (!(window as any).newlyCreatedSessionIds) (window as any).newlyCreatedSessionIds = new Set();
+    (window as any).newlyCreatedSessionIds.add(created.id);
 
     const [projectStore, setProjectStore] = globalSync.child(project.path)
     const hadSession = projectStore.session.some((session) => session.id === created.id)

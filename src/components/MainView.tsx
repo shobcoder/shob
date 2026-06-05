@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createResource, createSignal, on, onCleanup, Show, Suspense } from 'solid-js'
+import { createEffect, createMemo, createResource, createSignal, on, onCleanup, onMount, Show, Suspense } from 'solid-js'
 import { nativeApi } from '../services/native'
 import { Sidebar } from './Sidebar'
 
@@ -205,6 +205,82 @@ export function MainView() {
   let pendingSessionPanelWidth: number | undefined
   let reviewSnapFrame: number | undefined
   let sidePanelWarmToken = 0
+
+  const deleteSessionOnBackend = async (projectId: string, sessionId: string) => {
+    const project = appStore.projects.find((p) => p.id === projectId)
+    if (project && sessionId.startsWith("ses")) {
+      try {
+        const client = globalSDK.createClient({ directory: project.path, throwOnError: true })
+        await client.session.delete({ sessionID: sessionId }).catch(() => undefined)
+        await globalSync.project.loadSessions(project.path).catch(() => undefined)
+      } catch (err) {
+        console.error("Failed to delete session on backend:", err)
+      }
+    }
+  }
+
+  const cleanupActiveSessionIfEmpty = () => {
+    const activeId = appStore.activeSessionId
+    const isNew = (window as any).newlyCreatedSessionIds?.has(activeId)
+    if (activeId) {
+      const project = appStore.projects.find((p) =>
+        p.sessions.some((s) => s.id === activeId)
+      )
+      if (project) {
+        const [projectStore] = globalSync.child(project.path, { bootstrap: false })
+        const messages = projectStore.message[activeId]
+        const hasUserPrompt = messages && messages.some((m) => m.role === "user")
+        if (!hasUserPrompt && (isNew || messages !== undefined)) {
+          void appStore.removeSession(project.id, activeId)
+          void deleteSessionOnBackend(project.id, activeId)
+          ;(window as any).newlyCreatedSessionIds?.delete(activeId)
+        }
+      }
+    }
+  }
+
+  let lastActiveSessionId: string | null = null
+
+  createEffect(() => {
+    const currentId = appStore.activeSessionId
+    const previousId = lastActiveSessionId
+    lastActiveSessionId = currentId
+
+    console.log("[SessionCleanup] activeSessionId changed:", { previousId, currentId })
+
+    if (previousId && previousId !== currentId) {
+      const project = appStore.projects.find((p) =>
+        p.sessions.some((s) => s.id === previousId)
+      )
+      console.log("[SessionCleanup] found project for previous session:", project?.name)
+      if (project) {
+        const [projectStore] = globalSync.child(project.path, { bootstrap: false })
+        const messages = projectStore.message[previousId]
+        console.log("[SessionCleanup] previous session messages:", messages)
+        const isNew = (window as any).newlyCreatedSessionIds?.has(previousId)
+        console.log("[SessionCleanup] isNew:", isNew)
+        const hasUserPrompt = messages && messages.some((m) => m.role === "user")
+        console.log("[SessionCleanup] hasUserPrompt:", hasUserPrompt)
+        
+        if (!hasUserPrompt && (isNew || messages !== undefined)) {
+          console.log("[SessionCleanup] deleting empty session:", previousId)
+          void appStore.removeSession(project.id, previousId)
+          void deleteSessionOnBackend(project.id, previousId)
+          ;(window as any).newlyCreatedSessionIds?.delete(previousId)
+        }
+      }
+    }
+  })
+
+  onMount(() => {
+    const handleUnloadCleanup = () => {
+      cleanupActiveSessionIfEmpty()
+    }
+    window.addEventListener("beforeunload", handleUnloadCleanup)
+    onCleanup(() => {
+      window.removeEventListener("beforeunload", handleUnloadCleanup)
+    })
+  })
 
   const projectPath = createMemo(() => currentProject()?.path ?? '')
   const sidePanelOpen = createMemo(() => isReviewVisible() || isFileTreeVisible() || !!contextTabSessionId())
@@ -541,6 +617,8 @@ export function MainView() {
     const client = globalSDK.createClient({ directory: project.path, throwOnError: true })
     const created = await client.session.create().then((response) => response.data)
     if (!created) return
+    if (!(window as any).newlyCreatedSessionIds) (window as any).newlyCreatedSessionIds = new Set();
+    (window as any).newlyCreatedSessionIds.add(created.id);
     const [projectStore, setProjectStore] = globalSync.child(project.path)
     const hadSession = projectStore.session.some((session) => session.id === created.id)
     const mergedSessions = [created, ...projectStore.session.filter((session) => session.id !== created.id)]
@@ -622,7 +700,10 @@ export function MainView() {
   return (
     <div class="flex min-h-0 flex-1 overflow-hidden bg-background text-foreground">
       <Sidebar
-        onOpenSettingsPage={() => setActivePage('settings')}
+        onOpenSettingsPage={() => {
+          cleanupActiveSessionIfEmpty()
+          setActivePage('settings')
+        }}
         onOpenWorkspacePage={() => setActivePage('workspace')}
       />
       <div class="min-h-0 min-w-0 flex-1 flex flex-col overflow-hidden bg-background">
