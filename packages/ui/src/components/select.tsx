@@ -18,7 +18,7 @@ export type SelectProps<T> = Omit<ComponentProps<typeof Kobalte<T>>, "value" | "
   classList?: ComponentProps<"div">["classList"]
   children?: (item: T | undefined) => JSX.Element
   triggerStyle?: JSX.CSSProperties
-  triggerVariant?: "settings"
+  triggerVariant?: "settings" | "composer"
   triggerProps?: Record<string, string | number | boolean | undefined>
 }
 
@@ -36,6 +36,8 @@ export function Select<T>(props: SelectProps<T> & Omit<ButtonProps, "children">)
     "onSelect",
     "onHighlight",
     "onOpenChange",
+    "placement",
+    "gutter",
     "children",
     "triggerStyle",
     "triggerVariant",
@@ -90,8 +92,8 @@ export function Select<T>(props: SelectProps<T> & Omit<ButtonProps, "children">)
       {...others}
       data-component="select"
       data-trigger-style={local.triggerVariant}
-      placement={local.triggerVariant === "settings" ? "bottom-end" : "bottom-start"}
-      gutter={4}
+      placement={local.placement ?? (local.triggerVariant === "settings" ? "bottom-end" : "bottom-start")}
+      gutter={local.gutter ?? (local.triggerVariant === "composer" ? 8 : 4)}
       value={local.current}
       options={grouped()}
       optionValue={(x) => (local.value ? local.value(x) : (x as string))}

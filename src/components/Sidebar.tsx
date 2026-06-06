@@ -36,6 +36,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { ConstrainDragXAxis as ConstrainProjectDragToYAxis } from "@/utils/solid-dnd"
 
 const folderNameFromPath = (path: string) => {
   const parts = path.split(/[\\/]/).filter(Boolean)
@@ -767,7 +768,7 @@ function FolderSection(props: {
       >
         <button
           type="button"
-          class="flex h-full min-w-0 flex-1 cursor-grab touch-none items-center gap-2 rounded-[5px] pl-3 pr-2 text-left text-text-weak select-none active:cursor-grabbing"
+          class="flex h-full min-w-0 flex-1 cursor-default touch-none items-center gap-2 rounded-[5px] pl-3 pr-2 text-left text-text-weak select-none"
           aria-expanded={props.isOpen}
           aria-label={`${props.isOpen ? "Collapse" : "Expand"} ${props.project.name}`}
           onPointerDown={handleProjectTitlePointerDown}
@@ -980,6 +981,7 @@ function SortableProjectGroup(props: SortableProjectGroupProps) {
 
   return (
     <DragDropProvider collisionDetector={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <ConstrainProjectDragToYAxis />
       <DragDropSensors>
         <SortableProvider ids={projectIds()}>
           <SortableProjectItems

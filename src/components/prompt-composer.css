@@ -110,7 +110,7 @@
   color: color-mix(in srgb, var(--muted-foreground) 70%, transparent);
   font-family: inherit;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--agent-font-medium, var(--font-weight-medium, 430));
   cursor: pointer;
   transition:
     background 0.15s ease,
@@ -131,7 +131,7 @@
   padding: 0 6px;
   color: color-mix(in srgb, var(--muted-foreground) 40%, transparent);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: var(--agent-font-medium, var(--font-weight-medium, 430));
   user-select: none;
   pointer-events: none;
 }
@@ -187,7 +187,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #60a5fa;
+  color: var(--text-interactive-base);
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
@@ -196,5 +196,5 @@
 }
 
 .github-link-pill:hover {
-  color: #93c5fd;
+  color: color-mix(in srgb, var(--text-interactive-base) 78%, var(--text-strong));
 }

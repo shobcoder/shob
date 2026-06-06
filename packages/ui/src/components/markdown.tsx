@@ -50,7 +50,7 @@ function escape(text: string) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
+    .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;")
 }
 
@@ -64,6 +64,48 @@ type CopyLabels = {
 }
 
 const urlPattern = /^https?:\/\/[^\s<>()`"']+$/
+
+export type MarkdownFileReferenceSegment = {
+  text: string
+  file: boolean
+}
+
+export type MarkdownFileReference = {
+  text: string
+  path: string
+}
+
+const fileReferencePattern =
+  /(^|[\s([{"'“‘])((?:(?:[A-Za-z]:[\\/])|(?:(?:\.{1,2}|[A-Za-z0-9_@+$~.-]+)[\\/]))(?:[A-Za-z0-9_@+$~.[\](){}-]+[\\/])*[A-Za-z0-9_@+$~.[\](){}-]*[A-Za-z0-9_@+$~[\](){}-]\.[A-Za-z0-9]{1,12}(?::\d+)?(?:\s+\((?:line|lines)\s+\d+(?:[-–]\d+)?\))?)/gi
+
+const inlineFilenameReferencePattern =
+  /^[A-Za-z0-9_@+$~[\](){}-][A-Za-z0-9_@+$~.[\](){}-]*\.[A-Za-z][A-Za-z0-9]{0,11}(?::\d+)?(?:\s+\((?:line|lines)\s+\d+(?:[-–]\d+)?\))?$/i
+
+export function splitMarkdownFileReferences(text: string): MarkdownFileReferenceSegment[] {
+  const segments: MarkdownFileReferenceSegment[] = []
+  let cursor = 0
+  fileReferencePattern.lastIndex = 0
+
+  for (const match of text.matchAll(fileReferencePattern)) {
+    const prefix = match[1] ?? ""
+    const reference = match[2] ?? ""
+    const start = match.index ?? 0
+    const referenceStart = start + prefix.length
+    const referenceEnd = referenceStart + reference.length
+
+    if (referenceStart > cursor) {
+      segments.push({ text: text.slice(cursor, referenceStart), file: false })
+    }
+    segments.push({ text: reference, file: true })
+    cursor = referenceEnd
+  }
+
+  if (cursor < text.length) {
+    segments.push({ text: text.slice(cursor), file: false })
+  }
+
+  return segments
+}
 
 function codeUrl(text: string) {
   const href = text.trim().replace(/[),.;!?]+$/, "")
@@ -173,12 +215,110 @@ function markCodeLinks(root: HTMLDivElement) {
   }
 }
 
+function fileReferencePath(reference: string) {
+  return reference
+    .replace(/\s+\((?:line|lines)\s+\d+(?:[-–]\d+)?\)$/i, "")
+    .replace(/:\d+$/, "")
+}
+
+export function markdownInlineCodeFileReference(text: string): MarkdownFileReference | undefined {
+  const reference = text.trim()
+  if (!reference || codeUrl(reference)) return
+
+  const segments = splitMarkdownFileReferences(` ${reference}`)
+  const matchedReference = segments[1]
+  if (
+    segments.length === 2 &&
+    segments[0]?.text === " " &&
+    matchedReference?.file &&
+    matchedReference.text === reference
+  ) {
+    return { text: reference, path: fileReferencePath(reference) }
+  }
+
+  if (inlineFilenameReferencePattern.test(reference)) {
+    return { text: reference, path: fileReferencePath(reference) }
+  }
+}
+
+function markInlineCodeFileReference(code: Element) {
+  const reference = markdownInlineCodeFileReference(code.textContent ?? "")
+  if (!reference) {
+    if (code.getAttribute("data-component") === "markdown-file-reference") {
+      code.removeAttribute("data-component")
+      code.removeAttribute("data-path")
+      code.removeAttribute("title")
+    }
+    return
+  }
+
+  code.setAttribute("data-component", "markdown-file-reference")
+  code.setAttribute("data-path", reference.path)
+  code.setAttribute("title", reference.text)
+}
+
+function skipFileReferenceNode(node: Text) {
+  let parent = node.parentElement
+  while (parent) {
+    if (
+      parent.matches(
+        'a, button, code, pre, kbd, samp, textarea, [data-component="markdown-code"], [data-component="markdown-file-reference"]',
+      )
+    ) {
+      return true
+    }
+    parent = parent.parentElement
+  }
+  return false
+}
+
+function markFileReferences(root: HTMLDivElement) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) => {
+      if (!(node instanceof Text)) return NodeFilter.FILTER_REJECT
+      if (!node.nodeValue?.trim()) return NodeFilter.FILTER_REJECT
+      if (skipFileReferenceNode(node)) return NodeFilter.FILTER_REJECT
+      return NodeFilter.FILTER_ACCEPT
+    },
+  })
+
+  const nodes: Text[] = []
+  while (walker.nextNode()) {
+    if (walker.currentNode instanceof Text) nodes.push(walker.currentNode)
+  }
+
+  for (const node of nodes) {
+    const segments = splitMarkdownFileReferences(node.nodeValue ?? "")
+    if (!segments.some((segment) => segment.file)) continue
+
+    const fragment = document.createDocumentFragment()
+    for (const segment of segments) {
+      if (!segment.file) {
+        fragment.appendChild(document.createTextNode(segment.text))
+        continue
+      }
+
+      const span = document.createElement("span")
+      span.setAttribute("data-component", "markdown-file-reference")
+      span.setAttribute("data-path", fileReferencePath(segment.text))
+      span.title = segment.text
+      span.textContent = segment.text
+      fragment.appendChild(span)
+    }
+    node.parentNode?.replaceChild(fragment, node)
+  }
+}
+
 function decorate(root: HTMLDivElement, labels: CopyLabels) {
   const blocks = Array.from(root.querySelectorAll("pre"))
   for (const block of blocks) {
     ensureCodeWrapper(block, labels)
   }
   markCodeLinks(root)
+  for (const code of Array.from(root.querySelectorAll(":not(pre) > code"))) {
+    markInlineCodeFileReference(code)
+  }
+  markFileReferences(root)
 }
 
 function setupCodeCopy(root: HTMLDivElement, getLabels: () => CopyLabels) {

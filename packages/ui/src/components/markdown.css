@@ -55,6 +55,17 @@
     text-underline-offset: 2px;
   }
 
+  [data-component="markdown-file-reference"] {
+    color: var(--text-interactive-base);
+    font-weight: inherit;
+    text-decoration: none;
+  }
+
+  [data-component="markdown-file-reference"]:hover {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
   /* Lists */
   ul,
   ol {
@@ -223,6 +234,10 @@
     /* border-radius: 2px; */
     /* background: var(--surface-base); */
     /* box-shadow: 0 0 0 0.5px var(--border-weak-base); */
+  }
+
+  :not(pre) > code[data-component="markdown-file-reference"] {
+    color: var(--text-interactive-base);
   }
 
   /* Tables */

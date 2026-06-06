@@ -23,6 +23,7 @@ import { File as ShobFile } from '@opencode-ai/ui/file'
 import { ScrollView } from '@opencode-ai/ui/scroll-view'
 import { SessionSidePanel } from '@/pages/session/session-side-panel'
 import { sortShobSessionsById } from '@/utils/shob-session'
+import { AGENT_REVIEW_OPEN_EVENT } from '@/components/agent-turn-diff-summary'
 
 const DEFAULT_SESSION_PANEL_WIDTH = 600
 
@@ -494,6 +495,17 @@ export function MainView() {
 
     window.addEventListener('gg-toggle-review-workspace', handleReviewWorkspaceToggleRequest)
     return () => window.removeEventListener('gg-toggle-review-workspace', handleReviewWorkspaceToggleRequest)
+  })
+
+  createEffect(() => {
+    const handleReviewWorkspaceOpenRequest = () => {
+      if (!currentProject()) return
+      setIsReviewVisible(true)
+      setIsFileTreeVisible(true)
+    }
+
+    window.addEventListener(AGENT_REVIEW_OPEN_EVENT, handleReviewWorkspaceOpenRequest)
+    return () => window.removeEventListener(AGENT_REVIEW_OPEN_EVENT, handleReviewWorkspaceOpenRequest)
   })
 
   createEffect(() => {

@@ -817,8 +817,9 @@ function ContextTools(props: {
   tools: ToolPart[]
   children: JSX.Element
 }) {
-  const [open, setOpen] = createSignal(true)
-  const [busy, setBusy] = createSignal(props.running() || !!props.generating?.())
+  const initialBusy = props.running() || !!props.generating?.()
+  const [open, setOpen] = createSignal(initialBusy)
+  const [busy, setBusy] = createSignal(initialBusy)
   const [now, setNow] = createSignal(Date.now())
   let settle: ReturnType<typeof setTimeout> | undefined
 
@@ -835,6 +836,7 @@ function ContextTools(props: {
     if (settle) clearTimeout(settle)
     settle = setTimeout(() => {
       setBusy(false)
+      setOpen(false)
       settle = undefined
     }, 1600)
   })
@@ -2099,6 +2101,12 @@ ToolRegistry.register({
       const out = stripAnsi(props.output || props.metadata.output || "")
       return `$ ${cmd()}${out ? "\n\n" + out : ""}`
     })
+    const statusKind = createMemo(() => (pending() ? "running" : props.status === "error" ? "error" : "completed"))
+    const statusLabel = createMemo(() => {
+      if (statusKind() === "running") return "Running"
+      if (statusKind() === "error") return "Failed"
+      return "Success"
+    })
     const [copied, setCopied] = createSignal(false)
 
     const handleCopy = async () => {
@@ -2114,11 +2122,11 @@ ToolRegistry.register({
         {...props}
         icon="console"
         trigger={{
-          title: pending() ? "Running" : "Ran",
-          subtitle: cmd() || undefined,
+          title: pending() ? "Running command" : "Ran command",
         }}
       >
         <div data-component="bash-output">
+          <div data-slot="bash-title">Shell</div>
           <div data-slot="bash-copy">
             <Tooltip
               value={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
@@ -2139,6 +2147,12 @@ ToolRegistry.register({
             <pre data-slot="bash-pre">
               <code>{text()}</code>
             </pre>
+          </div>
+          <div data-slot="bash-status" data-status={statusKind()}>
+            <Show when={statusKind() === "completed"}>
+              <span aria-hidden="true">{"\u2713"}</span>
+            </Show>
+            <span>{statusLabel()}</span>
           </div>
         </div>
       </BasicTool>

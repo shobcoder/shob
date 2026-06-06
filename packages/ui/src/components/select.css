@@ -88,6 +88,38 @@
       }
     }
   }
+
+  &[data-trigger-style="composer"] {
+    [data-slot="select-select-trigger"] {
+      height: 26px;
+      padding: 0 8px;
+      gap: 5px;
+      border: 0 !important;
+      border-radius: 999px;
+      background-color: transparent;
+      color: var(--text-base);
+      box-shadow: none;
+
+      [data-slot="select-select-trigger-value"] {
+        font-size: 12px;
+        font-weight: var(--font-weight-regular);
+        letter-spacing: 0;
+        line-height: 1;
+      }
+
+      [data-slot="select-select-trigger-icon"] {
+        width: 14px;
+        height: 14px;
+        color: currentColor;
+        opacity: 0.72;
+      }
+
+      &[data-expanded] {
+        background-color: #242424;
+        color: var(--text-strong);
+      }
+    }
+  }
 }
 
 [data-component="select-content"] {
@@ -199,6 +231,70 @@
     font-weight: var(--font-weight-regular);
     line-height: var(--line-height-large);
     letter-spacing: var(--letter-spacing-normal);
+  }
+}
+
+[data-component="select-content"][data-trigger-style="composer"] {
+  min-width: 210px;
+  max-width: min(260px, calc(100vw - 16px));
+  padding: 8px 6px;
+  border: 1px solid color-mix(in srgb, #fff 7%, transparent) !important;
+  border-radius: 14px;
+  background-color: #141414 !important;
+  box-shadow:
+    0 18px 44px color-mix(in srgb, #000 62%, transparent),
+    0 2px 10px color-mix(in srgb, #000 36%, transparent);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  z-index: 140 !important;
+
+  [data-slot="select-section"] {
+    padding: 4px 8px 7px;
+    color: #858585;
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0;
+    line-height: 1.2;
+    text-transform: none;
+  }
+
+  [data-slot="select-select-content-list"] {
+    max-height: min(280px, 62dvh);
+    gap: 2px;
+    padding: 0;
+    scrollbar-width: none;
+  }
+
+  [data-slot="select-select-content-list"]::-webkit-scrollbar {
+    display: none;
+  }
+
+  [data-slot="select-select-item"] {
+    min-height: 29px;
+    padding: 0 8px;
+    gap: 10px;
+    border-radius: 8px;
+    color: #f2f2f2;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: 0;
+    line-height: 1;
+  }
+
+  [data-slot="select-select-item"]:hover,
+  [data-slot="select-select-item"][data-highlighted],
+  [data-slot="select-select-item"][data-selected],
+  [data-slot="select-select-item"][aria-selected="true"] {
+    background-color: #252525 !important;
+    color: #fff !important;
+  }
+
+  [data-slot="select-select-item-indicator"] {
+    width: 16px;
+    height: 16px;
+    color: #f5f5f5 !important;
+    opacity: 0.9;
   }
 }
 
