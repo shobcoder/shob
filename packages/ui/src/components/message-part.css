@@ -1628,11 +1628,11 @@
   }
 
   [data-slot="apply-patch-change"][data-type="added"] {
-    color: var(--icon-diff-add-base);
+    color: var(--agent-diff-add, var(--icon-diff-add-base));
   }
 
   [data-slot="apply-patch-change"][data-type="removed"] {
-    color: var(--icon-diff-delete-base);
+    color: var(--agent-diff-delete, var(--icon-diff-delete-base));
   }
 
   [data-slot="apply-patch-change"][data-type="modified"] {

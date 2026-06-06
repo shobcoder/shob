@@ -232,12 +232,15 @@ export function BasicTool(props: BasicToolProps) {
                       </span>
                     </Show>
                     <Show when={props.additions !== undefined || props.deletions !== undefined}>
-                      <span style="display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; font-family: var(--font-family-mono); font-size: 12px; font-weight: 500;">
+                      <span
+                        data-slot="basic-tool-diff-stats"
+                        style="display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; font-family: var(--font-family-mono); font-size: 12px; font-weight: 500;"
+                      >
                         <Show when={props.additions !== undefined && props.additions > 0}>
-                          <span style="color: var(--text-diff-add-base, #10b981)">+{props.additions}</span>
+                          <span data-slot="basic-tool-diff-additions">+{props.additions}</span>
                         </Show>
                         <Show when={props.deletions !== undefined && props.deletions > 0}>
-                          <span style="color: var(--text-diff-delete-base, #ef4444)">-{props.deletions}</span>
+                          <span data-slot="basic-tool-diff-deletions">-{props.deletions}</span>
                         </Show>
                       </span>
                     </Show>

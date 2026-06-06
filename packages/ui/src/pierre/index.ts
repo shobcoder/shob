@@ -2,7 +2,7 @@ import { DiffLineAnnotation, FileContents, FileDiffOptions, type SelectedLineRan
 import { ComponentProps } from "solid-js"
 import { lineCommentStyles } from "../components/line-comment-styles"
 
-export type DiffProps<T = {}> = FileDiffOptions<T> & {
+export type DiffProps<T = undefined> = FileDiffOptions<T> & {
   before: FileContents
   after: FileContents
   annotations?: DiffLineAnnotation<T>[]
@@ -24,8 +24,8 @@ const unsafeCSS = `
   --diffs-bg-separator: var(--diffs-bg-separator-override, light-dark( color-mix(in lab, var(--diffs-bg) 96%, var(--diffs-mixer)), color-mix(in lab, var(--diffs-bg) 85%, var(--diffs-mixer))));
   --diffs-fg: light-dark(var(--diffs-light), var(--diffs-dark));
   --diffs-fg-number: var(--diffs-fg-number-override, light-dark(color-mix(in lab, var(--diffs-fg) 65%, var(--diffs-bg)), color-mix(in lab, var(--diffs-fg) 65%, var(--diffs-bg))));
-  --diffs-deletion-base: var(--syntax-diff-delete);
-  --diffs-addition-base: var(--syntax-diff-add);
+  --diffs-deletion-base: var(--agent-diff-delete, var(--syntax-diff-delete));
+  --diffs-addition-base: var(--agent-diff-add, var(--syntax-diff-add));
   --diffs-modified-base: var(--syntax-diff-unknown);
   /* Enhanced oklch color-mix for vivid, harmonious diff row highlights at 14% opacity */
   --diffs-bg-deletion: var(--diffs-bg-deletion-override, color-mix(in oklch, var(--diffs-deletion-base, var(--syntax-diff-delete)) 14%, transparent));
@@ -122,6 +122,14 @@ const unsafeCSS = `
 [data-diff] [data-column-number][data-line-type='change-addition'][data-selected-line],
 [data-diff] [data-column-number][data-line-type='change-deletion'][data-selected-line] {
   color: var(--diffs-selection-number-fg);
+}
+
+[data-diff] [data-line-type='change-addition']:is([data-column-number], [data-gutter-buffer]) {
+  color: var(--diffs-addition-base);
+}
+
+[data-diff] [data-line-type='change-deletion']:is([data-column-number], [data-gutter-buffer]) {
+  color: var(--diffs-deletion-base);
 }
 
 /* The deletion word-diff emphasis is stronger than additions; soften it while selected so the selection highlight reads consistently. */
