@@ -11,9 +11,8 @@ import {
   useSortableContext,
 } from "@thisbeyond/solid-dnd"
 import { nativeApi } from "../services/native"
-import { useStore, setStore } from "../store"
+import { useStore } from "../store"
 import type { Project } from "../types"
-import { api } from "../services/api"
 import { ResizeHandle } from "@/shob-ported/resize-handle"
 import { useGlobalSDK } from "@/context/global-sdk"
 import { useGlobalSync } from "@/context/global-sync"
@@ -22,7 +21,7 @@ import { DotsSpinner } from "./DotsSpinner"
 import { useNotification } from "@/context/notification"
 import { usePermission } from "@/context/permission"
 import { sessionPermissionRequest } from "@/shob-ported/composer/session-request-tree"
-import { sortShobSessionsById, toLocalShobSession } from "@/utils/shob-session"
+import { findReusableEmptyRootShobSession, sortShobSessionsById } from "@/utils/shob-session"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1019,7 +1018,6 @@ export function Sidebar(props: {
   const setActiveSession = useStore((s) => s.setActiveSession)
   const addProject = useStore((s) => s.addProject)
   const reorderProjects = useStore((s) => s.reorderProjects)
-  const preferredShell = useStore((s) => s.preferredShell)
   const removeSession = useStore((s) => s.removeSession)
   const syncShobSessions = useStore((s) => s.syncShobSessions)
   const deleteProject = useStore((s) => s.deleteProject)
@@ -1139,13 +1137,21 @@ export function Sidebar(props: {
     setCurrentProjectId(projectId)
     const project = projects().find((item) => item.id === projectId)
     if (!project) return
+    const [projectStore, setProjectStore] = globalSync.child(project.path)
+    const reusable = findReusableEmptyRootShobSession(projectStore.session, projectStore.message, activeSessionId())
+    if (reusable) {
+      setProjectStore("message", reusable.id, (messages) => messages ?? [])
+      if (!projectStore.session_status[reusable.id]) {
+        setProjectStore("session_status", reusable.id, { type: "idle" } as SessionStatus)
+      }
+      await syncShobSessions(projectId, projectStore.session)
+      setActiveSession(reusable.id)
+      return
+    }
+
     const client = globalSDK.createClient({ directory: project.path, throwOnError: true })
     const created = await client.session.create().then((response) => response.data)
     if (!created) return
-    if (!(window as any).newlyCreatedSessionIds) (window as any).newlyCreatedSessionIds = new Set();
-    (window as any).newlyCreatedSessionIds.add(created.id);
-
-    const [projectStore, setProjectStore] = globalSync.child(project.path)
     const hadSession = projectStore.session.some((session) => session.id === created.id)
     const mergedSessions = [created, ...projectStore.session.filter((session) => session.id !== created.id)]
     setProjectStore("session", (sessions) =>
@@ -1161,20 +1167,9 @@ export function Sidebar(props: {
       setProjectStore("sessionTotal", (total) => total + 1)
     }
 
-    const localSession = toLocalShobSession(created, { shell: preferredShell() ?? "powershell.exe" })
-
-    const currentProject = projects().find((p) => p.id === projectId)
-    if (currentProject) {
-      const exists = currentProject.sessions.some((s) => s.id === created.id)
-      if (!exists) {
-        const updated = { ...currentProject, sessions: [localSession, ...currentProject.sessions] }
-        setStore("projects", (prev) => prev.map((p) => (p.id === projectId ? updated : p)))
-        api.saveProject(updated).catch(() => undefined)
-      }
-    }
+    await syncShobSessions(projectId, mergedSessions)
     setActiveSession(created.id)
 
-    void syncShobSessions(projectId, mergedSessions)
     void globalSync.project.loadSessions(project.path)
   }
 

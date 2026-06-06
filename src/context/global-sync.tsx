@@ -26,9 +26,6 @@ import type { ProjectMeta } from "./global-sync/types"
 import { SESSION_RECENT_LIMIT } from "./global-sync/types"
 import { sanitizeProject } from "./global-sync/utils"
 import { formatServerError } from "@/utils/server-errors"
-import { store as appStore } from "@/store"
-
-const appBootTime = Date.now()
 
 type GlobalStore = {
   ready: boolean
@@ -206,40 +203,10 @@ function createGlobalSync() {
       limit,
       list: (query) => globalSDK.client.session.list(query),
     })
-      .then(async (x) => {
-        const rawSessions = (x.data ?? [])
+      .then((x) => {
+        const nonArchived = (x.data ?? [])
           .filter((s) => !!s?.id)
           .filter((s) => !s.time?.archived)
-
-        // Find empty sessions (no prompts) that are not the current active session
-        const potentialEmpty = rawSessions.filter(
-          (s) => !s.title || s.title === "New session" || s.title === "Terminal"
-        )
-        const emptyIds = new Set<string>()
-        const sdk = sdkFor(directory)
-
-        await Promise.all(
-          potentialEmpty.map(async (s) => {
-            try {
-              const isActive = appStore.activeSessionId === s.id
-              const ageMs = Date.now() - (s.time?.created ?? 0)
-              const createdBeforeBoot = (s.time?.created ?? 0) < appBootTime - 1000
-              if (!isActive && (createdBeforeBoot || ageMs > 15000)) {
-                const res = await sdk.session.messages({ sessionID: s.id, limit: 1 })
-                const hasMessages = (res.data ?? []).length > 0
-                if (!hasMessages) {
-                  emptyIds.add(s.id)
-                  void sdk.session.delete({ sessionID: s.id }).catch(() => undefined)
-                }
-              }
-            } catch {
-              // Ignore check errors
-            }
-          })
-        )
-
-        const nonArchived = rawSessions
-          .filter((s) => !emptyIds.has(s.id))
           .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
         const limit = store.limit
         const childSessions = store.session.filter((s) => !!s.parentID)
