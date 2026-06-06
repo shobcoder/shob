@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, ErrorBoundary, For, onCleanup, onMount, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, ErrorBoundary, For, onCleanup, onMount, Show, untrack } from "solid-js"
 import { Portal } from "solid-js/web"
 import { PromptInput } from "../shob-ported/prompt-input"
 import { sendFollowupDraft, type FollowupDraft } from "@/shob-ported/prompt-input/submit"
@@ -42,6 +42,7 @@ import {
 import { useProviders } from "@/hooks/use-providers"
 import { getSessionContextMetrics, type Context as SessionContextMetricsContext } from "@/components/session/session-context-metrics"
 import { AGENT_REVIEW_OPEN_EVENT, createAgentTurnDiffSummary } from "@/components/agent-turn-diff-summary"
+import { getSessionPrefetch, SESSION_PREFETCH_TTL } from "@/context/global-sync/session-prefetch"
 
 
 interface AgentViewProps {
@@ -534,6 +535,8 @@ function AgentViewInner(props: AgentViewProps) {
     bottom: "0px",
   })
   let rafId: number | undefined
+  let refreshFrame: number | undefined
+  let refreshTimer: number | undefined
   let composerFrameRaf: number | undefined
   let composerStickScrollRaf: number | undefined
   let cachedScrollHeight = 0
@@ -794,10 +797,46 @@ function AgentViewInner(props: AgentViewProps) {
       .finally(() => setAutoCompactingContext(false))
   })
 
+  const cancelRefreshSchedule = () => {
+    if (refreshFrame !== undefined) {
+      cancelAnimationFrame(refreshFrame)
+      refreshFrame = undefined
+    }
+    if (refreshTimer !== undefined) {
+      window.clearTimeout(refreshTimer)
+      refreshTimer = undefined
+    }
+  }
+
   createEffect(() => {
+    cancelRefreshSchedule()
+
     const sessionID = activeSessionId()
+    const directory = sdk.directory
     if (!sessionID) return
+
+    const cached = untrack(() => sync.data.message[sessionID] !== undefined)
+    const stale = cached
+      ? (() => {
+          const info = getSessionPrefetch(directory, sessionID)
+          if (!info) return true
+          return Date.now() - info.at > SESSION_PREFETCH_TTL
+        })()
+      : false
+
     void sync.session.sync(sessionID)
+
+    if (!stale) return
+    refreshFrame = requestAnimationFrame(() => {
+      refreshFrame = undefined
+      refreshTimer = window.setTimeout(() => {
+        refreshTimer = undefined
+        if (activeSessionId() !== sessionID || sdk.directory !== directory) return
+        untrack(() => {
+          void sync.session.sync(sessionID, { force: true })
+        })
+      }, 0)
+    })
   })
 
   // Keep global sidebar/terminal active session in sync with in-view route changes
@@ -1084,6 +1123,7 @@ function AgentViewInner(props: AgentViewProps) {
 
   onCleanup(() => {
     if (rafId !== undefined) cancelAnimationFrame(rafId)
+    cancelRefreshSchedule()
     if (composerFrameRaf !== undefined) cancelAnimationFrame(composerFrameRaf)
     if (composerStickScrollRaf !== undefined) cancelAnimationFrame(composerStickScrollRaf)
   })

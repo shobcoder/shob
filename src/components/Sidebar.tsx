@@ -23,6 +23,11 @@ import { usePermission } from "@/context/permission"
 import { sessionPermissionRequest } from "@/shob-ported/composer/session-request-tree"
 import { findReusableEmptyRootShobSession, sortShobSessionsById } from "@/utils/shob-session"
 import {
+  pickWarmSessionPlan,
+  SHOB_PREFETCH_HOVER_SPAN,
+  type SessionPrefetchPriority,
+} from "@/context/session-message-prefetch"
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -60,6 +65,12 @@ type SidebarSessionHit = {
 type SidebarSearchResult =
   | { type: "project"; project: Project }
   | { type: "session"; project: Project; session: Project["sessions"][number] }
+
+type PrefetchSession = (
+  projectPath: string | undefined | null,
+  sessionID: string | undefined | null,
+  priority?: SessionPrefetchPriority,
+) => void
 
 const latestSessionTime = (session: Project["sessions"][number]) => session.lastActiveAt ?? session.createdAt ?? 0
 const PROJECT_SESSION_PREVIEW_LIMIT = 5
@@ -166,6 +177,7 @@ const PinnedSessionRow = (props: {
   activeSessionId: string | null
   now: number
   onSelect: (projectId: string, sessionId: string) => void
+  onWarm: (project: Project, sessionId: string, priority?: SessionPrefetchPriority) => void
 }) => {
   const globalSync = useGlobalSync()
   const notification = useNotification()
@@ -194,6 +206,9 @@ const PinnedSessionRow = (props: {
           : "text-text-base hover:bg-surface-raised-base-hover hover:text-text-strong border-transparent"
       }`}
       title={`${props.hit.session.name} · ${props.hit.project.name}`}
+      onPointerEnter={() => props.onWarm(props.hit.project, props.hit.session.id, "high")}
+      onPointerDown={() => props.onWarm(props.hit.project, props.hit.session.id, "high")}
+      onFocus={() => props.onWarm(props.hit.project, props.hit.session.id, "high")}
       onClick={() => props.onSelect(props.hit.project.id, props.hit.session.id)}
     >
       <span class="shob-sidebar-main-label min-w-0 truncate text-[13px] font-normal leading-4">{props.hit.session.name}</span>
@@ -230,6 +245,7 @@ function SidebarSearchModal(props: {
   onClose: () => void
   onSelectProject: (projectId: string) => void
   onSelectSession: (projectId: string, sessionId: string) => void
+  onPrefetchSession?: PrefetchSession
 }) {
   let inputRef: HTMLInputElement | undefined
 
@@ -283,6 +299,12 @@ function SidebarSearchModal(props: {
                 <button
                   type="button"
                   class="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-surface-raised-base-hover"
+                  onPointerEnter={() => {
+                    if (result.type === "session") props.onPrefetchSession?.(result.project.path, result.session.id, "high")
+                  }}
+                  onFocus={() => {
+                    if (result.type === "session") props.onPrefetchSession?.(result.project.path, result.session.id, "high")
+                  }}
                   onClick={() => {
                     if (result.type === "project") props.onSelectProject(result.project.id)
                     else props.onSelectSession(result.project.id, result.session.id)
@@ -327,6 +349,7 @@ function FolderSection(props: {
   onToggleProjectPin: (projectId: string) => void | Promise<void>
   isOpen: boolean
   onToggleProjectOpen: (projectId: string) => void
+  onPrefetchSession?: PrefetchSession
   hidePinnedSessions?: boolean
 }) {
   const globalSync = useGlobalSync()
@@ -500,6 +523,17 @@ function FolderSection(props: {
   )
   const hiddenRootSessionCount = createMemo(() => Math.max(0, rootSessions().length - PROJECT_SESSION_PREVIEW_LIMIT))
 
+  const warmSession = (
+    sessionID: string,
+    priority: SessionPrefetchPriority = "high",
+    span = SHOB_PREFETCH_HOVER_SPAN,
+  ) => {
+    if (!props.onPrefetchSession) return
+    for (const item of pickWarmSessionPlan(sortedSessions(), sessionID, span)) {
+      props.onPrefetchSession(props.project.path, item.session.id, item.priority === "high" ? priority : "low")
+    }
+  }
+
   createEffect(() => {
     const confirming = confirmDeleteSessionId()
     if (confirming && !props.project.sessions.some((session) => session.id === confirming)) {
@@ -538,6 +572,9 @@ function FolderSection(props: {
             : "text-text-base hover:bg-surface-raised-base-hover hover:text-text-strong border-transparent"
         }`}
         style={{ "padding-left": `${34 + level * 14}px` }}
+        onPointerEnter={() => warmSession(session.id, "high")}
+        onPointerDown={() => warmSession(session.id, "high")}
+        onFocusIn={() => warmSession(session.id, "high")}
         onClick={() => {
           setConfirmDeleteSessionId(null)
           props.onSelectSession(props.project.id, session.id)
@@ -911,6 +948,7 @@ type SortableProjectGroupProps = {
   isProjectOpen: (projectId: string) => boolean
   onToggleProjectOpen: (projectId: string) => void
   onReorderProjects: (groupProjectIds: string[], reorderedGroupIds: string[]) => void
+  onPrefetchSession?: PrefetchSession
 }
 
 type SortableProjectItemsProps = Omit<SortableProjectGroupProps, "onReorderProjects"> & {
@@ -955,6 +993,7 @@ function SortableProjectItems(props: SortableProjectItemsProps) {
           onToggleProjectPin={props.onToggleProjectPin}
           isOpen={props.isProjectOpen(project.id)}
           onToggleProjectOpen={props.onToggleProjectOpen}
+          onPrefetchSession={props.onPrefetchSession}
           hidePinnedSessions
         />
       )}
@@ -999,6 +1038,7 @@ function SortableProjectGroup(props: SortableProjectGroupProps) {
             isProjectOpen={props.isProjectOpen}
             onToggleProjectOpen={props.onToggleProjectOpen}
             onSortedProjectIdsChange={(nextProjectIds) => setSortedProjectIds(nextProjectIds)}
+            onPrefetchSession={props.onPrefetchSession}
           />
         </SortableProvider>
       </DragDropSensors>
@@ -1009,6 +1049,7 @@ function SortableProjectGroup(props: SortableProjectGroupProps) {
 export function Sidebar(props: {
   onOpenSettingsPage?: () => void
   onOpenWorkspacePage?: () => void
+  prefetchSession?: PrefetchSession
 }) {
   const projects = useStore((s) => s.projects)
   const currentProjectId = useStore((s) => s.currentProjectId)
@@ -1046,6 +1087,18 @@ export function Sidebar(props: {
   const unpinnedProjects = createMemo(() => projects().filter((project) => !project.pinned))
 
   const isProjectOpen = (projectId: string) => projectOpenById()[projectId] ?? true
+
+  const warmProjectSession = (
+    project: Project,
+    sessionID: string,
+    priority: SessionPrefetchPriority = "high",
+    span = SHOB_PREFETCH_HOVER_SPAN,
+  ) => {
+    if (!props.prefetchSession) return
+    for (const item of pickWarmSessionPlan(project.sessions, sessionID, span)) {
+      props.prefetchSession(project.path, item.session.id, item.priority === "high" ? priority : "low")
+    }
+  }
 
   const handleToggleProjectOpen = (projectId: string) => {
     setProjectOpenById((current) => ({
@@ -1274,6 +1327,7 @@ export function Sidebar(props: {
           onClose={() => setSearchOpen(false)}
           onSelectProject={handleSelectProjectOnly}
           onSelectSession={handleSelectSession}
+          onPrefetchSession={props.prefetchSession}
         />
         <ResizeHandle
           edge="end"
@@ -1316,6 +1370,7 @@ export function Sidebar(props: {
                           activeSessionId={activeSessionId()}
                           now={sidebarNow()}
                           onSelect={handleSelectSession}
+                          onWarm={warmProjectSession}
                         />
                       )}
                     </For>
@@ -1355,6 +1410,7 @@ export function Sidebar(props: {
                     isProjectOpen={isProjectOpen}
                     onToggleProjectOpen={handleToggleProjectOpen}
                     onReorderProjects={handleReorderProjects}
+                    onPrefetchSession={props.prefetchSession}
                   />
                   <SortableProjectGroup
                     projects={unpinnedProjects()}
@@ -1371,6 +1427,7 @@ export function Sidebar(props: {
                     isProjectOpen={isProjectOpen}
                     onToggleProjectOpen={handleToggleProjectOpen}
                     onReorderProjects={handleReorderProjects}
+                    onPrefetchSession={props.prefetchSession}
                   />
                 </div>
               </Show>

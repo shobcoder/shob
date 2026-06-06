@@ -24,6 +24,11 @@ import { ScrollView } from '@opencode-ai/ui/scroll-view'
 import { SessionSidePanel } from '@/pages/session/session-side-panel'
 import { findReusableEmptyRootShobSession, sortShobSessionsById } from '@/utils/shob-session'
 import { AGENT_REVIEW_OPEN_EVENT } from '@/components/agent-turn-diff-summary'
+import {
+  createSessionMessagePrefetcher,
+  SHOB_PREFETCH_ACTIVE_SPAN,
+  type SessionPrefetchPriority,
+} from '@/context/session-message-prefetch'
 
 const DEFAULT_SESSION_PANEL_WIDTH = 600
 
@@ -180,6 +185,7 @@ export function MainView() {
     s.projects.find((project) => project.id === s.currentProjectId) ?? null,
   )
   const currentProjectId = useStore((s) => s.currentProjectId)
+  const activeSessionId = useStore((s) => s.activeSessionId)
   const [activeFilePath, setActiveFilePath] = createSignal<string | null>(null)
   const [reviewFiles, setReviewFiles] = createSignal<string[]>([])
   const [isReviewVisible, setIsReviewVisible] = createSignal(false)
@@ -207,6 +213,7 @@ export function MainView() {
   let reviewSnapFrame: number | undefined
   let sidePanelWarmToken = 0
 
+  const sessionPrefetch = createSessionMessagePrefetcher({ globalSDK, globalSync })
   const projectPath = createMemo(() => currentProject()?.path ?? '')
   const sidePanelOpen = createMemo(() => isReviewVisible() || isFileTreeVisible() || !!contextTabSessionId())
   const sidePanelMainOpen = createMemo(() =>
@@ -238,6 +245,27 @@ export function MainView() {
     },
     onError: (msg) => console.error("[FileTree]", msg),
   })
+
+  createEffect(() => {
+    sessionPrefetch.prune(projects().map((project) => project.path))
+  })
+
+  createEffect(() => {
+    const project = currentProject()
+    const sessionID = activeSessionId()
+    if (!project || !sessionID) return
+
+    sessionPrefetch.preserve(project.path, [sessionID])
+    sessionPrefetch.warmSessions(project.path, project.sessions, sessionID, SHOB_PREFETCH_ACTIVE_SPAN)
+  })
+
+  const prefetchSession = (
+    projectPath: string | undefined | null,
+    sessionID: string | undefined | null,
+    priority: SessionPrefetchPriority = "low",
+  ) => {
+    sessionPrefetch.prefetchSession(projectPath, sessionID, priority)
+  }
 
   createEffect(
     on(
@@ -648,6 +676,7 @@ export function MainView() {
       <Sidebar
         onOpenSettingsPage={() => setActivePage('settings')}
         onOpenWorkspacePage={() => setActivePage('workspace')}
+        prefetchSession={prefetchSession}
       />
       <div class="min-h-0 min-w-0 flex-1 flex flex-col overflow-hidden bg-background">
         {activePage() === 'workspace' ? (
