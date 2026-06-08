@@ -11,15 +11,21 @@ type ResizeHandleProps = {
 export function ResizeHandle(props: ResizeHandleProps) {
   const start = (event: PointerEvent) => {
     event.preventDefault()
+    const target = event.currentTarget as HTMLDivElement
+    target.setPointerCapture(event.pointerId)
     props.onResizeStart?.()
 
     const move = (moveEvent: PointerEvent) => {
       props.onResize(moveEvent.clientX)
     }
 
-    const stop = () => {
+    const stop = (stopEvent: PointerEvent) => {
+      if (target.hasPointerCapture(stopEvent.pointerId)) {
+        target.releasePointerCapture(stopEvent.pointerId)
+      }
       window.removeEventListener("pointermove", move)
       window.removeEventListener("pointerup", stop)
+      window.removeEventListener("pointercancel", stop)
       document.body.style.cursor = ""
       document.body.style.userSelect = ""
       props.onResizeEnd?.()
@@ -29,6 +35,7 @@ export function ResizeHandle(props: ResizeHandleProps) {
     document.body.style.userSelect = "none"
     window.addEventListener("pointermove", move)
     window.addEventListener("pointerup", stop)
+    window.addEventListener("pointercancel", stop)
   }
 
   return (

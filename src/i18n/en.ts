@@ -233,7 +233,7 @@ export const dict = {
 
   "prompt.placeholder.shell": "Enter shell command...",
   "prompt.placeholder.normal": "What would you like to work on?",
-  "prompt.placeholder.simple": "What would you like to work on?",
+  "prompt.placeholder.simple": "Ask for follow-up changes",
   "prompt.placeholder.followup": "Ask for follow-up changes",
   "prompt.placeholder.summarizeComments": "Summarize comments…",
   "prompt.placeholder.summarizeComment": "Summarize comment…",

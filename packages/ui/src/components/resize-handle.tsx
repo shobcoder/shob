@@ -25,8 +25,10 @@ export function ResizeHandle(props: ResizeHandleProps) {
     "classList",
   ])
 
-  const handleMouseDown = (e: MouseEvent) => {
+  const handlePointerDown = (e: PointerEvent) => {
     e.preventDefault()
+    const target = e.currentTarget as HTMLDivElement
+    target.setPointerCapture(e.pointerId)
     const edge = local.edge ?? (local.direction === "vertical" ? "start" : "end")
     const start = local.direction === "horizontal" ? e.clientX : e.clientY
     const startSize = local.size
@@ -34,8 +36,9 @@ export function ResizeHandle(props: ResizeHandleProps) {
 
     document.body.style.userSelect = "none"
     document.body.style.overflow = "hidden"
+    document.body.style.cursor = local.direction === "horizontal" ? "col-resize" : "row-resize"
 
-    const onMouseMove = (moveEvent: MouseEvent) => {
+    const onPointerMove = (moveEvent: PointerEvent) => {
       const pos = local.direction === "horizontal" ? moveEvent.clientX : moveEvent.clientY
       const delta =
         local.direction === "vertical"
@@ -50,11 +53,16 @@ export function ResizeHandle(props: ResizeHandleProps) {
       local.onResize(clamped)
     }
 
-    const onMouseUp = () => {
+    const onPointerEnd = (endEvent: PointerEvent) => {
+      if (target.hasPointerCapture(endEvent.pointerId)) {
+        target.releasePointerCapture(endEvent.pointerId)
+      }
       document.body.style.userSelect = ""
       document.body.style.overflow = ""
-      document.removeEventListener("mousemove", onMouseMove)
-      document.removeEventListener("mouseup", onMouseUp)
+      document.body.style.cursor = ""
+      document.removeEventListener("pointermove", onPointerMove)
+      document.removeEventListener("pointerup", onPointerEnd)
+      document.removeEventListener("pointercancel", onPointerEnd)
 
       const threshold = local.collapseThreshold ?? 0
       if (local.onCollapse && threshold > 0 && current < threshold) {
@@ -62,8 +70,9 @@ export function ResizeHandle(props: ResizeHandleProps) {
       }
     }
 
-    document.addEventListener("mousemove", onMouseMove)
-    document.addEventListener("mouseup", onMouseUp)
+    document.addEventListener("pointermove", onPointerMove)
+    document.addEventListener("pointerup", onPointerEnd)
+    document.addEventListener("pointercancel", onPointerEnd)
   }
 
   return (
@@ -76,7 +85,7 @@ export function ResizeHandle(props: ResizeHandleProps) {
         ...(local.classList ?? {}),
         [local.class ?? ""]: !!local.class,
       }}
-      onMouseDown={handleMouseDown}
+      onPointerDown={handlePointerDown}
     />
   )
 }

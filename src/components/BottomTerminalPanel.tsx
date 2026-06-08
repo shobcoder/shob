@@ -20,25 +20,33 @@ function ResizeHandle(props: {
   let startY = 0
   let startHeight = 0
 
-  const handleMouseDown = (e: MouseEvent) => {
+  const handlePointerDown = (e: PointerEvent) => {
     e.preventDefault()
+    const target = e.currentTarget as HTMLDivElement
+    target.setPointerCapture(e.pointerId)
     startY = e.clientY
     startHeight = props.getHeight()
 
     document.body.style.userSelect = "none"
     document.body.style.overflow = "hidden"
+    document.body.style.cursor = "row-resize"
 
-    const onMouseMove = (moveEvent: MouseEvent) => {
+    const onPointerMove = (moveEvent: PointerEvent) => {
       const delta = startY - moveEvent.clientY
       const newHeight = Math.max(MIN_HEIGHT, Math.min(props.getMax(), startHeight + delta))
       props.onResize(newHeight)
     }
 
-    const onMouseUp = () => {
+    const onPointerEnd = (endEvent: PointerEvent) => {
+      if (target.hasPointerCapture(endEvent.pointerId)) {
+        target.releasePointerCapture(endEvent.pointerId)
+      }
       document.body.style.userSelect = ""
       document.body.style.overflow = ""
-      document.removeEventListener("mousemove", onMouseMove)
-      document.removeEventListener("mouseup", onMouseUp)
+      document.body.style.cursor = ""
+      document.removeEventListener("pointermove", onPointerMove)
+      document.removeEventListener("pointerup", onPointerEnd)
+      document.removeEventListener("pointercancel", onPointerEnd)
 
       props.onResizeEnd?.()
       if (props.getHeight() < COLLAPSE_THRESHOLD) {
@@ -46,16 +54,17 @@ function ResizeHandle(props: {
       }
     }
 
-    document.addEventListener("mousemove", onMouseMove)
-    document.addEventListener("mouseup", onMouseUp)
+    document.addEventListener("pointermove", onPointerMove)
+    document.addEventListener("pointerup", onPointerEnd)
+    document.addEventListener("pointercancel", onPointerEnd)
   }
 
   return (
     <div
       role="separator"
       aria-orientation="horizontal"
-      onMouseDown={handleMouseDown}
-      class="absolute inset-x-0 top-0 z-10 h-2 cursor-row-resize hover:bg-border/30 transition-colors"
+      onPointerDown={handlePointerDown}
+      class="absolute inset-x-0 top-[-9px] z-10 h-[18px] cursor-row-resize touch-none hover:bg-border/30 transition-colors"
     >
       <div class="absolute inset-x-0 top-1/2 h-px bg-border opacity-0 hover:opacity-100 transition-opacity" />
     </div>

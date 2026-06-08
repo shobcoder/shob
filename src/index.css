@@ -634,7 +634,7 @@ b {
 .workspace-divider::before {
   content: '';
   position: absolute;
-  inset: 0 -4px;
+  inset: 0 -10px;
   z-index: 1;
 }
 
@@ -674,17 +674,18 @@ b {
   top: 0;
   bottom: 0;
   z-index: 30;
-  width: 8px;
+  width: 20px;
   cursor: col-resize;
   background: transparent;
+  touch-action: none;
 }
 
 .shob-resize-handle-start {
-  left: -4px;
+  left: -10px;
 }
 
 .shob-resize-handle-end {
-  right: -4px;
+  right: -10px;
 }
 
 .shob-resize-handle::after {
@@ -1228,11 +1229,12 @@ b {
 }
 
 .terminal-panel-resize-handle {
-  height: 4px;
+  height: 18px;
   cursor: row-resize;
   background: transparent;
   transition: background-color 150ms ease;
   position: relative;
+  touch-action: none;
 }
 
 .terminal-panel-resize-handle::after {
@@ -2170,9 +2172,29 @@ html[data-color-scheme="dark"] .agent-terminal-composer-region {
   pointer-events: none;
 }
 
+.agent-terminal-composer-region[data-agent-docked="true"]::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 0;
+  height: calc(var(--agent-composer-height, 132px) + 72px);
+  background:
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--terminal-agent-bg) 0%, transparent) 0%,
+      color-mix(in srgb, var(--terminal-agent-bg) 92%, transparent) 38%,
+      var(--terminal-agent-bg) 100%
+    );
+  pointer-events: none;
+}
+
 .agent-terminal-composer-docks,
 .agent-terminal-view > .agent-terminal-prompt,
 .agent-terminal-composer-region > .agent-terminal-prompt {
+  position: relative;
+  z-index: 1;
   width: var(--agent-content-width, min(calc(100% - 24px), 736px)) !important;
   max-width: var(--agent-content-max-width, 736px);
   margin-left: auto !important;
