@@ -775,15 +775,15 @@ export function MainView() {
   })
 
   return (
-    <div class="grid min-h-0 flex-1 grid-cols-[auto_minmax(0,1fr)] overflow-hidden bg-background text-foreground">
+    <div class="grid h-full min-h-0 max-h-full flex-1 grid-cols-[auto_minmax(0,1fr)] overflow-hidden bg-background text-foreground">
       <Sidebar
         onOpenSettingsPage={() => setActivePage('settings')}
         onOpenWorkspacePage={() => setActivePage('workspace')}
       />
-      <div class="min-h-0 min-w-0 flex-1 flex flex-col overflow-hidden bg-background">
+      <div class="flex h-full min-h-0 max-h-full min-w-0 flex-1 flex-col overflow-hidden bg-background">
         {activePage() === 'workspace' ? (
           <LayoutProvider>
-            <div class="flex flex-col min-h-0 flex-1 overflow-hidden">
+            <div class="flex h-full min-h-0 max-h-full flex-1 flex-col overflow-hidden">
               <div class="min-h-0 min-w-0 flex-1 overflow-hidden bg-background">
                 <div ref={workspaceSplitRef} class="shob-workspace-split flex h-full w-full min-h-0 min-w-0">
                   <div
@@ -801,7 +801,7 @@ export function MainView() {
                   </div>
 
                   {projectSessions().length === 0 && (
-                    <div class="min-h-0 min-w-0 flex-1">
+                    <div class="h-full min-h-0 min-w-0 flex-1 overflow-hidden">
                       <WelcomeScreen
                         projects={projects()}
                         currentProject={currentProject()}
@@ -815,7 +815,7 @@ export function MainView() {
 
                   <Show when={sidePanelMounted()}>
                     <div
-                      class="shob-workspace-side-panel relative min-h-0 shrink-0 overflow-hidden"
+                      class="shob-workspace-side-panel relative h-full min-h-0 max-h-full shrink-0 overflow-hidden"
                       classList={{
                         "flex-1": sidePanelOpen() && sidePanelMainOpen(),
                         "border-l": sidePanelOpen(),

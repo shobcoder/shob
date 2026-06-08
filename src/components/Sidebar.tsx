@@ -1305,7 +1305,7 @@ export function Sidebar(props: {
 
   return (
     <aside
-      class={`relative h-full shrink-0 ${
+      class={`relative h-full min-h-0 max-h-full shrink-0 overflow-hidden ${
         isSidebarVisible() ? "border-r border-border-weak-base" : "w-0 border-r-0"
       }`}
       style={isSidebarVisible() ? { width: `${sidebarWidth()}px` } : undefined}
@@ -1326,7 +1326,7 @@ export function Sidebar(props: {
           onResizeStart={beginSidebarResize}
           onResizeEnd={endSidebarResize}
         />
-        <div class="shob-sidebar relative flex h-full max-h-full flex-col bg-background-stronger text-text-base select-none">
+        <div class="shob-sidebar relative flex h-full min-h-0 max-h-full flex-col overflow-hidden bg-background-stronger text-text-base select-none">
           <div class="sticky top-0 z-20 shrink-0 bg-background-stronger/95 px-1.5 pb-3 pt-2 backdrop-blur">
             <nav class="flex flex-col gap-0.5">
               <SidebarActionButton
@@ -1350,7 +1350,7 @@ export function Sidebar(props: {
             </nav>
           </div>
 
-          <div class="shob-sidebar-scrollbar min-h-0 flex-1 overflow-y-auto">
+          <div class="shob-sidebar-scrollbar min-h-0 flex-1 overscroll-contain overflow-y-scroll">
             <div class="flex min-h-full flex-col gap-0.5 px-1.5 pb-4 pt-1">
               <Show when={pinnedSessionHits().length > 0}>
                 <div class="mb-2">

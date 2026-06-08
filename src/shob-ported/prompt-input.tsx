@@ -53,7 +53,6 @@ import {
   promptLength,
 } from "./prompt-input/history"
 import { createPromptSubmit, type FollowupDraft } from "./prompt-input/submit"
-import { SessionContextUsage } from "@/components/session-context-usage"
 import { PromptPopover, type AtOption, type SlashCommand } from "./prompt-input/slash-popover"
 import { PromptContextItems } from "./prompt-input/context-items"
 import { PromptImageAttachments } from "./prompt-input/image-attachments"
@@ -2072,14 +2071,6 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                 <PromptImproveMark class="size-4" />
               </button>
             </Tooltip>
-            <Show when={params.sessionId}>
-              <SessionContextUsage
-                sessionId={params.sessionId!}
-                onClick={() => {
-                  window.dispatchEvent(new CustomEvent("gg-open-context-tab", { detail: { sessionId: params.sessionId } }))
-                }}
-              />
-            </Show>
             <Show when={!blank()}>
               <div class="agent-terminal-prompt-count flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-card/30 border border-border/15 text-[10px] font-mono text-muted-foreground select-none animate-fade-in backdrop-blur-sm">
                 <span>{promptLength(prompt.current().filter((p) => p.type !== "image"))} ch</span>

@@ -47,6 +47,7 @@ import {
   reuseAgentTimelineRows,
   type AgentTimelineRow,
 } from "@/components/agent-timeline-rows"
+import { SessionContextUsage } from "@/components/session-context-usage"
 import shobLogo from "@/assets/icon/shob.png"
 
 interface AgentViewProps {
@@ -702,6 +703,12 @@ function AgentViewInner(props: AgentViewProps) {
     setRenameValue(title())
     setSessionMenuOpen(false)
     window.setTimeout(() => setRenameOpen(true), 20)
+  }
+
+  const openContextUsage = () => {
+    const id = activeSessionId()
+    if (!id) return
+    window.dispatchEvent(new CustomEvent("gg-open-context-tab", { detail: { sessionId: id } }))
   }
 
   const submitRename = async () => {
@@ -1576,6 +1583,9 @@ function AgentViewInner(props: AgentViewProps) {
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
+                      <Show when={activeSessionId()}>
+                        {(id) => <SessionContextUsage sessionId={id()} onClick={openContextUsage} />}
+                      </Show>
                     </div>
                     <div class="ml-auto flex shrink-0 items-center gap-2">
                       <Show when={currentBranchName()}>

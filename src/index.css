@@ -568,6 +568,10 @@ b {
 }
 
 .shob-sidebar-scrollbar {
+  min-height: 0;
+  overflow-y: scroll;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--text-weaker) 72%, transparent) transparent;
 }
