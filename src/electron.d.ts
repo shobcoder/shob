@@ -84,6 +84,120 @@ export interface ElectronTerminalSpawnResult {
   cursor?: number
 }
 
+export type ElectronBrowserAction =
+  | "open"
+  | "navigate"
+  | "show"
+  | "hide"
+  | "close"
+  | "state"
+  | "click"
+  | "type"
+  | "press"
+  | "scroll"
+  | "back"
+  | "forward"
+  | "reload"
+  | "set_degen_mode"
+  | "extract"
+  | "evaluate"
+  | "screenshot"
+
+export interface ElectronBrowserBounds {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export interface ElectronBrowserActionRequest {
+  action?: ElectronBrowserAction
+  detail?: "light" | "full"
+  url?: string
+  bounds?: ElectronBrowserBounds
+  enabled?: boolean
+  ref?: string
+  text?: string
+  key?: string
+  x?: number
+  y?: number
+  deltaX?: number
+  deltaY?: number
+  javascript?: string
+  maxLength?: number
+}
+
+export interface ElectronBrowserElementSnapshot {
+  ref: string
+  tag: string
+  role: string | null
+  type: string | null
+  text: string
+  href: string | null
+  placeholder: string | null
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export interface ElectronBrowserState {
+  visible: boolean
+  url: string
+  title: string
+  loading: boolean
+  canGoBack: boolean
+  canGoForward: boolean
+  degenMode: boolean
+  error?: string | null
+  text?: string
+  elements?: ElectronBrowserElementSnapshot[]
+}
+
+export interface ElectronBrowserActionResult {
+  ok: true
+  action: ElectronBrowserAction
+  state: ElectronBrowserState
+  text?: string
+  dataUrl?: string
+  value?: unknown
+}
+
+export interface ElectronBrowserTheme {
+  mode: "light" | "dark"
+  background: string
+  surface: string
+  foreground: string
+  muted: string
+  border: string
+  codeBackground: string
+  codeForeground: string
+}
+
+export interface ElectronBrowserElementSelection {
+  url: string
+  title: string
+  selector: string
+  tag: string
+  role: string | null
+  type: string | null
+  text: string
+  value: string | null
+  href: string | null
+  src: string | null
+  alt: string | null
+  placeholder: string | null
+  ariaLabel: string | null
+  id: string | null
+  className: string | null
+  outerHTML: string
+  x: number
+  y: number
+  width: number
+  height: number
+  timestamp: number
+}
+
 export interface ShobNativeApi {
   platform: "windows" | "macos" | "linux" | string
   getServerUrl(): string | null
@@ -154,6 +268,7 @@ export interface NativeCommandMap {
     result: { status: "dev" | "downloading" | "downloaded" | "error"; version?: string | null; message?: string }
   }
   opencode_server_start: { args: undefined; result: string }
+  browser_action: { args: ElectronBrowserActionRequest; result: ElectronBrowserActionResult }
   get_projects: { args: undefined; result: Project[] }
   save_project: { args: { project: Project }; result: Project }
   reorder_projects: { args: { projectIds: string[] }; result: Project[] }
@@ -178,6 +293,7 @@ export interface NativeCommandMap {
   get_git_file_state: { args: { path: string }; result: ElectronGitFileState }
   cleanup_runtime: { args: undefined; result: void }
   set_window_background: { args: { color: string }; result: void }
+  set_browser_theme: { args: ElectronBrowserTheme; result: void }
   set_titlebar_theme: { args: { mode: "light" | "dark" }; result: void }
   reveal_in_finder: { args: { path: string }; result: void }
   open_project_with: { args: { path: string; target: ElectronOpenWithTarget }; result: void }

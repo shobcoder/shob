@@ -30,6 +30,7 @@ import { Select } from "@opencode-ai/ui/select"
 import { Spinner } from "@opencode-ai/ui/spinner"
 import { showToast } from "@opencode-ai/ui/toast"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { DialogSelectModel } from "@/components/dialog-select-model"
 import { useProviders } from "@/hooks/use-providers"
 import { useCommand } from "@/context/command"
@@ -63,6 +64,8 @@ import { PromptPasteAttachments } from "./prompt-input/paste-attachments"
 import { useQueries } from "@tanstack/solid-query"
 import { useQueryOptions, pathKey } from "./mock-session-layout"
 import { formatServerError } from "@/utils/server-errors"
+import { uuid } from "@/utils/uuid"
+import type { ElectronBrowserElementSelection } from "@/electron"
 
 interface PromptInputProps {
   class?: string
@@ -331,6 +334,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     placeholder: number
     draggingType: "image" | "@mention" | null
     mode: "normal" | "shell"
+    browserMode: boolean
     applyingHistory: boolean
   }>({
     popover: null,
@@ -339,6 +343,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     placeholder: Math.floor(Math.random() * EXAMPLES.length),
     draggingType: null,
     mode: "normal",
+    browserMode: false,
     applyingHistory: false,
   })
 
@@ -557,7 +562,10 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
   const escBlur = () => platform.platform === "desktop" && platform.os === "macos"
 
-  const pick = () => fileInputRef?.click()
+  const pick = () => {
+    setAttachMenuOpen(false)
+    fileInputRef?.click()
+  }
 
   const setMode = (mode: "normal" | "shell") => {
     setStore("mode", mode)
@@ -567,6 +575,16 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
   const shellModeKey = "mod+shift+x"
   const normalModeKey = "mod+shift+e"
+  const openBrowserTab = () => {
+    window.dispatchEvent(new CustomEvent("shob-open-browser-tab"))
+  }
+  const toggleBrowserMode = () => {
+    if (store.mode !== "normal" || improvingPrompt()) return
+    const next = !store.browserMode
+    setStore("browserMode", next)
+    setStore("popover", null)
+    requestAnimationFrame(() => editorRef?.focus())
+  }
 
   command.register("prompt-input", () => [
     {
@@ -593,6 +611,22 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       disabled: store.mode === "normal",
       onSelect: () => setMode("normal"),
     },
+    {
+      id: "browser.open",
+      title: "Open Browser",
+      description: "Open the embedded browser tab",
+      category: "Tools",
+      slash: "browser",
+      onSelect: openBrowserTab,
+    },
+    {
+      id: "prompt.mode.browser",
+      title: "Toggle Browser Mode",
+      description: "Allow this agent prompt to use the embedded browser",
+      category: "Tools",
+      disabled: store.mode !== "normal",
+      onSelect: toggleBrowserMode,
+    },
   ])
 
   const closePopover = () => setStore("popover", null)
@@ -602,6 +636,80 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     setStore("historyIndex", -1)
     setStore("savedPrompt", null)
   }
+
+  const compactBrowserValue = (value: string | null | undefined, maxLength = 1_200) =>
+    (value ?? "").replace(/\s+/g, " ").trim().slice(0, maxLength)
+
+  const browserSelectionAttachmentContent = (selection: ElectronBrowserElementSelection) => {
+    const attributes = [
+      selection.id ? `id="${selection.id}"` : "",
+      selection.className ? `class="${compactBrowserValue(selection.className, 500)}"` : "",
+      selection.role ? `role="${selection.role}"` : "",
+      selection.type ? `type="${selection.type}"` : "",
+      selection.ariaLabel ? `aria-label="${compactBrowserValue(selection.ariaLabel, 500)}"` : "",
+      selection.placeholder ? `placeholder="${compactBrowserValue(selection.placeholder, 500)}"` : "",
+      selection.href ? `href="${compactBrowserValue(selection.href, 900)}"` : "",
+      selection.src ? `src="${compactBrowserValue(selection.src, 900)}"` : "",
+      selection.alt ? `alt="${compactBrowserValue(selection.alt, 500)}"` : "",
+    ].filter(Boolean)
+    const tag = compactBrowserValue(selection.tag, 80) || "element"
+    const content = [
+      "Selected browser element",
+      `URL: ${selection.url}`,
+      selection.title ? `Page title: ${selection.title}` : "",
+      `Selector: ${selection.selector || "(not available)"}`,
+      `Element: <${tag}${attributes.length ? ` ${attributes.join(" ")}` : ""}>`,
+      `Bounds: x=${selection.x}, y=${selection.y}, width=${selection.width}, height=${selection.height}`,
+      selection.text ? `Visible text:\n${selection.text}` : "",
+      selection.value ? `Value:\n${selection.value}` : "",
+      selection.outerHTML ? `HTML snippet:\n${selection.outerHTML}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n")
+
+    return content.slice(0, 8_000)
+  }
+
+  const attachBrowserSelection = (selection: ElectronBrowserElementSelection) => {
+    if (improvingPrompt()) return
+
+    const content = browserSelectionAttachmentContent(selection)
+    const lines = content.split("\n")
+    const attachment: PastePart = {
+      type: "paste",
+      id: uuid(),
+      filename: "Browser element.txt",
+      content,
+      preview: lines.slice(0, 3).join("\n"),
+      lineCount: lines.length,
+      charCount: content.length,
+    }
+    const cursor = prompt.cursor() ?? promptLength(prompt.current())
+
+    prompt.set([...prompt.current(), attachment], cursor)
+    resetHistoryNavigation()
+    setStore("mode", "normal")
+    setStore("browserMode", true)
+    showToast({
+      title: "Browser element attached",
+      description: compactBrowserValue(selection.selector || selection.text || selection.url, 120),
+    })
+    requestAnimationFrame(() => {
+      editorRef?.focus()
+      queueScroll()
+    })
+  }
+
+  onMount(() => {
+    const handleBrowserElementSelected = (event: Event) => {
+      const selection = (event as CustomEvent<ElectronBrowserElementSelection>).detail
+      if (!selection?.url) return
+      attachBrowserSelection(selection)
+    }
+
+    window.addEventListener("shob-browser-element-selected", handleBrowserElementSelected)
+    onCleanup(() => window.removeEventListener("shob-browser-element-selected", handleBrowserElementSelected))
+  })
 
   const clearEditor = () => {
     editorRef.innerHTML = ""
@@ -1408,6 +1516,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     commentCount,
     autoAccept: () => accepting(),
     mode: () => store.mode,
+    browserMode: () => store.browserMode,
     working,
     editor: () => editorRef,
     queueScroll,
@@ -1611,6 +1720,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     () => prompt.ready(),
     (p) => p,
   )
+  const [attachMenuOpen, setAttachMenuOpen] = createSignal(false)
 
   return (
     <div
@@ -1781,22 +1891,67 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                 restoreFocus()
               }}
             />
-            <TooltipKeybind
-              placement="top"
-              title={language.t("prompt.action.attachFile")}
-              keybind={command.keybind("file.attach")}
-            >
-              <button
-                data-action="prompt-attach"
-                type="button"
-                class="size-8 flex items-center justify-center rounded-lg border border-border/30 hover:bg-accent/50 text-foreground transition-colors duration-150 cursor-pointer outline-none shrink-0"
-                onClick={pick}
-                disabled={store.mode !== "normal" || improvingPrompt()}
-                aria-label={language.t("prompt.action.attachFile")}
+            <DropdownMenu open={attachMenuOpen()} onOpenChange={setAttachMenuOpen} placement="top-start" gutter={8}>
+              <TooltipKeybind
+                placement="top"
+                title="Add photos, files, or browser"
+                keybind={command.keybind("file.attach")}
               >
-                <Icon name="plus" class="size-4" />
-              </button>
-            </TooltipKeybind>
+                <DropdownMenuTrigger
+                  data-action="prompt-attach"
+                  type="button"
+                  class="size-8 flex items-center justify-center rounded-lg border border-border/30 hover:bg-accent/50 text-foreground transition-colors duration-150 cursor-pointer outline-none shrink-0 data-expanded:bg-accent/50 data-expanded:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={store.mode !== "normal" || improvingPrompt()}
+                  aria-label="Open add menu"
+                >
+                  <Icon name="plus" class="size-4" />
+                </DropdownMenuTrigger>
+              </TooltipKeybind>
+              <DropdownMenuContent class="z-[140] w-[228px] rounded-xl border border-border-weak-base bg-surface-raised-base/95 p-1.5 text-[13px] shadow-2xl backdrop-blur">
+                <button
+                  type="button"
+                  class="flex min-h-9 w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-[13px] text-text-base outline-none transition-colors hover:bg-surface-raised-base-hover focus-visible:bg-surface-raised-base-hover"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    pick()
+                  }}
+                >
+                  <Icon name="photo" class="size-4 text-text-weaker" />
+                  <span class="min-w-0 flex-1 truncate font-medium">Add photos & files</span>
+                </button>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={store.browserMode ? "true" : "false"}
+                  class="flex min-h-9 w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-[13px] text-text-base outline-none transition-colors hover:bg-surface-raised-base-hover focus-visible:bg-surface-raised-base-hover"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    toggleBrowserMode()
+                  }}
+                >
+                  <Icon name="browser" class="size-4" />
+                  <span class="min-w-0 flex-1 truncate font-medium">Browser mode</span>
+                  <span
+                    class="relative h-5 w-9 shrink-0 rounded-full border transition-colors duration-150"
+                    classList={{
+                      "border-sky-400/60 bg-sky-500/40": store.browserMode,
+                      "border-border-weak-base bg-surface-base": !store.browserMode,
+                    }}
+                    aria-hidden="true"
+                  >
+                    <span
+                      class="absolute top-1/2 size-3.5 -translate-y-1/2 rounded-full bg-text-base shadow-sm transition-transform duration-150"
+                      classList={{
+                        "translate-x-[18px]": store.browserMode,
+                        "translate-x-0.5": !store.browserMode,
+                      }}
+                    />
+                  </span>
+                </button>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             <Show when={!providersLoading() && store.mode !== "shell"}>
               <TooltipKeybind

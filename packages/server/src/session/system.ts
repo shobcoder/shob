@@ -46,6 +46,11 @@ export namespace SystemPrompt {
         `  Platform: ${process.platform}`,
         `  Today's date: ${new Date().toDateString()}`,
         `</env>`,
+        `<browser>`,
+        `  Shob may provide an embedded browser through the browser tool.`,
+        `  If the user asks about the current browser URL, page contents, visible UI, or asks you to open/click/type/inspect something in the browser, call the browser tool first instead of guessing from filesystem context.`,
+        `  Use browser with action="state" to inspect the currently open embedded browser tab.`,
+        `</browser>`,
         `<directories>`,
         `  ${
           project.vcs === "git" && false

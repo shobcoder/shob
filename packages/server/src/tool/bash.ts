@@ -1,5 +1,6 @@
 import z from "zod"
 import os from "os"
+import { spawn as spawnNodeProcess } from "node:child_process"
 import { Tool } from "./tool"
 import path from "path"
 import DESCRIPTION from "./bash.txt"
@@ -22,6 +23,7 @@ import { ChildProcessSpawner } from "effect/unstable/process/ChildProcessSpawner
 
 const MAX_METADATA_LENGTH = 30_000
 const DEFAULT_TIMEOUT = Flag.OPENCODE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS || 2 * 60 * 1000
+const BACKGROUND_STARTUP_TIMEOUT = 10_000
 const PS = new Set(["powershell", "pwsh"])
 const CWD = new Set(["cd", "push-location", "set-location"])
 const FILES = new Set([
@@ -52,6 +54,12 @@ const SWITCHES = new Set(["-confirm", "-debug", "-force", "-nonewline", "-recurs
 const Parameters = z.object({
   command: z.string().describe("The command to execute"),
   timeout: z.number().describe("Optional timeout in milliseconds").optional(),
+  background: z
+    .boolean()
+    .describe(
+      "Run long-lived commands like dev servers or watch processes in the background. The tool returns after startup so the agent can continue.",
+    )
+    .optional(),
   workdir: z
     .string()
     .describe(
@@ -262,6 +270,63 @@ function cmd(shell: string, name: string, command: string, cwd: string, env: Nod
   })
 }
 
+function nodeCmd(shell: string, name: string, command: string, cwd: string, env: NodeJS.ProcessEnv) {
+  if (process.platform === "win32" && PS.has(name)) {
+    return {
+      command: shell,
+      args: ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command],
+      options: { cwd, env, windowsHide: true, detached: false },
+    }
+  }
+
+  return {
+    command,
+    args: [] as string[],
+    options: { shell, cwd, env, windowsHide: true, detached: process.platform !== "win32" },
+  }
+}
+
+function looksLikeBackgroundCommand(command: string, description: string) {
+  const normalized = command
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim()
+  const purpose = description.toLowerCase()
+  if (!normalized) return false
+  if (/[;&|]\s*(nohup|setsid|start-process)\b/.test(normalized) || /(?:^|\s)&\s*$/.test(normalized)) return false
+  if (/\b(test|build|install|ci|lint|typecheck|format|generate)\b/.test(normalized)) return false
+
+  const patterns = [
+    /\b(npm|pnpm|yarn|bun)\s+(run\s+)?(dev|serve|watch)\b/,
+    /\b(npm|pnpm|yarn|bun)\s+start\b/,
+    /\b(vite|next|nuxt|astro|remix|vitepress|svelte-kit|webpack-dev-server|wrangler)\s+(dev|serve)\b/,
+    /\bwebpack\s+serve\b/,
+    /\breact-scripts\s+start\b/,
+    /\bng\s+serve\b/,
+    /\b(nodemon|tsx\s+watch|ts-node-dev|air)\b/,
+    /\btsc\b.*\b--watch\b/,
+  ]
+  if (patterns.some((pattern) => pattern.test(normalized))) return true
+  return /\b(start|run|launch)\b/.test(purpose) && /\b(dev server|development server|server|watcher|watch mode)\b/.test(purpose)
+}
+
+function backgroundReady(output: string) {
+  return [
+    /\b(local|network):\s+https?:\/\//i,
+    /\bhttps?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0|\[[^\]]+\])(?::\d+)?/i,
+    /\b(server|app|vite|next|nuxt|astro|webpack|wrangler)\b.*\b(ready|started|listening|running|compiled)\b/i,
+    /\bready in \d+(?:\.\d+)?\s*(ms|s)\b/i,
+    /\bcompiled successfully\b/i,
+    /\bwatching for file changes\b/i,
+  ].some((pattern) => pattern.test(output))
+}
+
+function stopCommand(pid: number | undefined) {
+  if (!pid) return "Stop the background process from your terminal/process manager."
+  if (process.platform === "win32") return `taskkill /PID ${pid} /T /F`
+  return `kill -TERM -${pid} || kill ${pid}`
+}
+
 const parser = lazy(async () => {
   const { Parser } = await import("web-tree-sitter")
   const { default: treeWasm } = await import("web-tree-sitter/tree-sitter.wasm" as string, {
@@ -454,6 +519,153 @@ export const BashTool = Tool.define(
       }
     })
 
+    const runBackground = Effect.fn("BashTool.runBackground")(function* (
+      input: {
+        shell: string
+        name: string
+        command: string
+        cwd: string
+        env: NodeJS.ProcessEnv
+        description: string
+      },
+      ctx: Tool.Context,
+    ) {
+      let output = ""
+
+      yield* ctx.metadata({
+        metadata: {
+          output: "",
+          description: input.description,
+          background: true,
+        },
+      })
+
+      const result = yield* Effect.promise(
+        () =>
+          new Promise<{
+            running: boolean
+            reason: "ready" | "startup-timeout" | "exit" | "abort" | "error"
+            pid?: number
+            exit: number | null
+            signal?: NodeJS.Signals | null
+            error?: string
+          }>((resolve) => {
+            const launch = nodeCmd(input.shell, input.name, input.command, input.cwd, input.env)
+            const child = spawnNodeProcess(launch.command, launch.args, {
+              ...launch.options,
+              stdio: ["ignore", "pipe", "pipe"],
+            } as Parameters<typeof spawnNodeProcess>[2])
+            let settled = false
+
+            const append = (chunk: Buffer | string) => {
+              output += chunk.toString()
+              if (output.length > MAX_METADATA_LENGTH) output = output.slice(-MAX_METADATA_LENGTH)
+              if (!settled && backgroundReady(output)) finish({ running: true, reason: "ready", pid: child.pid, exit: null })
+            }
+
+            const cleanup = () => {
+              clearTimeout(timer)
+              ctx.abort.removeEventListener("abort", onAbort)
+            }
+
+            const finish = (next: {
+              running: boolean
+              reason: "ready" | "startup-timeout" | "exit" | "abort" | "error"
+              pid?: number
+              exit: number | null
+              signal?: NodeJS.Signals | null
+              error?: string
+            }) => {
+              if (settled) return
+              settled = true
+              cleanup()
+              if (next.running) child.unref()
+              resolve(next)
+            }
+
+            const onAbort = () => {
+              if (settled) return
+              try {
+                child.kill()
+              } catch {
+                // Process may have already exited.
+              }
+              finish({ running: false, reason: "abort", pid: child.pid, exit: null })
+            }
+
+            const timer = setTimeout(() => {
+              finish({ running: true, reason: "startup-timeout", pid: child.pid, exit: null })
+            }, BACKGROUND_STARTUP_TIMEOUT)
+
+            child.stdout?.on("data", append)
+            child.stderr?.on("data", append)
+            child.once("error", (error) => {
+              append(String(error))
+              finish({
+                running: false,
+                reason: "error",
+                pid: child.pid,
+                exit: null,
+                error: error instanceof Error ? error.message : String(error),
+              })
+            })
+            child.once("exit", (code, signal) => {
+              if (!settled) {
+                finish({ running: false, reason: "exit", pid: child.pid, exit: code, signal })
+                return
+              }
+              log.info("background command exited", {
+                pid: child.pid,
+                code,
+                signal,
+                command: input.command,
+              })
+            })
+            ctx.abort.addEventListener("abort", onAbort, { once: true })
+          }),
+      )
+
+      const meta: string[] = []
+      if (result.running) {
+        meta.push("bash tool started this long-running command in the background so the agent can continue.")
+        if (result.reason === "startup-timeout") {
+          meta.push(`No explicit ready signal was detected within ${BACKGROUND_STARTUP_TIMEOUT} ms, but the process is still running.`)
+        }
+        if (result.pid) meta.push(`Background PID: ${result.pid}`)
+        meta.push(`Stop command: ${stopCommand(result.pid)}`)
+      }
+      if (!result.running && result.reason === "abort") meta.push("User aborted the command before it finished starting.")
+      if (!result.running && result.reason === "error" && result.error) meta.push(`Failed to start background command: ${result.error}`)
+      if (result.signal) meta.push(`Process exited from signal ${result.signal}`)
+      if (meta.length > 0) {
+        output += "\n\n<bash_metadata>\n" + meta.join("\n") + "\n</bash_metadata>"
+      }
+
+      yield* ctx.metadata({
+        metadata: {
+          output: preview(output),
+          exit: result.exit,
+          description: input.description,
+          background: result.running,
+          pid: result.running ? result.pid : undefined,
+          stop: result.running ? stopCommand(result.pid) : undefined,
+        },
+      })
+
+      return {
+        title: input.description,
+        metadata: {
+          output: preview(output),
+          exit: result.exit,
+          description: input.description,
+          background: result.running,
+          pid: result.running ? result.pid : undefined,
+          stop: result.running ? stopCommand(result.pid) : undefined,
+        },
+        output,
+      }
+    })
+
     return async () => {
       const shell = Shell.acceptable()
       const name = Shell.name(shell)
@@ -485,6 +697,20 @@ export const BashTool = Tool.define(
             const scan = yield* collect(root, cwd, ps, shell)
             if (!Instance.containsPath(cwd)) scan.dirs.add(cwd)
             yield* ask(ctx, scan)
+            const background = params.background ?? looksLikeBackgroundCommand(params.command, params.description)
+            if (background) {
+              return yield* runBackground(
+                {
+                  shell,
+                  name,
+                  command: params.command,
+                  cwd,
+                  env: yield* shellEnv(ctx, cwd),
+                  description: params.description,
+                },
+                ctx,
+              )
+            }
 
             return yield* run(
               {

@@ -7714,6 +7714,9 @@ export type SessionCommandData = {
     model?: string
     arguments: string
     command: string
+    tools?: {
+      [key: string]: boolean
+    }
     variant?: string
     parts?: Array<{
       id?: string

@@ -20,6 +20,7 @@ function renderDiff(value: SnapshotFileDiff | VcsFileDiff): value is RenderDiff 
 }
 
 type SidePanelProps = {
+  panelVisible: () => boolean
   reviewOpen: () => boolean
   fileTreeOpen: () => boolean
   diffs: () => (SnapshotFileDiff | VcsFileDiff)[]
@@ -37,7 +38,10 @@ type SidePanelProps = {
   onCloseFile: (path: string) => void
   terminalTabs: () => Array<{ id: string; session: any }>
   onCloseTerminal: (id: string) => void
+  browserTabOpen: () => boolean
+  onCloseBrowser: () => void
   renderFileTab: (filePath: string) => JSX.Element
+  renderBrowserTab: (active: () => boolean) => JSX.Element
 }
 
 function basename(path: string): string {
@@ -52,6 +56,8 @@ export function SessionSidePanel(props: SidePanelProps) {
   const dialog = useDialog()
   const [fileTreeResizeActive, setFileTreeResizeActive] = createSignal(false)
   let fileTreeResizeTimer: number | undefined
+  let fileTreeResizeFrame: number | undefined
+  let pendingFileTreeWidth: number | undefined
 
   const openAddTabDialog = () => {
     dialog.show(() => (
@@ -61,16 +67,19 @@ export function SessionSidePanel(props: SidePanelProps) {
         onOpenTerminal={() => {
           window.dispatchEvent(new CustomEvent("shob-open-terminal-tab"))
         }}
+        onOpenBrowser={() => {
+          window.dispatchEvent(new CustomEvent("shob-open-browser-tab"))
+        }}
       />
     ))
   }
 
   const terminalCount = () => props.terminalTabs().length
-  const hasDynamicTab = () => props.fileTabs().length > 0 || terminalCount() > 0
+  const hasDynamicTab = () => props.fileTabs().length > 0 || terminalCount() > 0 || props.browserTabOpen()
   const hasContext = () => !!props.contextSessionId?.()
 
   const open = createMemo(
-    () => props.reviewOpen() || props.fileTreeOpen() || hasContext() || hasDynamicTab(),
+    () => props.panelVisible() && (props.reviewOpen() || props.fileTreeOpen() || hasContext() || hasDynamicTab()),
   )
 
   const isActive = (id: string) => props.activeTabId() === id
@@ -124,6 +133,14 @@ export function SessionSidePanel(props: SidePanelProps) {
       window.clearTimeout(fileTreeResizeTimer)
       fileTreeResizeTimer = undefined
     }
+    if (fileTreeResizeFrame !== undefined) {
+      window.cancelAnimationFrame(fileTreeResizeFrame)
+      fileTreeResizeFrame = undefined
+    }
+    if (pendingFileTreeWidth !== undefined) {
+      layout.fileTree.resize(pendingFileTreeWidth)
+      pendingFileTreeWidth = undefined
+    }
     setFileTreeResizeActive(false)
   }
 
@@ -140,8 +157,22 @@ export function SessionSidePanel(props: SidePanelProps) {
     fileTreeResizeTimer = window.setTimeout(stopFileTreeResize, 120)
   }
 
+  const commitFileTreeResize = () => {
+    fileTreeResizeFrame = undefined
+    if (pendingFileTreeWidth === undefined) return
+    layout.fileTree.resize(pendingFileTreeWidth)
+    pendingFileTreeWidth = undefined
+  }
+
+  const scheduleFileTreeResize = (width: number) => {
+    pendingFileTreeWidth = width
+    if (fileTreeResizeFrame !== undefined) return
+    fileTreeResizeFrame = window.requestAnimationFrame(commitFileTreeResize)
+  }
+
   onCleanup(() => {
     if (fileTreeResizeTimer !== undefined) window.clearTimeout(fileTreeResizeTimer)
+    if (fileTreeResizeFrame !== undefined) window.cancelAnimationFrame(fileTreeResizeFrame)
   })
 
   const empty = (message: string) => (
@@ -240,6 +271,14 @@ export function SessionSidePanel(props: SidePanelProps) {
                         </Tabs.Trigger>
                       )}
                     </For>
+                    <Show when={props.browserTabOpen()}>
+                      <Tabs.Trigger value="browser" onClick={() => selectTab("browser")}>
+                        <div class="flex items-center gap-1.5">
+                          <div>Browser</div>
+                          <CloseButton onClick={() => props.onCloseBrowser()} />
+                        </div>
+                      </Tabs.Trigger>
+                    </Show>
                     <div class="bg-background-stronger h-full shrink-0 sticky right-0 z-10 flex items-center justify-center gap-1 pr-3">
                       <Tooltip value={props.fileTreeOpen() ? "Hide file tree" : "Show file tree"} placement="bottom">
                         <IconButton
@@ -308,6 +347,14 @@ export function SessionSidePanel(props: SidePanelProps) {
                     </Tabs.Content>
                   )}
                 </For>
+                <Tabs.Content
+                  value="browser"
+                  class="relative flex-1 min-h-0 overflow-hidden"
+                >
+                  <Show when={props.browserTabOpen()}>
+                    {props.renderBrowserTab(() => isActive("browser"))}
+                  </Show>
+                </Tabs.Content>
               </Tabs>
             </div>
           </div>
@@ -394,7 +441,7 @@ export function SessionSidePanel(props: SidePanelProps) {
                   max={480}
                   onResize={(width) => {
                     touchFileTreeResize()
-                    layout.fileTree.resize(width)
+                    scheduleFileTreeResize(width)
                   }}
                 />
               </div>

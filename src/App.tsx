@@ -133,6 +133,20 @@ function App() {
     const background = tokens['--background-base'] ?? tokens['--background']
     if (window.shob && background) {
       void nativeApi.invoke('set_window_background', { color: background }).catch(() => undefined)
+      void nativeApi.invoke('set_browser_theme', {
+        mode,
+        background,
+        surface:
+          tokens['--surface-raised-stronger-non-alpha'] ??
+          tokens['--surface-raised-stronger'] ??
+          tokens['--surface-raised-base'] ??
+          background,
+        foreground: tokens['--text-strong'] ?? tokens['--foreground'] ?? (mode === 'dark' ? '#ededed' : '#171717'),
+        muted: tokens['--text-base'] ?? tokens['--muted-foreground'] ?? (mode === 'dark' ? '#a0a0a0' : '#6f6f6f'),
+        border: tokens['--border-weak-base'] ?? tokens['--border'] ?? (mode === 'dark' ? '#282828' : '#dbdbdb'),
+        codeBackground: tokens['--surface-base'] ?? tokens['--muted'] ?? background,
+        codeForeground: tokens['--text-base'] ?? tokens['--foreground'] ?? (mode === 'dark' ? '#d4d4d4' : '#27272a'),
+      }).catch(() => undefined)
       void nativeApi.invoke('set_titlebar_theme', { mode }).catch(() => undefined)
     }
   })

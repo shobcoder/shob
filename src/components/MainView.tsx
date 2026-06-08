@@ -24,8 +24,42 @@ import { ScrollView } from '@opencode-ai/ui/scroll-view'
 import { SessionSidePanel } from '@/pages/session/session-side-panel'
 import { findReusableEmptyRootShobSession, sortShobSessionsById } from '@/utils/shob-session'
 import { AGENT_REVIEW_OPEN_EVENT } from '@/components/agent-turn-diff-summary'
+import { BrowserTab } from '@/components/BrowserTab'
 
 const DEFAULT_SESSION_PANEL_WIDTH = 600
+const BROWSER_TAB_STATE_KEY = "shob.browser-tab-state.v1"
+
+type BrowserTabPersistedState = {
+  projectPath: string
+  open: boolean
+  active: boolean
+}
+
+function readBrowserTabState(projectPath: string): BrowserTabPersistedState | null {
+  if (!projectPath || typeof localStorage !== "object") return null
+  try {
+    const raw = localStorage.getItem(BROWSER_TAB_STATE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<BrowserTabPersistedState>
+    if (parsed.projectPath !== projectPath) return null
+    return {
+      projectPath,
+      open: parsed.open === true,
+      active: parsed.active === true,
+    }
+  } catch {
+    return null
+  }
+}
+
+function writeBrowserTabState(state: BrowserTabPersistedState) {
+  if (typeof localStorage !== "object") return
+  try {
+    localStorage.setItem(BROWSER_TAB_STATE_KEY, JSON.stringify(state))
+  } catch {
+    // Ignore storage quota or privacy-mode errors.
+  }
+}
 
 const folderNameFromPath = (path: string) => {
   const parts = path.split(/[\\/]/).filter(Boolean)
@@ -96,6 +130,7 @@ function ShobReviewContent(props: {
   activeFilePath: () => string | null
   onSelectFile: (file: string | null) => void
   gitDiffLoading: () => boolean
+  sidePanelVisible: () => boolean
   isReviewVisible: () => boolean
   isFileTreeVisible: () => boolean
   contextSessionId?: () => string | null
@@ -106,6 +141,9 @@ function ShobReviewContent(props: {
   onCloseFile: (path: string) => void
   terminalTabs: () => Array<{ id: string; session: Session }>
   onCloseTerminal: (id: string) => void
+  browserTabOpen: () => boolean
+  onCloseBrowser: () => void
+  panelResizing: () => boolean
 }) {
   const layout = useLayout()
   const sessionViewKey = createMemo(() => `${props.projectPath()}::workspace`)
@@ -134,6 +172,7 @@ function ShobReviewContent(props: {
 
   return (
     <SessionSidePanel
+      panelVisible={props.sidePanelVisible}
       reviewOpen={props.isReviewVisible}
       fileTreeOpen={props.isFileTreeVisible}
       diffs={props.reviewDiffs}
@@ -150,6 +189,8 @@ function ShobReviewContent(props: {
       onCloseFile={props.onCloseFile}
       terminalTabs={props.terminalTabs}
       onCloseTerminal={props.onCloseTerminal}
+      browserTabOpen={props.browserTabOpen}
+      onCloseBrowser={props.onCloseBrowser}
       reviewPanel={() => (
         <div class="flex h-full min-h-0 flex-col overflow-hidden bg-background-stronger contain-strict">
           <div class="relative flex-1 min-h-0 overflow-hidden pt-2">
@@ -167,6 +208,12 @@ function ShobReviewContent(props: {
         </div>
       )}
       renderFileTab={(filePath) => <FileTabContent projectPath={props.projectPath} filePath={filePath} />}
+      renderBrowserTab={(active) => (
+        <BrowserTab
+          active={() => props.sidePanelVisible() && active()}
+          panelResizing={props.panelResizing}
+        />
+      )}
     />
   )
 }
@@ -184,9 +231,11 @@ export function MainView() {
   const [reviewFiles, setReviewFiles] = createSignal<string[]>([])
   const [isReviewVisible, setIsReviewVisible] = createSignal(false)
   const [isFileTreeVisible, setIsFileTreeVisible] = createSignal(false)
+  const [isSidePanelHidden, setIsSidePanelHidden] = createSignal(false)
   const [contextTabSessionId, setContextTabSessionId] = createSignal<string | null>(null)
   const [activeTabId, setActiveTabId] = createSignal<string>("review")
   const [terminalTabs, setTerminalTabs] = createSignal<Array<{ id: string; session: Session }>>([])
+  const [browserTabOpen, setBrowserTabOpen] = createSignal(false)
   const [activePage, setActivePage] = createSignal<'workspace' | 'settings'>('workspace')
   const [sessionPanelWidth, setSessionPanelWidth] = createSignal(DEFAULT_SESSION_PANEL_WIDTH)
   const [gitChangedFiles, setGitChangedFiles] = createSignal<string[]>([])
@@ -208,10 +257,12 @@ export function MainView() {
   let sidePanelWarmToken = 0
 
   const projectPath = createMemo(() => currentProject()?.path ?? '')
-  const sidePanelOpen = createMemo(() => isReviewVisible() || isFileTreeVisible() || !!contextTabSessionId())
-  const sidePanelMainOpen = createMemo(() =>
-    isReviewVisible() || !!contextTabSessionId() || reviewFiles().length > 0 || terminalTabs().length > 0,
+  const sidePanelHasContent = createMemo(() => isReviewVisible() || isFileTreeVisible() || !!contextTabSessionId() || browserTabOpen())
+  const sidePanelMainHasContent = createMemo(() =>
+    isReviewVisible() || !!contextTabSessionId() || reviewFiles().length > 0 || terminalTabs().length > 0 || browserTabOpen(),
   )
+  const sidePanelOpen = createMemo(() => sidePanelHasContent() && !isSidePanelHidden())
+  const sidePanelMainOpen = createMemo(() => sidePanelMainHasContent() && !isSidePanelHidden())
   const sessionPanelStyleWidth = createMemo(() => {
     if (projectSessions().length === 0) return "0px"
     if (!sidePanelOpen()) return "100%"
@@ -247,9 +298,23 @@ export function MainView() {
         fileCtx.tree.reset()
         setActiveFilePath(null)
         setReviewFiles([])
+        void nativeApi.invoke("browser_action", { action: "hide" }).catch(() => undefined)
         if (!path) {
+          setBrowserTabOpen(false)
+          if (activeTabId() === "browser") setActiveTabId("review")
           setSidePanelMounted(false)
           return
+        }
+
+        const browserState = readBrowserTabState(path)
+        const restoreBrowserTab = browserState?.open === true
+        setBrowserTabOpen(restoreBrowserTab)
+        if (restoreBrowserTab) setIsSidePanelHidden(false)
+        if (restoreBrowserTab && browserState?.active) {
+          setActiveTabId("browser")
+          setIsReviewVisible(true)
+        } else if (activeTabId() === "browser") {
+          setActiveTabId("review")
         }
 
         const token = sidePanelWarmToken
@@ -270,11 +335,21 @@ export function MainView() {
   )
 
   createEffect(() => {
-    if (sidePanelOpen()) setSidePanelMounted(true)
+    const path = projectPath()
+    if (!path) return
+    writeBrowserTabState({
+      projectPath: path,
+      open: browserTabOpen(),
+      active: activeTabId() === "browser",
+    })
+  })
+
+  createEffect(() => {
+    if (sidePanelHasContent()) setSidePanelMounted(true)
   })
 
   createEffect((previous: boolean | undefined) => {
-    const open = sidePanelOpen()
+    const open = sidePanelHasContent()
     if (previous !== undefined && previous !== open) {
       if (reviewSnapFrame !== undefined) cancelAnimationFrame(reviewSnapFrame)
       setReviewSnap(true)
@@ -393,19 +468,29 @@ export function MainView() {
   })
 
   createEffect(() => {
-    const visible = isReviewVisible()
+    const visible = sidePanelOpen()
     window.dispatchEvent(
       new CustomEvent('gg-review-state', {
-        detail: { isReviewVisible: visible },
+        detail: {
+          isReviewVisible: visible,
+          isReviewPanelVisible: isReviewVisible(),
+          isSidePanelVisible: visible,
+        },
       }),
     )
   })
 
   createEffect(() => {
     const handleReviewToggleRequest = () => {
-      const nextVisible = !isReviewVisible()
-      setIsReviewVisible(nextVisible)
-      if (!nextVisible) setIsFileTreeVisible(false)
+      if (sidePanelOpen()) {
+        setIsSidePanelHidden(true)
+        return
+      }
+      setIsSidePanelHidden(false)
+      if (!sidePanelHasContent()) {
+        setIsReviewVisible(true)
+        setActiveTabId("review")
+      }
     }
 
     window.addEventListener('gg-toggle-review', handleReviewToggleRequest)
@@ -414,7 +499,8 @@ export function MainView() {
 
   createEffect(() => {
     const handleReviewWorkspaceToggleRequest = () => {
-      const nextVisible = !(isReviewVisible() || isFileTreeVisible())
+      const nextVisible = !(sidePanelOpen() || isFileTreeVisible())
+      setIsSidePanelHidden(false)
       setIsReviewVisible(nextVisible)
       setIsFileTreeVisible(nextVisible)
     }
@@ -426,6 +512,7 @@ export function MainView() {
   createEffect(() => {
     const handleReviewWorkspaceOpenRequest = () => {
       if (!currentProject()) return
+      setIsSidePanelHidden(false)
       setIsReviewVisible(true)
       setIsFileTreeVisible(true)
     }
@@ -445,6 +532,7 @@ export function MainView() {
 
   createEffect(() => {
     const handleFileTreeToggleRequest = () => {
+      setIsSidePanelHidden(false)
       setIsFileTreeVisible((current) => !current)
     }
 
@@ -458,12 +546,24 @@ export function MainView() {
       const sessionId = detail?.sessionId
       if (!sessionId) return
       setContextTabSessionId(sessionId)
+      setIsSidePanelHidden(false)
       setIsReviewVisible(true)
     }
 
     window.addEventListener('gg-open-context-tab', handleOpenContextTab as EventListener)
     return () => window.removeEventListener('gg-open-context-tab', handleOpenContextTab as EventListener)
   })
+
+  const openBrowserTab = () => {
+    if (!currentProject()) {
+      console.warn("[shob-open-browser-tab] no current project")
+      return
+    }
+    setBrowserTabOpen(true)
+    setActiveTabId("browser")
+    setIsSidePanelHidden(false)
+    setIsReviewVisible(true)
+  }
 
   createEffect(() => {
     const handleOpenTerminalTab = async () => {
@@ -487,6 +587,7 @@ export function MainView() {
         const id = `terminal-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
         setTerminalTabs((tabs) => [...tabs, { id, session }])
         setActiveTabId(`terminal:${id}`)
+        setIsSidePanelHidden(false)
         setIsReviewVisible(true)
       } catch (err) {
         console.error("[shob-open-terminal-tab] failed:", err)
@@ -497,11 +598,25 @@ export function MainView() {
     return () => window.removeEventListener('shob-open-terminal-tab', handleOpenTerminalTab as EventListener)
   })
 
+  createEffect(() => {
+    const handleOpenBrowserTab = () => {
+      openBrowserTab()
+    }
+
+    window.addEventListener('shob-open-browser-tab', handleOpenBrowserTab as EventListener)
+    const unlistenPromise = nativeApi.listen("browser:open", handleOpenBrowserTab)
+    return () => {
+      window.removeEventListener('shob-open-browser-tab', handleOpenBrowserTab as EventListener)
+      unlistenPromise.then((unlisten) => unlisten()).catch(() => undefined)
+    }
+  })
+
   const handleFileSelect = (filePath: string | null) => {
     setActiveFilePath(filePath)
     if (!filePath) return
     setReviewFiles((files) => files.includes(filePath) ? files : [...files, filePath])
     setActiveTabId(`file:${filePath}`)
+    setIsSidePanelHidden(false)
     setIsReviewVisible(true)
   }
 
@@ -526,6 +641,12 @@ export function MainView() {
       }
       return next
     })
+  }
+
+  const handleCloseBrowserTab = () => {
+    setBrowserTabOpen(false)
+    if (activeTabId() === "browser") setActiveTabId("review")
+    void nativeApi.invoke("browser_action", { action: "hide" }).catch(() => undefined)
   }
 
   const handleOpenFolder = async () => {
@@ -630,6 +751,14 @@ export function MainView() {
   }
 
   const endReviewResize = () => {
+    if (reviewResizeFrame !== undefined) {
+      cancelAnimationFrame(reviewResizeFrame)
+      reviewResizeFrame = undefined
+    }
+    if (pendingSessionPanelWidth !== undefined) {
+      setSessionPanelWidth(pendingSessionPanelWidth)
+      pendingSessionPanelWidth = undefined
+    }
     reviewResizeBounds = undefined
     setReviewResizeActive(false)
   }
@@ -646,7 +775,7 @@ export function MainView() {
   })
 
   return (
-    <div class="flex min-h-0 flex-1 overflow-hidden bg-background text-foreground">
+    <div class="grid min-h-0 flex-1 grid-cols-[auto_minmax(0,1fr)] overflow-hidden bg-background text-foreground">
       <Sidebar
         onOpenSettingsPage={() => setActivePage('settings')}
         onOpenWorkspacePage={() => setActivePage('workspace')}
@@ -718,6 +847,7 @@ export function MainView() {
                                 activeFilePath={activeFilePath}
                                 onSelectFile={handleFileSelect}
                                 gitDiffLoading={gitDiffLoading}
+                                sidePanelVisible={sidePanelOpen}
                                 isReviewVisible={isReviewVisible}
                                 isFileTreeVisible={isFileTreeVisible}
                                 contextSessionId={contextTabSessionId}
@@ -728,6 +858,9 @@ export function MainView() {
                                 onCloseFile={handleCloseReviewFile}
                                 terminalTabs={terminalTabs}
                                 onCloseTerminal={handleCloseTerminalTab}
+                                browserTabOpen={browserTabOpen}
+                                onCloseBrowser={handleCloseBrowserTab}
+                                panelResizing={reviewResizeActive}
                               />
                             </fileCtx.FileProvider>
                           </SyncProvider>

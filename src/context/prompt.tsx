@@ -39,6 +39,7 @@ export interface ImageAttachmentPart {
 export interface PastePart {
   type: "paste"
   id: string
+  filename?: string
   content: string
   preview: string
   lineCount: number

@@ -9,7 +9,8 @@ type PromptPasteAttachmentsProps = {
 }
 
 export const PromptPasteAttachments: Component<PromptPasteAttachmentsProps> = (props) => {
-  const filename = (index: number) => (props.pastes.length > 1 ? `Pasted text ${index + 1}.txt` : "Pasted text.txt")
+  const filename = (paste: PastePart, index: number) =>
+    paste.filename || (props.pastes.length > 1 ? `Pasted text ${index + 1}.txt` : "Pasted text.txt")
 
   return (
     <Show when={props.pastes.length > 0}>
@@ -21,14 +22,14 @@ export const PromptPasteAttachments: Component<PromptPasteAttachmentsProps> = (p
                 type="button"
                 class="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2 pr-7 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/45"
                 onClick={() => props.onShowInTextField(paste)}
-                aria-label={`Show ${filename(index())} in text field`}
+                aria-label={`Show ${filename(paste, index())} in text field`}
               >
                 <div class="flex size-8 shrink-0 items-center justify-center rounded-md border border-border-weaker-base bg-background-stronger text-text-base transition-colors group-hover/paste:text-text-strong">
                   <FileText size={15} strokeWidth={1.8} />
                 </div>
                 <div class="grid min-w-0 gap-0.5">
                   <span class="truncate text-[12px] font-medium leading-4 text-text-strong">
-                    {filename(index())}
+                    {filename(paste, index())}
                   </span>
                   <span class="truncate text-[11px] leading-4 text-text-weaker underline underline-offset-2">
                     Show in text field

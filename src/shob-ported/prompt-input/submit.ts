@@ -34,6 +34,7 @@ export type FollowupDraft = {
   agent: string
   model: { providerID: string; modelID: string }
   variant?: string
+  browserMode: boolean
 }
 
 type FollowupSendInput = {
@@ -50,9 +51,15 @@ const draftText = (prompt: Prompt) => prompt.map((part) => ("content" in part ? 
 
 const draftImages = (prompt: Prompt) => prompt.filter((part): part is ImageAttachmentPart => part.type === "image")
 
+const browserToolState = (enabled: boolean) => ({
+  browser: enabled,
+  "browsermcp_*": enabled,
+})
+
 export async function sendFollowupDraft(input: FollowupSendInput) {
   const text = draftText(input.draft.prompt)
   const images = draftImages(input.draft.prompt)
+  const tools = browserToolState(input.draft.browserMode)
   const [, setStore] = input.globalSync.child(input.draft.sessionDirectory)
 
   const setBusy = () => {
@@ -88,6 +95,7 @@ export async function sendFollowupDraft(input: FollowupSendInput) {
         agent: input.draft.agent,
         model: `${input.draft.model.providerID}/${input.draft.model.modelID}`,
         variant: input.draft.variant,
+        tools,
         parts: images.map((attachment) => ({
           id: Identifier.ascending("part"),
           type: "file" as const,
@@ -121,6 +129,7 @@ export async function sendFollowupDraft(input: FollowupSendInput) {
     time: { created: Date.now() },
     agent: input.draft.agent,
     model: { ...input.draft.model, variant: input.draft.variant },
+    tools,
   }
 
   const add = () =>
@@ -159,6 +168,7 @@ export async function sendFollowupDraft(input: FollowupSendInput) {
       messageID,
       parts: requestParts,
       variant: input.draft.variant,
+      tools,
     })
     return true
   } catch (err) {
@@ -176,6 +186,7 @@ type PromptSubmitInput = {
   commentCount: Accessor<number>
   autoAccept: Accessor<boolean>
   mode: Accessor<"normal" | "shell">
+  browserMode: Accessor<boolean>
   working: Accessor<boolean>
   editor: () => HTMLDivElement | undefined
   queueScroll: () => void
@@ -293,6 +304,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
     const text = currentPrompt.map((part) => ("content" in part ? part.content : "")).join("")
     const images = input.imageAttachments().slice()
     const mode = input.mode()
+    const browserMode = mode === "normal" && input.browserMode()
 
     if (text.trim().length === 0 && images.length === 0 && input.commentCount() === 0) {
       if (input.working()) void abort()
@@ -404,6 +416,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       agent,
       model,
       variant,
+      browserMode,
     }
 
     const clearInput = () => {
@@ -467,6 +480,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
             agent,
             model: `${model.providerID}/${model.modelID}`,
             variant,
+            tools: browserToolState(browserMode),
             parts: images.map((attachment) => ({
               id: Identifier.ascending("part"),
               type: "file" as const,

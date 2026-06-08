@@ -25,6 +25,7 @@ import {
 } from "./session-db.js";
 import { startServer, type ServerInstance } from "./server.js";
 import { applyMacDockIcon, applyWindowIcon, applyWindowsAppIdentity, resolveAppIconPath } from "./icon.js";
+import { createBrowserControl } from "./browser-control.js";
 
 const execFileAsync = promisify(execFile);
 const isDev = !app.isPackaged;
@@ -48,6 +49,7 @@ let projectWatcher: ProjectWatcher = null;
 let lastWatcherOperationAt = 0;
 let serverInstance: ServerInstance | null = null;
 let serverStartPromise: Promise<ServerInstance> | null = null;
+let browserControl: ReturnType<typeof createBrowserControl> | null = null;
 const ptySessions = new Map<string, PtyRuntime>();
 let downloadedUpdateVersion: string | null = null;
 let availableUpdateVersion: string | null = null;
@@ -158,12 +160,16 @@ function normalizeOs() {
   return process.platform;
 }
 
-function sendUpdateEvent(channel: string, payload: any) {
+function sendAppEvent(channel: string, payload: any) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   mainWindow.webContents.send("shob:event", {
-    channel: `update:${channel}`,
+    channel,
     payload,
   });
+}
+
+function sendUpdateEvent(channel: string, payload: any) {
+  sendAppEvent(`update:${channel}`, payload);
 }
 
 function setupAutoUpdater() {
@@ -1154,6 +1160,10 @@ const handlers: Record<string, (payload?: any) => Promise<any> | any> = {
   opencode_server_start: async () => {
     return (await ensureServerStarted()).url;
   },
+  browser_action: async (payload) => {
+    if (!browserControl) throw new Error("Browser control is not available");
+    return browserControl.handle(payload);
+  },
   get_projects: async () => loadPersistedProjects(),
   save_project: async ({ project }) => {
     return savePersistedProject(project);
@@ -1243,10 +1253,16 @@ const handlers: Record<string, (payload?: any) => Promise<any> | any> = {
   cleanup_runtime: async () => {
     await setProjectWatch(null);
     killAllPtys();
+    await browserControl?.hide().catch(() => undefined);
   },
   set_window_background: async ({ color }) => {
     if (typeof color !== "string" || !color.trim()) return;
     mainWindow?.setBackgroundColor(color);
+    browserControl?.setTheme({ background: color });
+  },
+  set_browser_theme: async (theme) => {
+    if (!theme || typeof theme !== "object") return;
+    browserControl?.setTheme(theme);
   },
   set_titlebar_theme: async ({ mode }) => {
     if (mode !== "light" && mode !== "dark") return;
@@ -1424,6 +1440,14 @@ async function createWindow() {
     if (!mainWindow) return;
     updateWindowTitlebarOverlay(mainWindow);
   });
+  const hideEmbeddedBrowserForHostReload = () => {
+    void browserControl?.hide().catch((error) => {
+      console.warn("[shob] failed to hide embedded browser during host reload:", error);
+    });
+  };
+  mainWindow.webContents.on("will-navigate", hideEmbeddedBrowserForHostReload);
+  mainWindow.webContents.on("did-start-loading", hideEmbeddedBrowserForHostReload);
+  mainWindow.webContents.on("render-process-gone", hideEmbeddedBrowserForHostReload);
   if (process.platform === "win32") {
     nativeTheme.on("updated", () => {
       if (!mainWindow) return;
@@ -1431,6 +1455,7 @@ async function createWindow() {
     });
   }
   mainWindow.on("closed", () => {
+    void browserControl?.hide().catch(() => undefined);
     mainWindow = null;
   });
 
@@ -1446,6 +1471,13 @@ async function createWindow() {
 
 app.whenReady().then(async () => {
   applyMacDockIcon();
+  browserControl = createBrowserControl({
+    getWindow: () => mainWindow,
+    emit: sendAppEvent,
+  });
+  const browserEndpoint = await browserControl.start();
+  process.env.SHOB_BROWSER_CONTROL_URL = browserEndpoint.url;
+  process.env.SHOB_BROWSER_CONTROL_TOKEN = browserEndpoint.token;
   registerIpc();
   // Start server asynchronously in the background so the window opens instantly
   void ensureServerStarted().catch((err) => {
@@ -1460,6 +1492,8 @@ app.whenReady().then(async () => {
 
 app.on("before-quit", async () => {
   await handlers.cleanup_runtime();
+  await browserControl?.stop();
+  browserControl = null;
   if (serverInstance) {
     await serverInstance.stop();
     serverInstance = null;

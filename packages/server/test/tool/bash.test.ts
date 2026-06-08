@@ -72,6 +72,21 @@ const fill = (mode: "lines" | "bytes", n: number) => {
   if (PS.has(sh())) return `& ${text}`
   return text
 }
+const devServerCommand = () => {
+  const code =
+    "console.log(String.fromCharCode(76,111,99,97,108,58,32,104,116,116,112,58,47,47,108,111,99,97,108,104,111,115,116,58,53,52,51,50,49)); setInterval(function(){}, 1000)"
+  const text = `${bin} -e ${evalarg(code)}`
+  if (PS.has(sh())) return `& ${text}`
+  return text
+}
+const stopBackgroundPid = async (pid: number | undefined) => {
+  if (!pid) return
+  const command =
+    process.platform === "win32"
+      ? ["cmd", "/c", "taskkill", "/PID", String(pid), "/T", "/F"]
+      : ["sh", "-c", `kill -TERM -${pid} || kill ${pid}`]
+  await Bun.spawn(command, { stdout: "ignore", stderr: "ignore" }).exited.catch(() => undefined)
+}
 const glob = (p: string) =>
   process.platform === "win32" ? Filesystem.normalizePathPattern(p) : p.replaceAll("\\", "/")
 
@@ -146,6 +161,36 @@ describe("tool.bash", () => {
       },
     })
   })
+
+  test("returns early for dev server commands", async () => {
+    await Instance.provide({
+      directory: projectRoot,
+      fn: async () => {
+        const bash = await initBash()
+        const started = Date.now()
+        const result = await Effect.runPromise(
+          bash.execute(
+            {
+              command: devServerCommand(),
+              description: "Start dev server",
+            },
+            ctx,
+          ),
+        )
+        const metadata = result.metadata as { background?: boolean; pid?: number; stop?: string }
+        try {
+          expect(Date.now() - started).toBeLessThan(8_000)
+          expect(metadata.background).toBe(true)
+          expect(metadata.pid).toBeGreaterThan(0)
+          expect(metadata.stop).toBeTruthy()
+          expect(result.output).toContain("Local: http://localhost:54321")
+          expect(result.output).toContain("started this long-running command in the background")
+        } finally {
+          await stopBackgroundPid(metadata.pid)
+        }
+      },
+    })
+  }, 20_000)
 })
 
 describe("tool.bash permissions", () => {

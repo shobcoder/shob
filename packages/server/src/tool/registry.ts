@@ -12,6 +12,7 @@ import { WebFetchTool } from "./webfetch"
 import { WriteTool } from "./write"
 import { InvalidTool } from "./invalid"
 import { SkillTool } from "./skill"
+import { BrowserTool } from "./browser"
 import { Tool } from "./tool"
 import { Config } from "../config/config"
 import { type ToolContext as PluginToolContext, type ToolDefinition } from "@opencode-ai/plugin"
@@ -114,6 +115,7 @@ export namespace ToolRegistry {
       const plan = yield* PlanExitTool
       const webfetch = yield* WebFetchTool
       const websearch = yield* WebSearchTool
+      const browser = yield* BrowserTool
       const bash = yield* BashTool
       const codesearch = yield* CodeSearchTool
       const globtool = yield* GlobTool
@@ -191,6 +193,7 @@ export namespace ToolRegistry {
             write: Tool.init(writetool),
             task: Tool.init(task),
             fetch: Tool.init(webfetch),
+            browser: Tool.init(browser),
             todo: Tool.init(todo),
             search: Tool.init(websearch),
             code: Tool.init(codesearch),
@@ -214,6 +217,7 @@ export namespace ToolRegistry {
               tool.write,
               tool.task,
               tool.fetch,
+              tool.browser,
               tool.todo,
               tool.search,
               tool.code,

@@ -12,6 +12,7 @@ const COLLAPSE_THRESHOLD = 50
 
 function ResizeHandle(props: {
   onResize: (height: number) => void
+  onResizeEnd?: () => void
   onCollapse: () => void
   getHeight: () => number
   getMax: () => number
@@ -39,6 +40,7 @@ function ResizeHandle(props: {
       document.removeEventListener("mousemove", onMouseMove)
       document.removeEventListener("mouseup", onMouseUp)
 
+      props.onResizeEnd?.()
       if (props.getHeight() < COLLAPSE_THRESHOLD) {
         props.onCollapse()
       }
@@ -73,11 +75,38 @@ export function BottomTerminalPanel() {
   const [viewHeight, setViewHeight] = createSignal(
     typeof window === "undefined" ? 1000 : (window.visualViewport?.height ?? window.innerHeight)
   )
+  let terminalResizeFrame: number | undefined
+  let pendingTerminalHeight: number | undefined
 
   const opened = createMemo(() => layout.terminal.opened())
   const height = createMemo(() => layout.terminal.height())
   const max = () => viewHeight() * MAX_HEIGHT_RATIO
   const pane = () => Math.min(height(), max())
+
+  const commitTerminalResize = () => {
+    terminalResizeFrame = undefined
+    if (pendingTerminalHeight === undefined) return
+    layout.terminal.resize(pendingTerminalHeight)
+    pendingTerminalHeight = undefined
+  }
+
+  const scheduleTerminalResize = (next: number) => {
+    pendingTerminalHeight = next
+    if (terminalResizeFrame !== undefined) return
+    terminalResizeFrame = window.requestAnimationFrame(commitTerminalResize)
+  }
+
+  const finishTerminalResize = () => {
+    if (terminalResizeFrame !== undefined) {
+      window.cancelAnimationFrame(terminalResizeFrame)
+      terminalResizeFrame = undefined
+    }
+    if (pendingTerminalHeight !== undefined) {
+      layout.terminal.resize(pendingTerminalHeight)
+      pendingTerminalHeight = undefined
+    }
+    setIsResizing(false)
+  }
 
   onMount(() => {
     if (typeof window === "undefined") return
@@ -110,6 +139,10 @@ export function BottomTerminalPanel() {
     onCleanup(() => window.removeEventListener("gg-toggle-terminal-panel", handleToggle))
   })
 
+  onCleanup(() => {
+    if (terminalResizeFrame !== undefined) window.cancelAnimationFrame(terminalResizeFrame)
+  })
+
   const activeTerminalSessionId = createMemo(() => activeSessionId())
 
   return (
@@ -135,8 +168,9 @@ export function BottomTerminalPanel() {
           <ResizeHandle
             onResize={(next) => {
               setIsResizing(true)
-              layout.terminal.resize(next)
+              scheduleTerminalResize(next)
             }}
+            onResizeEnd={finishTerminalResize}
             onCollapse={() => {
               layout.terminal.close()
             }}

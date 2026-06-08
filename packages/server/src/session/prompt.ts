@@ -1306,11 +1306,16 @@ NOTE: At any point in time through this workflow you should feel free to ask the
           const message = yield* createUserMessage(input)
           yield* sessions.touch(input.sessionID)
 
-          const permissions: Permission.Ruleset = []
+          const toolPermissions: Permission.Ruleset = []
+          const toolPermissionNames = new Set(Object.keys(input.tools ?? {}))
           for (const [t, enabled] of Object.entries(input.tools ?? {})) {
-            permissions.push({ permission: t, action: enabled ? "allow" : "deny", pattern: "*" })
+            toolPermissions.push({ permission: t, action: enabled ? "allow" : "deny", pattern: "*" })
           }
-          if (permissions.length > 0) {
+          if (toolPermissions.length > 0) {
+            const permissions = [
+              ...(session.permission ?? []).filter((rule) => !toolPermissionNames.has(rule.permission)),
+              ...toolPermissions,
+            ]
             session.permission = permissions
             yield* sessions.setPermission({ sessionID: session.id, permission: permissions })
           }
@@ -1676,6 +1681,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
           agent: userAgent,
           parts,
           variant: input.variant,
+          tools: input.tools,
         })
         yield* bus.publish(Command.Event.Executed, {
           name: input.command,
@@ -1846,6 +1852,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
     model: z.string().optional(),
     arguments: z.string(),
     command: z.string(),
+    tools: z.record(z.string(), z.boolean()).optional(),
     variant: z.string().optional(),
     parts: z
       .array(

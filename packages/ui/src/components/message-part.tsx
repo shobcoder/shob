@@ -365,6 +365,12 @@ export function getToolInfo(tool: string, input: any = {}): ToolInfo {
         title: "Searched web",
         subtitle: input.query,
       }
+    case "browser":
+      return {
+        icon: "browser",
+        title: "Used browser",
+        subtitle: input.url,
+      }
     case "codesearch":
       return {
         icon: "code",
@@ -1897,6 +1903,84 @@ ToolRegistry.register({
         }}
       >
         <ExaOutput output={props.output} />
+      </BasicTool>
+    )
+  },
+})
+
+ToolRegistry.register({
+  name: "browser",
+  render(props) {
+    const pending = createMemo(() => props.status === "pending" || props.status === "running")
+    const action = createMemo(() => {
+      const value = props.input.action ?? props.metadata.action
+      return typeof value === "string" && value ? value : "state"
+    })
+    const title = createMemo(() => {
+      if (pending()) return "Using browser"
+      switch (action()) {
+        case "open":
+          return "Opened browser"
+        case "navigate":
+          return "Navigated browser"
+        case "show":
+          return "Showed browser"
+        case "hide":
+          return "Hid browser"
+        case "close":
+          return "Closed browser"
+        case "state":
+          return "Checked browser"
+        case "click":
+          return "Clicked browser"
+        case "type":
+          return "Typed in browser"
+        case "press":
+          return "Pressed browser key"
+        case "scroll":
+          return "Scrolled browser"
+        case "back":
+          return "Went back"
+        case "forward":
+          return "Went forward"
+        case "reload":
+          return "Reloaded browser"
+        case "extract":
+          return "Extracted browser"
+        case "evaluate":
+          return "Evaluated browser"
+        case "screenshot":
+          return "Captured browser"
+        default:
+          return "Used browser"
+      }
+    })
+    const subtitle = createMemo(() => {
+      const values = [
+        props.input.url,
+        props.metadata.title,
+        props.metadata.url,
+        props.input.ref,
+        props.input.key,
+        props.input.text,
+      ]
+      return values.find((value): value is string => typeof value === "string" && value.length > 0)
+    })
+
+    return (
+      <BasicTool
+        {...props}
+        icon="browser"
+        trigger={{
+          title: title(),
+          subtitle: subtitle(),
+        }}
+      >
+        <Show when={props.output}>
+          <div data-component="tool-output" data-scrollable>
+            <Markdown text={props.output!} />
+          </div>
+        </Show>
       </BasicTool>
     )
   },

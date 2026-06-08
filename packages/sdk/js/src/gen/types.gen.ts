@@ -2736,6 +2736,9 @@ export type SessionCommandData = {
     model?: string
     arguments: string
     command: string
+    tools?: {
+      [key: string]: boolean
+    }
   }
   path: {
     /**

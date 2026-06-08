@@ -3,6 +3,7 @@ import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { Dialog } from "@opencode-ai/ui/dialog"
 import { List } from "@opencode-ai/ui/list"
 import { Icon } from "@opencode-ai/ui/icon"
+import { Globe } from "lucide-solid"
 import { useLanguage } from "@/context/language"
 import { nativeApi } from "@/services/native"
 
@@ -11,14 +12,14 @@ const MAX_DEPTH = 6
 
 type Entry = {
   id: string
-  kind: "file" | "terminal"
+  kind: "file" | "terminal" | "browser"
   path: string
   title: string
   description: string
 }
 
 function isSpecial(entry: Entry): boolean {
-  return entry.kind === "terminal"
+  return entry.kind === "terminal" || entry.kind === "browser"
 }
 
 async function walkProject(root: string): Promise<string[]> {
@@ -68,6 +69,7 @@ export interface DialogAddTabProps {
   projectPath: () => string
   onOpenFile: (path: string) => void
   onOpenTerminal: () => void
+  onOpenBrowser: () => void
 }
 
 export const DialogAddTab: Component<DialogAddTabProps> = (props) => {
@@ -92,6 +94,13 @@ export const DialogAddTab: Component<DialogAddTabProps> = (props) => {
         title: language.t("dialog.addTab.terminal.title"),
         description: language.t("dialog.addTab.terminal.description"),
       },
+      {
+        id: "browser",
+        kind: "browser",
+        path: "",
+        title: "Browser",
+        description: "Open embedded browser",
+      },
       ...list.map<Entry>((path) => ({
         id: `file:${path}`,
         kind: "file",
@@ -107,6 +116,10 @@ export const DialogAddTab: Component<DialogAddTabProps> = (props) => {
     dialog.close()
     if (entry.kind === "terminal") {
       props.onOpenTerminal()
+      return
+    }
+    if (entry.kind === "browser") {
+      props.onOpenBrowser()
       return
     }
     props.onOpenFile(entry.path)
@@ -133,9 +146,14 @@ export const DialogAddTab: Component<DialogAddTabProps> = (props) => {
             }
           >
             <div class="w-full flex items-center gap-2 text-13-regular">
-              <Icon name="terminal" size="small" class="shrink-0 text-text-weak" />
+              <Show
+                when={entry.kind === "browser"}
+                fallback={<Icon name="terminal" size="small" class="shrink-0 text-text-weak" />}
+              >
+                <Globe size={14} class="shrink-0 text-text-weak" />
+              </Show>
               <span class="truncate text-text-strong">{entry.title}</span>
-              <span class="truncate text-12-regular text-text-weak">— {entry.description}</span>
+              <span class="truncate text-12-regular text-text-weak">- {entry.description}</span>
             </div>
           </Show>
         )}

@@ -474,7 +474,11 @@ export namespace LLM {
       Object.keys(input.tools),
       Permission.merge(input.agent.permission, input.permission ?? []),
     )
-    return Record.filter(input.tools, (_, k) => input.user.tools?.[k] !== false && !disabled.has(k))
+    const userTools = Object.entries(input.user.tools ?? {})
+    return Record.filter(input.tools, (_, k) => {
+      const userRule = userTools.findLast(([pattern]) => Wildcard.match(k, pattern))
+      return userRule?.[1] !== false && !disabled.has(k)
+    })
   }
 
   // Check if messages contain any tool-call content
