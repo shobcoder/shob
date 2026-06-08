@@ -885,6 +885,41 @@ function AgentViewInner(props: AgentViewProps) {
     return !!(el && nested && nested !== el)
   }
 
+  const nestedScrollableTarget = (target: EventTarget | null) => {
+    const el = scrollRef
+    const current = target instanceof Element ? target : undefined
+    const nested = current?.closest("[data-scrollable]")
+    if (!el || !nested || nested === el || !(nested instanceof HTMLElement)) return
+    return nested
+  }
+
+  const normalizeWheelDelta = (event: WheelEvent, root: HTMLElement) => {
+    if (event.deltaMode === 1) return event.deltaY * 40
+    if (event.deltaMode === 2) return event.deltaY * root.clientHeight
+    return event.deltaY
+  }
+
+  const shouldHandOffNestedScroll = (target: HTMLElement, delta: number) => {
+    const max = target.scrollHeight - target.clientHeight
+    if (max <= 1) return true
+    if (!delta) return false
+    if (delta < 0) return target.scrollTop + delta <= 0
+    return delta > max - target.scrollTop
+  }
+
+  const handOffNestedScroll = (event: WheelEvent | TouchEvent, delta: number) => {
+    const root = scrollRef
+    const nested = nestedScrollableTarget(event.target)
+    if (!root || !nested || !shouldHandOffNestedScroll(nested, delta)) return false
+
+    const before = root.scrollTop
+    root.scrollTop = Math.max(0, root.scrollTop + delta)
+    markScrollGesture(root)
+    scheduleJumpStateUpdate({ measure: true, userScroll: true })
+    if (root.scrollTop !== before && "preventDefault" in event) event.preventDefault()
+    return true
+  }
+
   const markScrollGesture = (target?: EventTarget | null) => {
     if (isNestedScrollableTarget(target ?? null)) return
     scrollGestureAt = Date.now()
@@ -897,20 +932,24 @@ function AgentViewInner(props: AgentViewProps) {
   }
 
   const handleTimelineWheel = (event: WheelEvent) => {
-    if (event.deltaY === 0) return
+    const root = scrollRef
+    const delta = root ? normalizeWheelDelta(event, root) : event.deltaY
+    if (!delta) return
+    if (handOffNestedScroll(event, delta)) return
     markScrollGesture(event.target)
   }
 
   const handleTimelineTouchStart = (event: TouchEvent) => {
-    if (isNestedScrollableTarget(event.target)) return
     touchY = event.touches[0]?.clientY
   }
 
   const handleTimelineTouchMove = (event: TouchEvent) => {
-    if (isNestedScrollableTarget(event.target)) return
     const next = event.touches[0]?.clientY
     if (next === undefined || touchY === undefined) return
-    if (Math.abs(next - touchY) > 2) markScrollGesture(event.target)
+    const delta = touchY - next
+    if (Math.abs(delta) > 2) {
+      if (!handOffNestedScroll(event, delta)) markScrollGesture(event.target)
+    }
     touchY = next
   }
 

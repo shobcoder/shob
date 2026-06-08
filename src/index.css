@@ -1976,7 +1976,7 @@ html[data-color-scheme="dark"] .agent-terminal-composer-region {
 .agent-terminal-view [data-slot="bash-scroll"] {
   max-height: min(360px, 45vh) !important;
   overflow: auto !important;
-  overscroll-behavior: contain !important;
+  overscroll-behavior: auto !important;
   scrollbar-gutter: stable;
   scrollbar-width: thin !important;
   scrollbar-color: color-mix(in srgb, var(--text-weaker) 54%, transparent) transparent !important;
