@@ -117,7 +117,7 @@ export function SettingsAbout() {
       }
       if (result.status === "error") {
         setStatus("error")
-        setMessage("Could not check for updates. Check your internet connection.")
+        setMessage(result.message ?? "Could not check for updates. Check your internet connection.")
         return
       }
       setLatestVersion(result.version ?? null)

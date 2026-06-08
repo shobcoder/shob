@@ -30,6 +30,7 @@ import { createBrowserControl } from "./browser-control.js";
 const execFileAsync = promisify(execFile);
 const isDev = !app.isPackaged;
 const MAX_EDITOR_PREVIEW_BYTES = 512 * 1024;
+const UPDATE_CHECK_RETRY_DELAY_MS = 1500;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -172,6 +173,52 @@ function sendUpdateEvent(channel: string, payload: any) {
   sendAppEvent(`update:${channel}`, payload);
 }
 
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error ?? "");
+}
+
+function isTransientUpdateError(error: unknown) {
+  const message = getErrorMessage(error);
+  return /HttpError:\s*(?:500|502|503|504)|status(?:Code)?["'\s:=]+(?:500|502|503|504)|(?:500|502|503|504)\s+(?:Gateway|Service|Internal|Bad)|Gateway Time-?out|Bad Gateway|Service Unavailable|ETIMEDOUT|ECONNRESET|EAI_AGAIN|ENOTFOUND|fetch failed|network/i.test(message);
+}
+
+function formatUpdateError(error: unknown) {
+  const message = getErrorMessage(error);
+
+  if (/HttpError:\s*(?:500|502|503|504)|status(?:Code)?["'\s:=]+(?:500|502|503|504)|(?:500|502|503|504)\s+(?:Gateway|Service|Internal|Bad)|Gateway Time-?out|Bad Gateway|Service Unavailable/i.test(message)) {
+    return "GitHub is temporarily unavailable while checking for updates. Please try again in a few minutes.";
+  }
+
+  if (/ETIMEDOUT|ECONNRESET|EAI_AGAIN|ENOTFOUND|fetch failed|network/i.test(message)) {
+    return "Could not reach the update server. Please check your internet connection and try again.";
+  }
+
+  if (/ERR_UPDATER_CHANNEL_FILE_NOT_FOUND|Cannot find .*latest.* release artifacts/i.test(message)) {
+    return "The latest release is missing update metadata. Please download the installer from GitHub releases.";
+  }
+
+  if (/ERR_UPDATER_LATEST_VERSION_NOT_FOUND|Unable to find latest version/i.test(message)) {
+    return "Could not find the latest production release on GitHub.";
+  }
+
+  return "Could not check for updates. Please try again later.";
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function checkForUpdatesWithRetry() {
+  try {
+    return await autoUpdater.checkForUpdates();
+  } catch (error) {
+    if (!isTransientUpdateError(error)) throw error;
+    console.warn("[shob] transient update check failure, retrying:", error);
+    await delay(UPDATE_CHECK_RETRY_DELAY_MS);
+    return autoUpdater.checkForUpdates();
+  }
+}
+
 function setupAutoUpdater() {
   if (!app.isPackaged) return;
 
@@ -186,7 +233,7 @@ function setupAutoUpdater() {
   autoUpdater.on("error", (error) => {
     console.warn("[shob] auto update failed:", error);
     updateDownloadInFlight = false;
-    sendUpdateEvent("error", error instanceof Error ? error.message : String(error));
+    sendUpdateEvent("error", formatUpdateError(error));
   });
 
   autoUpdater.on("update-available", (info) => {
@@ -198,7 +245,7 @@ function setupAutoUpdater() {
     autoUpdater.downloadUpdate().catch((error) => {
       updateDownloadInFlight = false;
       console.warn("[shob] failed to auto-download update:", error);
-      sendUpdateEvent("error", error instanceof Error ? error.message : String(error));
+      sendUpdateEvent("error", formatUpdateError(error));
     });
   });
 
@@ -1111,7 +1158,7 @@ const handlers: Record<string, (payload?: any) => Promise<any> | any> = {
       return { status: "dev" };
     }
     try {
-      const result = await autoUpdater.checkForUpdates();
+      const result = await checkForUpdatesWithRetry();
       if (manual && result && !result.isUpdateAvailable) {
         await dialog.showMessageBox({
           type: "info",
@@ -1127,14 +1174,15 @@ const handlers: Record<string, (payload?: any) => Promise<any> | any> = {
       };
     } catch (error) {
       console.warn("[shob] update check failed:", error);
+      const message = formatUpdateError(error);
       if (manual) {
         await dialog.showMessageBox({
           type: "error",
           title: "Update Error",
-          message: "Could not check for updates. Please check your internet connection.",
+          message,
         });
       }
-      return { status: "error" };
+      return { status: "error", message };
     }
   },
   install_update: async () => {

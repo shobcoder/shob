@@ -248,7 +248,13 @@ export interface NativeCommandMap {
   storage_remove: { args: { storage?: string | null; key: string }; result: void }
   check_for_updates: {
     args: { manual?: boolean } | undefined
-    result: { status: "dev" | "success" | "error"; updateAvailable?: boolean; version?: string; downloaded?: boolean }
+    result: {
+      status: "dev" | "success" | "error"
+      updateAvailable?: boolean
+      version?: string
+      downloaded?: boolean
+      message?: string
+    }
   }
   get_update_status: {
     args: undefined
