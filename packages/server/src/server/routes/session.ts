@@ -54,23 +54,6 @@ import type { Server } from "bun"
 
 const log = Log.create({ service: "server" })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// 🚀 STREAMING OPTIMIZATION HELPERS
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * HIGH-PERFORMANCE STREAMING: Stream AI response tokens incrementally using Bun's native Response
- * 
- * Key optimizations applied:
- * 1. Uses Bun's `type: "direct"` ReadableStream - skips internal queue copying (30%+ faster)
- * 2. Uses controller.write() + controller.flush() for immediate data sending
- * 3. Sets highWaterMark for optimal buffer pre-allocation
- * 4. Handles client disconnect via cancel() callback
- * 5. Yields to event loop periodically to prevent blocking
- * 6. Uses server.timeout() for long-lived connections (2 minutes idle)
- * 7. Proper error handling with controller.error()
- * 8. Real-time event forwarding via Bus subscription
- */
 async function streamAIResponse(
   sessionID: string,
   controller: ReadableStreamDirectController,
@@ -111,18 +94,6 @@ async function streamAIResponse(
   }
 }
 
-/**
- * 🚀 OPTIMIZED AI SDK STREAMING: Stream tokens incrementally using the AI SDK's streamText
- * 
- * Key optimizations applied:
- * 1. Parallel fetch of provider/language/config (Promise.all)
- * 2. Streams each token via for-await-of loop on result.fullStream
- * 3. Uses smoothStream() for AI SDK's optimized streaming (fixes Azure OpenAI chunking)
- * 4. Sends events as they arrive (zero buffering)
- * 5. Handles stream closure gracefully
- * 6. Pre-allocates buffer with highWaterMark
- * 7. Yields to event loop periodically
- */
 async function streamTokensIncremental(
   sessionID: string,
   controller: ReadableStreamDirectController,
@@ -256,18 +227,6 @@ async function streamTokensIncremental(
   }
 }
 
-/**
- * 🛡️ ROBUST SSE STREAMING: Creates a proper Server-Sent Events stream with all fixes
- * 
- * Key fixes applied:
- * 1. type: "direct" for Bun's fastest streaming (zero-copy)
- * 2. Proper SSE headers (Content-Type, Cache-Control, Connection)
- * 3. server.timeout() for long-lived connections
- * 4. Periodic flush() for immediate delivery
- * 5. Cancel callback for resource cleanup
- * 6. Error handling with controller.error()
- * 7. Yields to event loop periodically
- */
 function createSSEStream(
   sessionID: string,
   onData: (controller: ReadableStreamDirectController) => Promise<void>,
@@ -315,16 +274,6 @@ function createSSEStream(
   )
 }
 
-/**
- * 🔥 HIGH-PERFORMANCE DIRECT MODE STREAM: Uses Bun's fastest streaming path
- * 
- * Key optimizations:
- * 1. type: "direct" - bypasses internal queue (30%+ performance improvement)
- * 2. controller.write() - writes directly to socket
- * 3. controller.flush() - ensures immediate sending
- * 4. highWaterMark: 64KB - optimal network MTU size
- * 5. Periodic Bun.sleep(0) - prevents event loop blocking
- */
 function createOptimizedStream(
   dataGenerator: (controller: ReadableStreamDirectController) => AsyncGenerator<string>,
 ): Response {
@@ -1177,18 +1126,7 @@ export const SessionRoutes = lazy(() =>
         })
       },
     )
-    // 🔥 NEW: Native Bun streaming endpoint - 2-3x faster than Hono's stream
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🚀 ALL STREAMING FIXES APPLIED:
-    // 1. type: "direct" - Bun's fastest streaming mode (30%+ performance)
-    // 2. Proper SSE headers - Content-Type, Cache-Control, Connection
-    // 3. X-Accel-Buffering: no - Disable proxy buffering
-    // 4. Cancel callback - Cleanup on client disconnect (prevents memory leaks)
-    // 5. Error handling - controller.error() for proper error propagation
-    // 6. periodic Bun.sleep(0) - Prevents event loop blocking
-    // 7. highWaterMark: 64KB - Optimal buffer for network MTU
-    // 8. server.timeout() - Long-lived connections support
-    // ═══════════════════════════════════════════════════════════════════════════
+  
     .post(
       "/:sessionID/message/stream",
       describeRoute({
@@ -1304,15 +1242,6 @@ export const SessionRoutes = lazy(() =>
         })
       },
     )
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🌐 WEBSOCKET STREAMING ENDPOINT: For fastest bidirectional communication
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🚀 WebSocket advantages over HTTP SSE:
-    // 1. Lower latency - no HTTP overhead
-    // 2. Bidirectional - client can send commands mid-stream
-    // 3. Fewer headers - less bandwidth usage
-    // 4. Better for firewalls - more likely to pass through
-    // ═══════════════════════════════════════════════════════════════════════════
     .post(
       "/:sessionID/prompt_async",
       describeRoute({
