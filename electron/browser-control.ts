@@ -684,14 +684,14 @@ export function createBrowserControl(options: BrowserControlOptions) {
             transform: "translate(-9999px, -9999px)",
             transition: "transform 90ms cubic-bezier(0.22, 1, 0.36, 1)",
             willChange: "transform",
-            filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.45))",
+            filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.28))",
           });
           wrap.innerHTML = [
             '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible;">',
-              '<path d="M3 3L10 22L12.0513 15.8461C12.6485 14.0544 14.0544 12.6485 15.846 12.0513L22 10L3 3Z" fill="#fde047" stroke="#0f172a" stroke-width="2" stroke-linejoin="round"/>',
+              '<path d="M3 3L10 22L12.0513 15.8461C12.6485 14.0544 14.0544 12.6485 15.846 12.0513L22 10L3 3Z" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>',
             '</svg>',
-            '<div data-ripple style="position:absolute;left:2px;top:2px;width:8px;height:8px;border-radius:9999px;border:2px solid #38bdf8;opacity:0;pointer-events:none;transform:scale(1);"></div>',
-            '<div data-label style="position:absolute;left:30px;top:18px;padding:2px 6px;border-radius:4px;background:rgba(2,132,199,0.95);color:white;font:11px/1.2 ui-sans-serif,system-ui,sans-serif;white-space:nowrap;opacity:0;transition:opacity 200ms ease-out;pointer-events:none;">agent</div>',
+            '<div data-ripple style="position:absolute;left:2px;top:2px;width:8px;height:8px;border-radius:9999px;border:2px solid rgba(255,255,255,0.92);opacity:0;pointer-events:none;transform:scale(1);"></div>',
+            '<div data-label style="position:absolute;left:30px;top:18px;padding:2px 6px;border-radius:999px;background:rgba(255,255,255,0.96);color:#111827;font:11px/1.2 ui-sans-serif,system-ui,sans-serif;white-space:nowrap;opacity:0;transition:opacity 200ms ease-out;pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,0.18);">agent</div>',
           ].join("");
           (document.body || document.documentElement).appendChild(wrap);
 

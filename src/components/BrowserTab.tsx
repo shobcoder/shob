@@ -72,7 +72,6 @@ const UA_GALAXY =
   "Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
 
 const DEVICE_PRESETS: DevicePreset[] = [
-  RESPONSIVE_PRESET,
   { id: "iphone-15", label: "iPhone 15", icon: "smartphone", width: 393, height: 852, dpr: 3, mobile: true, userAgent: UA_IPHONE },
   { id: "iphone-se", label: "iPhone SE", icon: "smartphone", width: 375, height: 667, dpr: 2, mobile: true, userAgent: UA_IPHONE },
   { id: "pixel-8", label: "Pixel 8", icon: "smartphone", width: 412, height: 915, dpr: 2.625, mobile: true, userAgent: UA_PIXEL },
@@ -130,7 +129,9 @@ export function BrowserTab(props: BrowserTabProps) {
   let openUnlisten: (() => void) | undefined
   let selectionUnlisten: (() => void) | undefined
 
-  const currentPreset = createMemo(() => DEVICE_PRESETS.find((p) => p.id === presetId()) ?? RESPONSIVE_PRESET)
+  const currentPreset = createMemo(
+    () => (presetId() === RESPONSIVE_PRESET.id ? RESPONSIVE_PRESET : DEVICE_PRESETS.find((p) => p.id === presetId()) ?? RESPONSIVE_PRESET),
+  )
 
   const presetDimensions = createMemo(() => {
     const p = currentPreset()
@@ -149,9 +150,16 @@ export function BrowserTab(props: BrowserTabProps) {
 
   const panelResizing = () => props.panelResizing?.() === true
 
+  const browserBoundsTarget = () => {
+    if (!presetDimensions()) return viewportRef
+    return frameRef?.isConnected ? frameRef : viewportRef
+  }
+
+  const selectedElementPreview = createMemo(() => (showSelectionPreview() ? selectedEl() : null))
+
   const syncBounds = (force = false) => {
     if (!props.active()) return
-    const target = frameRef ?? viewportRef
+    const target = browserBoundsTarget()
     if (!target) return
     const bounds = browserBounds(target)
     const boundsKey = `${bounds.x}:${bounds.y}:${bounds.width}:${bounds.height}`
@@ -473,7 +481,9 @@ export function BrowserTab(props: BrowserTabProps) {
             onClick={() => setShowDeviceMenu((v) => !v)}
           >
             <PresetIcon kind={currentPreset().icon} />
-            <span class="hidden sm:inline">{currentPreset().label}</span>
+            <Show when={currentPreset().id !== RESPONSIVE_PRESET.id}>
+              <span class="hidden sm:inline">{currentPreset().label}</span>
+            </Show>
             <Show when={presetDimensions()}>
               {(dims) => (
                 <span class="text-text-weak text-[10px] tabular-nums">
@@ -552,7 +562,9 @@ export function BrowserTab(props: BrowserTabProps) {
                 {rotated() ? " · Landscape" : ""}
               </div>
               <div
-                ref={frameRef}
+                ref={(element) => {
+                  frameRef = element
+                }}
                 class="rounded-[18px] bg-background-base shadow-[0_10px_40px_rgba(0,0,0,0.45)] ring-1 ring-white/10"
                 style={{
                   width: `${dims().width}px`,
@@ -564,7 +576,7 @@ export function BrowserTab(props: BrowserTabProps) {
         </Show>
 
         {/* Selected element preview (Degen mode) */}
-        <Show when={selectedEl() && showSelectionPreview()}>
+        <Show when={selectedElementPreview()}>
           {(el) => (
             <div
               class="absolute bottom-3 right-3 z-40 w-80 max-w-[calc(100%-1.5rem)] rounded-lg border border-sky-400/40 bg-background-stronger/95 backdrop-blur p-3 shadow-xl"

@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Browser Focus Test</title></head>
+<body style="font-family:sans-serif;padding:40px;">
+  <label>Input <input id="name" type="text" placeholder="Type here" style="font-size:24px;padding:8px;"></label>
+  <button id="btn" style="margin-left:20px;font-size:24px;padding:8px 16px;">Click me</button>
+  <a id="link" href="#navigated" style="margin-left:20px;font-size:24px;">Anchor</a>
+  <div id="status" style="margin-top:20px;font-size:24px;">idle</div>
+  <pre id="log" style="margin-top:20px;font-size:18px;white-space:pre-wrap;">ready</pre>
+  <script>
+    const status = document.getElementById('status');
+    const log = document.getElementById('log');
+    const append = (msg) => { log.textContent += '\n' + msg; };
+    const name = document.getElementById('name');
+    const btn = document.getElementById('btn');
+    const link = document.getElementById('link');
+    name.addEventListener('mousedown', () => append('input:mousedown'));
+    name.addEventListener('mouseup', () => append('input:mouseup'));
+    name.addEventListener('click', () => append('input:click'));
+    name.addEventListener('focus', () => append('input:focus'));
+    name.addEventListener('input', () => append('input:value=' + name.value));
+    btn.addEventListener('mousedown', () => append('button:mousedown'));
+    btn.addEventListener('mouseup', () => append('button:mouseup'));
+    btn.addEventListener('click', () => { append('button:click'); status.textContent = 'clicked'; });
+    link.addEventListener('mousedown', () => append('link:mousedown'));
+    link.addEventListener('mouseup', () => append('link:mouseup'));
+    link.addEventListener('click', () => append('link:click'));
+  </script>
+</body>
+</html>
