@@ -22,6 +22,13 @@ type BrowserAction =
   | "close"
   | "state"
   | "click"
+  | "double_click"
+  | "right_click"
+  | "mouse_move"
+  | "mouse_down"
+  | "mouse_up"
+  | "hover"
+  | "drag"
   | "type"
   | "press"
   | "scroll"
@@ -29,9 +36,19 @@ type BrowserAction =
   | "forward"
   | "reload"
   | "set_degen_mode"
+  | "set_viewport"
   | "extract"
   | "evaluate"
   | "screenshot";
+
+export type BrowserViewport = {
+  width: number;
+  height: number;
+  deviceScaleFactor: number;
+  mobile: boolean;
+  userAgent: string | null;
+  preset: string | null;
+};
 
 export type BrowserControlRequest = {
   action?: BrowserAction;
@@ -48,6 +65,25 @@ export type BrowserControlRequest = {
   deltaY?: number;
   javascript?: string;
   maxLength?: number;
+  // Viewport / device emulation
+  viewportWidth?: number;
+  viewportHeight?: number;
+  deviceScaleFactor?: number;
+  mobile?: boolean;
+  userAgent?: string | null;
+  preset?: string | null;
+  // Mouse / drag
+  fromX?: number;
+  fromY?: number;
+  toX?: number;
+  toY?: number;
+  fromRef?: string;
+  toRef?: string;
+  button?: "left" | "right" | "middle";
+  clickCount?: number;
+  steps?: number;
+  delayMs?: number;
+  modifiers?: string[];
 };
 
 export type BrowserElementSnapshot = {
@@ -75,6 +111,7 @@ export type BrowserState = {
   error?: string | null;
   text?: string;
   elements?: BrowserElementSnapshot[];
+  viewport?: BrowserViewport;
 };
 
 export type BrowserControlResponse = {
@@ -574,6 +611,14 @@ export function createBrowserControl(options: BrowserControlOptions) {
   let lastNavigationError: string | null = null;
   let browserTheme = DEFAULT_BROWSER_THEME;
   let degenMode = false;
+  let viewport: BrowserViewport = {
+    width: 0,
+    height: 0,
+    deviceScaleFactor: 1,
+    mobile: false,
+    userAgent: null,
+    preset: "responsive",
+  };
   const token = crypto.randomBytes(32).toString("base64url");
   const degenMessagePrefix = `__SHOB_BROWSER_DEGEN_PICK__${token}:`;
   const lightStateDetail: BrowserStateDetail = { includeText: false, includeElements: false };
@@ -611,6 +656,26 @@ export function createBrowserControl(options: BrowserControlOptions) {
     });
     contents.on("did-stop-loading", () => {
       if (degenMode) void syncDegenMode();
+      // Re-apply mobile viewport meta tag after navigation if device emulation is on
+      if (viewport.mobile && viewport.width > 0) {
+        const w = JSON.stringify(viewport.width);
+        const dpr = JSON.stringify(viewport.deviceScaleFactor);
+        void executeInPage(
+          `(() => { try {
+            try { Object.defineProperty(window, "devicePixelRatio", { configurable: true, get: () => ${dpr} }); } catch (e) {}
+            let meta = document.querySelector('meta[name="viewport"][data-shob-emulated="1"]');
+            if (!meta) {
+              meta = document.createElement("meta");
+              meta.setAttribute("name", "viewport");
+              meta.setAttribute("data-shob-emulated", "1");
+              document.head && document.head.appendChild(meta);
+            }
+            meta.setAttribute("content", "width=" + ${w} + ", initial-scale=1, maximum-scale=1, user-scalable=no");
+            return true;
+          } catch (e) { return false; } })()`,
+          false,
+        );
+      }
       publish();
     });
     contents.on("page-title-updated", publish);
@@ -808,6 +873,7 @@ export function createBrowserControl(options: BrowserControlOptions) {
         degenMode,
         text: "",
         elements: [],
+        viewport,
       };
     }
 
@@ -822,6 +888,7 @@ export function createBrowserControl(options: BrowserControlOptions) {
       canGoForward: contents.canGoForward(),
       degenMode,
       error: lastNavigationError,
+      viewport,
     };
     if (detail?.includeText) state.text = await getPageText();
     if (detail?.includeElements) state.elements = await getElements();
@@ -917,15 +984,77 @@ export function createBrowserControl(options: BrowserControlOptions) {
         appliedBounds = null;
         return { ok: true, action, state: await getState(lightStateDetail) };
       }
-      case "click": {
+      case "click":
+      case "double_click":
+      case "right_click": {
+        const nextView = ensureView();
+        addToWindow();
+        const point = await pointForRef(request.ref);
+        const x = point?.x ?? clampInt(request.x, Math.floor(bounds.width / 2), -20_000, 20_000);
+        const y = point?.y ?? clampInt(request.y, Math.floor(bounds.height / 2), -20_000, 20_000);
+        const button: "left" | "right" | "middle" =
+          action === "right_click" ? "right" : (request.button ?? "left");
+        const clickCount = action === "double_click" ? 2 : (request.clickCount ?? 1);
+        const modifiers = Array.isArray(request.modifiers) ? request.modifiers as any : undefined;
+        nextView.webContents.sendInputEvent({ type: "mouseMove", x, y, modifiers });
+        for (let i = 0; i < clickCount; i++) {
+          nextView.webContents.sendInputEvent({ type: "mouseDown", x, y, button, clickCount: i + 1, modifiers });
+          nextView.webContents.sendInputEvent({ type: "mouseUp", x, y, button, clickCount: i + 1, modifiers });
+        }
+        break;
+      }
+      case "mouse_move":
+      case "hover": {
         const nextView = ensureView();
         addToWindow();
         const point = await pointForRef(request.ref);
         const x = point?.x ?? clampInt(request.x, Math.floor(bounds.width / 2), -20_000, 20_000);
         const y = point?.y ?? clampInt(request.y, Math.floor(bounds.height / 2), -20_000, 20_000);
         nextView.webContents.sendInputEvent({ type: "mouseMove", x, y });
-        nextView.webContents.sendInputEvent({ type: "mouseDown", x, y, button: "left", clickCount: 1 });
-        nextView.webContents.sendInputEvent({ type: "mouseUp", x, y, button: "left", clickCount: 1 });
+        break;
+      }
+      case "mouse_down": {
+        const nextView = ensureView();
+        addToWindow();
+        const point = await pointForRef(request.ref);
+        const x = point?.x ?? clampInt(request.x, Math.floor(bounds.width / 2), -20_000, 20_000);
+        const y = point?.y ?? clampInt(request.y, Math.floor(bounds.height / 2), -20_000, 20_000);
+        const button: "left" | "right" | "middle" = request.button ?? "left";
+        nextView.webContents.sendInputEvent({ type: "mouseDown", x, y, button, clickCount: 1 });
+        break;
+      }
+      case "mouse_up": {
+        const nextView = ensureView();
+        addToWindow();
+        const point = await pointForRef(request.ref);
+        const x = point?.x ?? clampInt(request.x, Math.floor(bounds.width / 2), -20_000, 20_000);
+        const y = point?.y ?? clampInt(request.y, Math.floor(bounds.height / 2), -20_000, 20_000);
+        const button: "left" | "right" | "middle" = request.button ?? "left";
+        nextView.webContents.sendInputEvent({ type: "mouseUp", x, y, button, clickCount: 1 });
+        break;
+      }
+      case "drag": {
+        const nextView = ensureView();
+        addToWindow();
+        const fromPoint = request.fromRef ? await pointForRef(request.fromRef) : null;
+        const toPoint = request.toRef ? await pointForRef(request.toRef) : null;
+        const fx = fromPoint?.x ?? clampInt(request.fromX ?? request.x, 0, -20_000, 20_000);
+        const fy = fromPoint?.y ?? clampInt(request.fromY ?? request.y, 0, -20_000, 20_000);
+        const tx = toPoint?.x ?? clampInt(request.toX, 0, -20_000, 20_000);
+        const ty = toPoint?.y ?? clampInt(request.toY, 0, -20_000, 20_000);
+        const button: "left" | "right" | "middle" = request.button ?? "left";
+        const steps = Math.max(2, Math.min(60, clampInt(request.steps, 20, 2, 200)));
+        const delayMs = Math.max(0, Math.min(50, clampInt(request.delayMs, 8, 0, 200)));
+        nextView.webContents.sendInputEvent({ type: "mouseMove", x: fx, y: fy });
+        nextView.webContents.sendInputEvent({ type: "mouseDown", x: fx, y: fy, button, clickCount: 1 });
+        for (let i = 1; i <= steps; i++) {
+          const t = i / steps;
+          const ix = Math.round(fx + (tx - fx) * t);
+          const iy = Math.round(fy + (ty - fy) * t);
+          nextView.webContents.sendInputEvent({ type: "mouseMove", x: ix, y: iy });
+          if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
+        }
+        nextView.webContents.sendInputEvent({ type: "mouseUp", x: tx, y: ty, button, clickCount: 1 });
         break;
       }
       case "type": {
@@ -974,6 +1103,72 @@ export function createBrowserControl(options: BrowserControlOptions) {
         addToWindow();
         await syncDegenMode();
         break;
+      case "set_viewport": {
+        const nextView = ensureView();
+        addToWindow();
+        const presetRaw = typeof request.preset === "string" ? request.preset : null;
+        const width = clampInt(request.viewportWidth, 0, 0, 10_000);
+        const height = clampInt(request.viewportHeight, 0, 0, 10_000);
+        const dpr = Number.isFinite(request.deviceScaleFactor)
+          ? Math.max(1, Math.min(4, Number(request.deviceScaleFactor)))
+          : 1;
+        const mobile = Boolean(request.mobile);
+        viewport = {
+          width,
+          height,
+          deviceScaleFactor: dpr,
+          mobile,
+          userAgent: typeof request.userAgent === "string" ? request.userAgent : null,
+          preset: presetRaw,
+        };
+        try {
+          if (viewport.userAgent) {
+            nextView.webContents.setUserAgent(viewport.userAgent);
+          } else {
+            // Reset to default UA
+            nextView.webContents.setUserAgent(nextView.webContents.session.getUserAgent());
+          }
+        } catch (error) {
+          console.warn("[shob] browser setUserAgent failed:", error);
+        }
+        // Inject CSS-level device emulation: clamp viewport via meta + scale via JS.
+        // We let bounds handle the actual painted region via the frontend frame.
+        const dprJs = JSON.stringify(dpr);
+        const widthJs = JSON.stringify(width);
+        const heightJs = JSON.stringify(height);
+        const mobileJs = JSON.stringify(mobile);
+        await executeInPage(
+          `(() => {
+            try {
+              const w = ${widthJs}, h = ${heightJs}, dpr = ${dprJs}, mobile = ${mobileJs};
+              // Override devicePixelRatio for the page
+              if (dpr > 0) {
+                try { Object.defineProperty(window, "devicePixelRatio", { configurable: true, get: () => dpr }); } catch (e) {}
+              }
+              // Inject (or update) a meta viewport so responsive sites lay out correctly
+              let meta = document.querySelector('meta[name="viewport"][data-shob-emulated="1"]');
+              if (mobile && w > 0) {
+                if (!meta) {
+                  meta = document.createElement("meta");
+                  meta.setAttribute("name", "viewport");
+                  meta.setAttribute("data-shob-emulated", "1");
+                  document.head && document.head.appendChild(meta);
+                }
+                meta.setAttribute("content", "width=" + w + ", initial-scale=1, maximum-scale=1, user-scalable=no");
+              } else if (meta) {
+                meta.remove();
+              }
+              return true;
+            } catch (e) { return false; }
+          })()`,
+          false,
+        );
+        if (mobile) {
+          // Reload so UA-sniffing scripts pick up the mobile UA
+          try { nextView.webContents.reloadIgnoringCache(); } catch (e) { /* noop */ }
+        }
+        break;
+      }
       case "extract": {
         const text = await getPageText(request.maxLength ?? DEFAULT_TEXT_LIMIT);
         return { ok: true, action, state: await getState({ includeText: false, includeElements: true }), text };

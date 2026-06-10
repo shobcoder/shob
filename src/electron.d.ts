@@ -92,6 +92,13 @@ export type ElectronBrowserAction =
   | "close"
   | "state"
   | "click"
+  | "double_click"
+  | "right_click"
+  | "mouse_move"
+  | "mouse_down"
+  | "mouse_up"
+  | "hover"
+  | "drag"
   | "type"
   | "press"
   | "scroll"
@@ -99,9 +106,19 @@ export type ElectronBrowserAction =
   | "forward"
   | "reload"
   | "set_degen_mode"
+  | "set_viewport"
   | "extract"
   | "evaluate"
   | "screenshot"
+
+export interface ElectronBrowserViewport {
+  width: number
+  height: number
+  deviceScaleFactor: number
+  mobile: boolean
+  userAgent: string | null
+  preset: string | null
+}
 
 export interface ElectronBrowserBounds {
   x: number
@@ -125,6 +142,23 @@ export interface ElectronBrowserActionRequest {
   deltaY?: number
   javascript?: string
   maxLength?: number
+  viewportWidth?: number
+  viewportHeight?: number
+  deviceScaleFactor?: number
+  mobile?: boolean
+  userAgent?: string | null
+  preset?: string | null
+  fromX?: number
+  fromY?: number
+  toX?: number
+  toY?: number
+  fromRef?: string
+  toRef?: string
+  button?: "left" | "right" | "middle"
+  clickCount?: number
+  steps?: number
+  delayMs?: number
+  modifiers?: string[]
 }
 
 export interface ElectronBrowserElementSnapshot {
@@ -152,6 +186,7 @@ export interface ElectronBrowserState {
   error?: string | null
   text?: string
   elements?: ElectronBrowserElementSnapshot[]
+  viewport?: ElectronBrowserViewport
 }
 
 export interface ElectronBrowserActionResult {
