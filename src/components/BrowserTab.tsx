@@ -6,6 +6,7 @@ import {
   Globe,
   Loader2,
   Monitor,
+  MousePointer2,
   RotateCcw,
   RotateCw,
   Search,
@@ -114,6 +115,7 @@ export function BrowserTab(props: BrowserTabProps) {
   const [showDeviceMenu, setShowDeviceMenu] = createSignal(false)
   const [selectedEl, setSelectedEl] = createSignal<ElectronBrowserElementSelection | null>(null)
   const [showSelectionPreview, setShowSelectionPreview] = createSignal(true)
+  const [cursorOverlay, setCursorOverlay] = createSignal(true)
   let viewportRef: HTMLDivElement | undefined
   let frameRef: HTMLDivElement | undefined
   let addressInputRef: HTMLInputElement | undefined
@@ -253,6 +255,14 @@ export function BrowserTab(props: BrowserTabProps) {
     })
   }
 
+  const toggleCursorOverlay = () => {
+    const next = !cursorOverlay()
+    setCursorOverlay(next)
+    void invoke("set_cursor_overlay", { enabled: next }).catch((error) => {
+      console.error("[browser-tab] set_cursor_overlay failed:", error)
+    })
+  }
+
   const copySelector = () => {
     const sel = selectedEl()?.selector
     if (!sel) return
@@ -274,6 +284,8 @@ export function BrowserTab(props: BrowserTabProps) {
       .catch((error) => {
         console.error("[browser-tab] state failed:", error)
       })
+    // Push current cursor overlay preference to the backend
+    void invoke("set_cursor_overlay", { enabled: cursorOverlay() }).catch(() => undefined)
   })
 
   createEffect(() => {
@@ -396,6 +408,20 @@ export function BrowserTab(props: BrowserTabProps) {
         >
           <Crosshair size={14} />
           <span>Degen</span>
+        </button>
+        <button
+          type="button"
+          class="size-7 shrink-0 inline-flex items-center justify-center rounded-md transition-colors"
+          classList={{
+            "bg-yellow-300/15 text-yellow-200 ring-1 ring-yellow-300/40": cursorOverlay(),
+            "text-text-weak hover:bg-surface-raised-base-hover hover:text-text-strong": !cursorOverlay(),
+          }}
+          aria-label={cursorOverlay() ? "Hide agent cursor" : "Show agent cursor"}
+          aria-pressed={cursorOverlay()}
+          title={cursorOverlay() ? "Hide agent cursor overlay" : "Show agent cursor overlay"}
+          onClick={toggleCursorOverlay}
+        >
+          <MousePointer2 size={14} />
         </button>
         <div class="min-w-0 flex-1 flex items-center gap-2 rounded-md border border-border-weaker-base bg-background-stronger px-2 h-8">
           <Show when={state().loading} fallback={<Globe size={14} class="shrink-0 text-text-weak" />}>

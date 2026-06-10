@@ -37,6 +37,7 @@ type BrowserAction =
   | "reload"
   | "set_degen_mode"
   | "set_viewport"
+  | "set_cursor_overlay"
   | "extract"
   | "evaluate"
   | "screenshot";
@@ -611,6 +612,8 @@ export function createBrowserControl(options: BrowserControlOptions) {
   let lastNavigationError: string | null = null;
   let browserTheme = DEFAULT_BROWSER_THEME;
   let degenMode = false;
+  let cursorOverlay = true;
+  let lastCursor = { x: 0, y: 0 };
   let viewport: BrowserViewport = {
     width: 0,
     height: 0,
@@ -646,6 +649,121 @@ export function createBrowserControl(options: BrowserControlOptions) {
     return executeInPage<boolean>(degenModeScript(degenMode, degenMessagePrefix), false);
   };
 
+  const ensureCursorScript = async () => {
+    if (!view || view.webContents.isDestroyed()) return;
+    if (!cursorOverlay) {
+      await executeInPage(
+        `(() => { try {
+          const el = document.getElementById("__shob-agent-cursor__");
+          if (el) el.remove();
+          if (window.__shobCursor) delete window.__shobCursor;
+          return true;
+        } catch (e) { return false; } })()`,
+        false,
+      );
+      return;
+    }
+    await executeInPage(
+      `(() => {
+        try {
+          if (window.__shobCursor && document.getElementById("__shob-agent-cursor__")) return true;
+          const ID = "__shob-agent-cursor__";
+          const existing = document.getElementById(ID);
+          if (existing) existing.remove();
+          const wrap = document.createElement("div");
+          wrap.id = ID;
+          wrap.setAttribute("aria-hidden", "true");
+          Object.assign(wrap.style, {
+            position: "fixed",
+            left: "0px",
+            top: "0px",
+            width: "28px",
+            height: "28px",
+            pointerEvents: "none",
+            zIndex: "2147483647",
+            transform: "translate(-9999px, -9999px)",
+            transition: "transform 90ms cubic-bezier(0.22, 1, 0.36, 1)",
+            willChange: "transform",
+            filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.45))",
+          });
+          wrap.innerHTML = [
+            '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible;">',
+              '<path d="M3 3L10 22L12.0513 15.8461C12.6485 14.0544 14.0544 12.6485 15.846 12.0513L22 10L3 3Z" fill="#fde047" stroke="#0f172a" stroke-width="2" stroke-linejoin="round"/>',
+            '</svg>',
+            '<div data-ripple style="position:absolute;left:2px;top:2px;width:8px;height:8px;border-radius:9999px;border:2px solid #38bdf8;opacity:0;pointer-events:none;transform:scale(1);"></div>',
+            '<div data-label style="position:absolute;left:30px;top:18px;padding:2px 6px;border-radius:4px;background:rgba(2,132,199,0.95);color:white;font:11px/1.2 ui-sans-serif,system-ui,sans-serif;white-space:nowrap;opacity:0;transition:opacity 200ms ease-out;pointer-events:none;">agent</div>',
+          ].join("");
+          (document.body || document.documentElement).appendChild(wrap);
+
+          let labelTimer = null;
+          let rippleTimer = null;
+
+          window.__shobCursor = {
+            moveTo(x, y, kind, label) {
+              const el = document.getElementById(ID);
+              if (!el) return;
+              el.style.transform = "translate(" + (x - 2) + "px, " + (y - 2) + "px)";
+              if (kind === "down") {
+                el.style.transition = "transform 60ms ease-out";
+                el.querySelector("svg").style.transform = "scale(0.82)";
+              } else if (kind === "up") {
+                el.querySelector("svg").style.transform = "scale(1)";
+                el.style.transition = "transform 90ms cubic-bezier(0.22, 1, 0.36, 1)";
+              } else if (kind === "click") {
+                const ripple = el.querySelector("[data-ripple]");
+                if (ripple) {
+                  ripple.style.transition = "none";
+                  ripple.style.opacity = "0.9";
+                  ripple.style.transform = "scale(1)";
+                  // force reflow
+                  void ripple.offsetWidth;
+                  ripple.style.transition = "transform 420ms ease-out, opacity 420ms ease-out";
+                  ripple.style.opacity = "0";
+                  ripple.style.transform = "scale(4.5)";
+                  if (rippleTimer) clearTimeout(rippleTimer);
+                  rippleTimer = setTimeout(() => {
+                    ripple.style.transition = "none";
+                    ripple.style.transform = "scale(1)";
+                  }, 440);
+                }
+              }
+              if (label) {
+                const lab = el.querySelector("[data-label]");
+                if (lab) {
+                  lab.textContent = label;
+                  lab.style.opacity = "1";
+                  if (labelTimer) clearTimeout(labelTimer);
+                  labelTimer = setTimeout(() => { lab.style.opacity = "0"; }, 900);
+                }
+              }
+            }
+          };
+          return true;
+        } catch (e) { return false; }
+      })()`,
+      false,
+    );
+  };
+
+  const emitCursor = (x: number, y: number, kind: "move" | "down" | "up" | "click", label?: string) => {
+    lastCursor = { x, y };
+    if (!cursorOverlay) return;
+    if (!view || view.webContents.isDestroyed()) return;
+    const xJs = JSON.stringify(Math.round(x));
+    const yJs = JSON.stringify(Math.round(y));
+    const kJs = JSON.stringify(kind);
+    const lJs = JSON.stringify(label ?? null);
+    // Best-effort, do not await
+    void executeInPage(
+      `(() => { try {
+        if (!window.__shobCursor) return false;
+        window.__shobCursor.moveTo(${xJs}, ${yJs}, ${kJs}, ${lJs});
+        return true;
+      } catch (e) { return false; } })()`,
+      false,
+    );
+  };
+
   const attachLifecycle = (contents: WebContents) => {
     const publish = () => {
       void emitState("browser:state", { includeText: false, includeElements: false });
@@ -655,6 +773,7 @@ export function createBrowserControl(options: BrowserControlOptions) {
       publish();
     });
     contents.on("did-stop-loading", () => {
+      if (cursorOverlay) void ensureCursorScript();
       if (degenMode) void syncDegenMode();
       // Re-apply mobile viewport meta tag after navigation if device emulation is on
       if (viewport.mobile && viewport.width > 0) {
@@ -681,10 +800,12 @@ export function createBrowserControl(options: BrowserControlOptions) {
     contents.on("page-title-updated", publish);
     contents.on("did-navigate", () => {
       if (!contents.getURL().startsWith("data:text/html")) lastNavigationError = null;
+      if (cursorOverlay) void ensureCursorScript();
       if (degenMode) void syncDegenMode();
       publish();
     });
     contents.on("did-navigate-in-page", () => {
+      if (cursorOverlay) void ensureCursorScript();
       if (degenMode) void syncDegenMode();
       publish();
     });
@@ -997,10 +1118,12 @@ export function createBrowserControl(options: BrowserControlOptions) {
         const clickCount = action === "double_click" ? 2 : (request.clickCount ?? 1);
         const modifiers = Array.isArray(request.modifiers) ? request.modifiers as any : undefined;
         nextView.webContents.sendInputEvent({ type: "mouseMove", x, y, modifiers });
+        emitCursor(x, y, "move");
         for (let i = 0; i < clickCount; i++) {
           nextView.webContents.sendInputEvent({ type: "mouseDown", x, y, button, clickCount: i + 1, modifiers });
           nextView.webContents.sendInputEvent({ type: "mouseUp", x, y, button, clickCount: i + 1, modifiers });
         }
+        emitCursor(x, y, "click", action === "double_click" ? "double-click" : action === "right_click" ? "right-click" : "click");
         break;
       }
       case "mouse_move":
@@ -1011,6 +1134,7 @@ export function createBrowserControl(options: BrowserControlOptions) {
         const x = point?.x ?? clampInt(request.x, Math.floor(bounds.width / 2), -20_000, 20_000);
         const y = point?.y ?? clampInt(request.y, Math.floor(bounds.height / 2), -20_000, 20_000);
         nextView.webContents.sendInputEvent({ type: "mouseMove", x, y });
+        emitCursor(x, y, "move", action === "hover" ? "hover" : undefined);
         break;
       }
       case "mouse_down": {
@@ -1021,6 +1145,7 @@ export function createBrowserControl(options: BrowserControlOptions) {
         const y = point?.y ?? clampInt(request.y, Math.floor(bounds.height / 2), -20_000, 20_000);
         const button: "left" | "right" | "middle" = request.button ?? "left";
         nextView.webContents.sendInputEvent({ type: "mouseDown", x, y, button, clickCount: 1 });
+        emitCursor(x, y, "down");
         break;
       }
       case "mouse_up": {
@@ -1031,6 +1156,7 @@ export function createBrowserControl(options: BrowserControlOptions) {
         const y = point?.y ?? clampInt(request.y, Math.floor(bounds.height / 2), -20_000, 20_000);
         const button: "left" | "right" | "middle" = request.button ?? "left";
         nextView.webContents.sendInputEvent({ type: "mouseUp", x, y, button, clickCount: 1 });
+        emitCursor(x, y, "up");
         break;
       }
       case "drag": {
@@ -1046,15 +1172,19 @@ export function createBrowserControl(options: BrowserControlOptions) {
         const steps = Math.max(2, Math.min(60, clampInt(request.steps, 20, 2, 200)));
         const delayMs = Math.max(0, Math.min(50, clampInt(request.delayMs, 8, 0, 200)));
         nextView.webContents.sendInputEvent({ type: "mouseMove", x: fx, y: fy });
+        emitCursor(fx, fy, "move", "drag");
         nextView.webContents.sendInputEvent({ type: "mouseDown", x: fx, y: fy, button, clickCount: 1 });
+        emitCursor(fx, fy, "down");
         for (let i = 1; i <= steps; i++) {
           const t = i / steps;
           const ix = Math.round(fx + (tx - fx) * t);
           const iy = Math.round(fy + (ty - fy) * t);
           nextView.webContents.sendInputEvent({ type: "mouseMove", x: ix, y: iy });
+          emitCursor(ix, iy, "move");
           if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
         }
         nextView.webContents.sendInputEvent({ type: "mouseUp", x: tx, y: ty, button, clickCount: 1 });
+        emitCursor(tx, ty, "up");
         break;
       }
       case "type": {
@@ -1167,6 +1297,12 @@ export function createBrowserControl(options: BrowserControlOptions) {
           // Reload so UA-sniffing scripts pick up the mobile UA
           try { nextView.webContents.reloadIgnoringCache(); } catch (e) { /* noop */ }
         }
+        break;
+      }
+      case "set_cursor_overlay": {
+        cursorOverlay = Boolean(request.enabled);
+        addToWindow();
+        await ensureCursorScript();
         break;
       }
       case "extract": {

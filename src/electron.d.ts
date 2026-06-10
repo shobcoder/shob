@@ -107,6 +107,7 @@ export type ElectronBrowserAction =
   | "reload"
   | "set_degen_mode"
   | "set_viewport"
+  | "set_cursor_overlay"
   | "extract"
   | "evaluate"
   | "screenshot"
