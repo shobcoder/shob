@@ -10,6 +10,8 @@ import { DataProvider, FileComponentProvider } from "@opencode-ai/ui/context"
 import { AppIcon } from "@opencode-ai/ui/app-icon"
 import { Icon } from "@opencode-ai/ui/icon"
 import { sessionTitle } from "@/utils/session-title"
+import { MacSidebarReveal } from "./mac-chrome"
+import { useWindowChrome } from "@/utils/window-chrome"
 import { createSessionComposerState } from "@/shob-ported/composer/session-composer-state"
 import { SessionQuestionDock } from "@/shob-ported/composer/session-question-dock"
 import { SessionPermissionDock } from "@/shob-ported/composer/session-permission-dock"
@@ -816,6 +818,11 @@ function AgentViewInner(props: AgentViewProps) {
     sync.set("vcs", { ...sync.data.vcs, branch })
   }
   const title = createMemo(() => currentLocalSession()?.name || sessionTitle(info()?.title) || "New session")
+  const windowChrome = useWindowChrome()
+  // On macOS with a collapsed sidebar the header hosts the reveal controls, which
+  // already supply the traffic-light inset — so drop the header's own left padding.
+  const collapsedHeaderPadLeft = () =>
+    windowChrome.isMac() && !windowChrome.sidebarVisible() ? "0px" : undefined
   const statusInfo = createMemo<SessionStatus>(() => {
     const sessionID = activeSessionId()
     return sessionID ? sync.data.session_status[sessionID] ?? idleStatus : idleStatus
@@ -1778,8 +1785,11 @@ function AgentViewInner(props: AgentViewProps) {
                 <div
                   data-session-title
                   class="agent-terminal-title sticky top-0 z-30 w-full px-3 md:px-4"
+                  classList={{ "mac-drag-region": windowChrome.isMac() }}
+                  style={{ "padding-left": collapsedHeaderPadLeft() }}
                 >
                   <div class="flex w-full items-center gap-2.5">
+                    <MacSidebarReveal />
                     <div class="agent-session-title-cluster flex min-w-0 flex-1 items-center gap-2">
                       <h1 data-slot="session-title-child" class="max-w-[min(56vw,620px)] truncate text-[13px] font-semibold text-text-strong">
                         {title()}
@@ -1849,8 +1859,13 @@ function AgentViewInner(props: AgentViewProps) {
                   }
                 >
                   <div ref={setContentRef} class="agent-terminal-new-session-stage">
-                    <div class="agent-terminal-new-session-header sticky top-0 z-30 w-full px-1 md:px-1.5">
+                    <div
+                      class="agent-terminal-new-session-header sticky top-0 z-30 w-full px-1 md:px-1.5"
+                      classList={{ "mac-drag-region": windowChrome.isMac() }}
+                      style={{ "padding-left": collapsedHeaderPadLeft() }}
+                    >
                       <div class="flex w-full items-center justify-end gap-1.5">
+                        <MacSidebarReveal class="mr-auto" />
                         <Show when={currentBranchName()}>
                           {(branch) => <BranchSwitcher projectPath={activeProjectPath()} currentBranch={branch()} onBranchChanged={setCurrentBranchName} />}
                         </Show>

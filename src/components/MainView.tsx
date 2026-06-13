@@ -6,6 +6,7 @@ import { TerminalPanel } from './TerminalPanel'
 import { BottomTerminalPanel } from './BottomTerminalPanel'
 import { WelcomeScreen } from './WelcomeScreen'
 import { SettingsPage } from './SettingsPage'
+import { MacSidebarRevealRow } from './mac-chrome'
 import { useStore } from '../store'
 import { createFileContext } from '@/context/file'
 import type { FileNode } from '@/types/file-node'
@@ -802,15 +803,18 @@ export function MainView() {
                   </div>
 
                   {projectSessions().length === 0 && (
-                    <div class="h-full min-h-0 min-w-0 flex-1 overflow-hidden">
-                      <WelcomeScreen
-                        projects={projects()}
-                        currentProject={currentProject()}
-                        onOpenFolder={handleOpenFolder}
-                        onCreateSession={handleCreateSession}
-                        onSelectProject={appStore.setCurrentProject}
-                        onToggleFileTree={handleToggleFileTree}
-                      />
+                    <div class="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                      <MacSidebarRevealRow />
+                      <div class="min-h-0 flex-1 overflow-hidden">
+                        <WelcomeScreen
+                          projects={projects()}
+                          currentProject={currentProject()}
+                          onOpenFolder={handleOpenFolder}
+                          onCreateSession={handleCreateSession}
+                          onSelectProject={appStore.setCurrentProject}
+                          onToggleFileTree={handleToggleFileTree}
+                        />
+                      </div>
                     </div>
                   )}
 
@@ -878,7 +882,10 @@ export function MainView() {
             </div>
           </LayoutProvider>
         ) : (
-          <SettingsPage />
+          <>
+            <MacSidebarRevealRow />
+            <SettingsPage />
+          </>
         )}
       </div>
     </div>

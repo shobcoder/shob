@@ -1338,6 +1338,26 @@ b {
   color: #fff !important;
 }
 
+/* macOS custom window chrome: draggable regions with non-draggable interactive children.
+   Used by the in-sidebar header and the collapsed-sidebar reveal controls so the window
+   can be moved by its top strips while buttons/inputs stay clickable. */
+.mac-drag-region {
+  -webkit-app-region: drag;
+}
+
+.mac-drag-region button,
+.mac-drag-region a,
+.mac-drag-region input,
+.mac-drag-region select,
+.mac-drag-region textarea,
+.mac-drag-region [role="button"],
+.mac-drag-region [role="menuitem"],
+.mac-drag-region [contenteditable="true"],
+.mac-drag-region [contenteditable=""],
+.mac-drag-region .titlebar-icon {
+  -webkit-app-region: no-drag;
+}
+
 /* Agent timeline: terminal-style animated dots spinner for subagent task rows. */
 [data-component="task-tool-card"] [data-component="task-tool-spinner"] {
   display: inline-flex !important;

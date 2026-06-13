@@ -1,6 +1,7 @@
 import { Show, createMemo } from "solid-js"
 import { AgentView } from "./AgentView"
 import { Terminal } from "./Terminal"
+import { MacSidebarRevealRow } from "./mac-chrome"
 import { useStore } from "../store"
 
 interface TerminalPanelProps {
@@ -23,7 +24,17 @@ export function TerminalPanel(_props: TerminalPanelProps) {
       <Show when={activeSession()}>
         {(session) => (
           <div class="h-full w-full min-h-0 overflow-hidden">
-            <Show when={session().cliTool} fallback={<Terminal sessionId={session().id} />}>
+            <Show
+              when={session().cliTool}
+              fallback={
+                <div class="flex h-full min-h-0 flex-col">
+                  <MacSidebarRevealRow />
+                  <div class="min-h-0 flex-1 overflow-hidden">
+                    <Terminal sessionId={session().id} />
+                  </div>
+                </div>
+              }
+            >
               <AgentView
                 sessionId={session().id}
                 projectPath={currentProject()?.path}

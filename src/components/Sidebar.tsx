@@ -11,6 +11,7 @@ import {
   useSortableContext,
 } from "@thisbeyond/solid-dnd"
 import { nativeApi } from "../services/native"
+import { MacSidebarHeader } from "./mac-chrome"
 import { useStore } from "../store"
 import type { Project } from "../types"
 import { ResizeHandle } from "@/shob-ported/resize-handle"
@@ -1345,6 +1346,7 @@ export function Sidebar(props: {
           onResizeEnd={endSidebarResize}
         />
         <div class="shob-sidebar relative flex h-full min-h-0 max-h-full flex-col overflow-hidden bg-background-stronger text-text-base select-none">
+          <MacSidebarHeader />
           <div class="sticky top-0 z-20 shrink-0 bg-background-stronger/95 px-1.5 pb-3 pt-2 backdrop-blur">
             <nav class="flex flex-col gap-0.5">
               <SidebarActionButton

@@ -1453,7 +1453,8 @@ async function createWindow() {
     ...(process.platform === "darwin"
       ? {
           titleBarStyle: "hidden" as const,
-          trafficLightPosition: { x: 12, y: 14 },
+          // y positions the lights within the 48px sidebar header
+          trafficLightPosition: { x: 20, y: 17 },
         }
       : {}),
     ...(process.platform === "win32"

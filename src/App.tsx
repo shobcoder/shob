@@ -1,6 +1,7 @@
-import { createSignal, onCleanup, onMount, ErrorBoundary, createEffect } from 'solid-js'
+import { createSignal, onCleanup, onMount, ErrorBoundary, createEffect, Show } from 'solid-js'
 import { nativeApi } from './services/native'
 import { TitleBar } from './components/TitleBar'
+import { useWindowChrome } from './utils/window-chrome'
 import { MainView } from './components/MainView'
 import { useStore } from './store'
 import { applyAppTheme, getThemeById, resolveThemeMode, type ResolvedThemeMode } from './theme'
@@ -10,6 +11,7 @@ import { Ico } from './components/Ico'
 
 function App() {
   const { loadProjects, loadCliTools, loadAvailableShells } = useStore()
+  const windowChrome = useWindowChrome()
   const themeId = useStore((s) => s.themeId)
   const colorScheme = useStore((s) => s.colorScheme)
   const [isBooting, setIsBooting] = createSignal(true)
@@ -210,9 +212,11 @@ function App() {
     <>
       <Toast.Region />
       <div class="flex h-full min-h-0 flex-col overflow-hidden">
-        <ErrorBoundary fallback={(error) => <ErrorPage error={error} />}>
-          <TitleBar />
-        </ErrorBoundary>
+        <Show when={!windowChrome.isMac()}>
+          <ErrorBoundary fallback={(error) => <ErrorPage error={error} />}>
+            <TitleBar />
+          </ErrorBoundary>
+        </Show>
         {isBooting() ? (
           <div class="flex-1 bg-black" />
         ) : (
