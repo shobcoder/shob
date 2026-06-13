@@ -422,7 +422,7 @@ export const actions: AppActions = {
         store.availableShells.find((item) => item === store.preferredShell) ??
         store.availableShells[0] ??
         store.preferredShell ??
-        'powershell.exe';
+        nativeApi.defaultShell();
       const installedCliTools = store.cliTools.filter((tool) => tool.installed);
       const selectedCli =
         installedCliTools.find((tool) => tool.id === cliId) ??
@@ -585,7 +585,7 @@ export const actions: AppActions = {
       .filter((session) => !session.time?.archived)
         .map((session): Session => {
           return toLocalShobSession(session, {
-            shell: store.preferredShell ?? (process.platform === 'win32' ? 'powershell.exe' : '/bin/sh'),
+            shell: store.preferredShell ?? nativeApi.defaultShell(),
             pinned: existingPinned.get(session.id) ?? false,
           });
       })

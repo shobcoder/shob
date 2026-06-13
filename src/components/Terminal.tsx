@@ -73,10 +73,9 @@ function getShellBasename(shell: string): string {
 }
 
 function getDefaultShell(): string {
-  if (typeof process !== "undefined" && process.platform === "win32") {
-    return process.env.COMSPEC || "powershell.exe"
-  }
-  return process.env.SHELL || "/bin/sh"
+  // The renderer has no `process` (contextIsolation + no nodeIntegration);
+  // derive the default shell from the native bridge instead.
+  return nativeApi.defaultShell()
 }
 
 function resolveShell(shell: string | undefined | null, availableShells?: string[]): string {

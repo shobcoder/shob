@@ -3,6 +3,8 @@ import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
 
+const DEFAULT_SHELL = process.platform === "win32" ? "powershell.exe" : "/bin/sh";
+
 interface StoredProject {
   id: string;
   name: string;
@@ -264,7 +266,7 @@ function insertSession(db: DatabaseSync, projectId: string, session: StoredSessi
     session.id,
     projectId,
     session.name || 'Terminal',
-    session.shell || "powershell.exe",
+    session.shell || DEFAULT_SHELL,
     optionalString(session.cliTool),
     optionalString(session.pendingLaunchCommand),
     session.pinned ? 1 : 0,
