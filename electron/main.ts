@@ -55,6 +55,11 @@ const ptySessions = new Map<string, PtyRuntime>();
 let downloadedUpdateVersion: string | null = null;
 let availableUpdateVersion: string | null = null;
 let updateDownloadInFlight = false;
+// macOS ships an unsigned build, so Squirrel.Mac cannot apply an in-place update:
+// the download just wastes bandwidth and "Restart & install" silently fails. Until
+// the build is signed + notarized, point macOS users to the Releases page instead.
+const RELEASES_URL = "https://github.com/shobcoder/shob/releases/latest";
+const autoUpdateSupported = process.platform !== "darwin";
 const PTY_REPLAY_BUFFER_LIMIT = 2 * 1024 * 1024;
 const PTY_OUTPUT_FLUSH_DELAY_MS = 500;
 const TITLEBAR_HEIGHT = 40;
@@ -223,7 +228,7 @@ function setupAutoUpdater() {
   if (!app.isPackaged) return;
 
   autoUpdater.autoDownload = false;
-  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.autoInstallOnAppQuit = autoUpdateSupported;
 
   autoUpdater.on("checking-for-update", () => {
     console.log("[shob] checking for update...");
@@ -240,6 +245,12 @@ function setupAutoUpdater() {
     console.log("[shob] update available:", info.version);
     availableUpdateVersion = info.version;
     downloadedUpdateVersion = null;
+    if (!autoUpdateSupported) {
+      // macOS: notify only — do not auto-download an update that can't be applied.
+      updateDownloadInFlight = false;
+      sendUpdateEvent("available", info);
+      return;
+    }
     updateDownloadInFlight = true;
     sendUpdateEvent("available", info);
     autoUpdater.downloadUpdate().catch((error) => {
@@ -1187,12 +1198,20 @@ const handlers: Record<string, (payload?: any) => Promise<any> | any> = {
   },
   install_update: async () => {
     if (!app.isPackaged) return { status: "dev" };
+    if (!autoUpdateSupported) {
+      await shell.openExternal(RELEASES_URL);
+      return { status: "manual", url: RELEASES_URL };
+    }
     if (!downloadedUpdateVersion) return { status: "not-downloaded" };
     autoUpdater.quitAndInstall(false, true);
     return { status: "installing", version: downloadedUpdateVersion };
   },
   download_update: async () => {
     if (!app.isPackaged) return { status: "dev" };
+    if (!autoUpdateSupported) {
+      await shell.openExternal(RELEASES_URL);
+      return { status: "manual", url: RELEASES_URL };
+    }
     if (downloadedUpdateVersion) return { status: "downloaded", version: downloadedUpdateVersion };
     if (updateDownloadInFlight) return { status: "downloading" };
     try {

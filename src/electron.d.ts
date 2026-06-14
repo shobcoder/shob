@@ -303,11 +303,11 @@ export interface NativeCommandMap {
   }
   install_update: {
     args: undefined
-    result: { status: "dev" | "not-downloaded" | "installing"; version?: string | null }
+    result: { status: "dev" | "not-downloaded" | "installing" | "manual"; version?: string | null; url?: string }
   }
   download_update: {
     args: undefined
-    result: { status: "dev" | "downloading" | "downloaded" | "error"; version?: string | null; message?: string }
+    result: { status: "dev" | "downloading" | "downloaded" | "error" | "manual"; version?: string | null; message?: string; url?: string }
   }
   opencode_server_start: { args: undefined; result: string }
   browser_action: { args: ElectronBrowserActionRequest; result: ElectronBrowserActionResult }

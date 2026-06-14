@@ -36,6 +36,29 @@ function App() {
 
       try {
         unlistenAvailable = await nativeApi.listen<{ version: string }>("update:available", (event) => {
+          if (windowChrome.isMac()) {
+            // macOS auto-update is disabled (unsigned build) — guide to Releases instead.
+            showToast({
+              title: "Update available",
+              description: `Shob ${event.payload.version} is available. Open the Releases page to download it.`,
+              variant: "default",
+              persistent: true,
+              leading: updateToastLogo(),
+              actions: [
+                {
+                  label: "Open Releases",
+                  onClick: () => {
+                    void nativeApi.invoke("install_update")
+                  },
+                },
+                {
+                  label: "Later",
+                  onClick: "dismiss",
+                },
+              ],
+            })
+            return
+          }
           showToast({
             title: "Update downloading",
             description: `Shob ${event.payload.version} is downloading in the background. You can keep working.`,
