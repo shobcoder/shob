@@ -9,7 +9,7 @@ import { Log } from "../util/log"
 import { NamedError } from "@opencode-ai/util/error"
 import z from "zod"
 import path from "path"
-import { readFileSync, readdirSync, existsSync } from "fs"
+import { readFileSync, readdirSync, existsSync, renameSync } from "fs"
 import { Flag } from "../flag/flag"
 import { CHANNEL } from "../installation/meta"
 import { InstanceState } from "@/effect/instance-state"
@@ -28,11 +28,37 @@ export const NotFoundError = NamedError.create(
 const log = Log.create({ service: "db" })
 
 export namespace Database {
-  export function getChannelPath() {
-    if (["latest", "beta", "prod"].includes(CHANNEL) || Flag.OPENCODE_DISABLE_CHANNEL_DB)
-      return path.join(Global.Path.data, "opencode.db")
+  const DB_BASENAME = "shob"
+  const LEGACY_DB_BASENAME = "opencode"
+
+  function channelDbName(base: string) {
+    if (["latest", "beta", "prod"].includes(CHANNEL) || Flag.OPENCODE_DISABLE_CHANNEL_DB) return `${base}.db`
     const safe = CHANNEL.replace(/[^a-zA-Z0-9._-]/g, "-")
-    return path.join(Global.Path.data, `opencode-${safe}.db`)
+    return `${base}-${safe}.db`
+  }
+
+  export function getChannelPath() {
+    return path.join(Global.Path.data, channelDbName(DB_BASENAME))
+  }
+
+  // Earlier builds named the database after "opencode". Rename any legacy file
+  // (and its -wal/-shm sidecars) to the shob identity in-place so existing
+  // history survives updates instead of silently starting from an empty db.
+  function migrateLegacyDbName(target: string) {
+    if (path.basename(target) !== channelDbName(DB_BASENAME)) return
+    const legacy = path.join(Global.Path.data, channelDbName(LEGACY_DB_BASENAME))
+    if (legacy === target || existsSync(target) || !existsSync(legacy)) return
+    for (const suffix of ["", "-wal", "-shm"]) {
+      const from = legacy + suffix
+      const to = target + suffix
+      if (existsSync(from) && !existsSync(to)) {
+        try {
+          renameSync(from, to)
+        } catch (err) {
+          log.warn("failed to migrate legacy db file", { from, to, err })
+        }
+      }
+    }
   }
 
   export const Path = iife(() => {
@@ -40,7 +66,9 @@ export namespace Database {
       if (Flag.OPENCODE_DB === ":memory:" || path.isAbsolute(Flag.OPENCODE_DB)) return Flag.OPENCODE_DB
       return path.join(Global.Path.data, Flag.OPENCODE_DB)
     }
-    return getChannelPath()
+    const target = getChannelPath()
+    migrateLegacyDbName(target)
+    return target
   })
 
   export type Transaction = SQLiteTransaction<"sync", void>

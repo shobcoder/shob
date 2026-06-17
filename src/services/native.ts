@@ -21,6 +21,19 @@ export function invokeNative<T extends CommandName>(
 
 export const nativeApi = {
   platform: () => getBridge().platform,
+  /**
+   * Platform-appropriate default shell for the renderer. The renderer runs with
+   * contextIsolation + no nodeIntegration, so `process` does not exist here —
+   * never reference it. Derives the shell from the preload-exposed platform and
+   * falls back to a POSIX shell when the native bridge is unavailable.
+   */
+  defaultShell: (): string => {
+    try {
+      return getBridge().platform === "windows" ? "powershell.exe" : "/bin/sh"
+    } catch {
+      return "/bin/sh"
+    }
+  },
   invoke: invokeNative,
   listen: <T>(channel: string, callback: (event: { payload: T }) => void) =>
     getBridge().listen<T>(channel, callback),

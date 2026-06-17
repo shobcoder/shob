@@ -8,6 +8,12 @@ import { Flag } from "@/flag/flag"
 import { Global } from "@/global"
 
 export namespace ConfigPaths {
+  /** Project-level config folder names, preferred first (`.shob` wins over legacy `.opencode`). */
+  export const PROJECT_DIRS = [".shob", ".opencode"]
+
+  /** Config file basenames in merge order — later wins, so `shob` overrides legacy `opencode`. */
+  export const CONFIG_NAMES = ["opencode", "shob"]
+
   export async function projectFiles(name: string, directory: string, worktree: string) {
     return Filesystem.findUp([`${name}.json`, `${name}.jsonc`], directory, worktree, { rootFirst: true })
   }
@@ -18,7 +24,7 @@ export namespace ConfigPaths {
       ...(!Flag.OPENCODE_DISABLE_PROJECT_CONFIG
         ? await Array.fromAsync(
             Filesystem.up({
-              targets: [".opencode"],
+              targets: [...PROJECT_DIRS],
               start: directory,
               stop: worktree,
             }),

@@ -24,17 +24,20 @@ interface FormState {
   name: string
   baseURL: string
   apiKey: string
+  modelID: string
   err: {
     providerID?: string
     name?: string
     baseURL?: string
     apiKey?: string
+    modelID?: string
     fetch?: string
   }
 }
 
 const PROVIDER_ID = /^[a-z0-9][a-z0-9-_]*$/
 const OPENAI_COMPATIBLE = "@ai-sdk/openai-compatible"
+const ANTHROPIC_COMPATIBLE = "@ai-sdk/anthropic"
 
 export const OPENCLAUDE_OPENAI_COMPATIBLE_PRESET = {
   providerID: "openclaude",
@@ -42,13 +45,28 @@ export const OPENCLAUDE_OPENAI_COMPATIBLE_PRESET = {
   baseURL: "https://opengateway.gitlawb.com/v1",
 } as const
 
+export const CUSTOM_ANTHROPIC_COMPATIBLE_PRESET = {
+  providerID: "anthropic-compatible",
+  name: "Anthropic Compatible",
+  baseURL: "",
+  modelID: "",
+} as const
+
 type Props = {
-  defaults?: Partial<Pick<FormState, "providerID" | "name" | "baseURL">>
+  defaults?: Partial<Pick<FormState, "providerID" | "name" | "baseURL" | "modelID">>
   iconID?: string
   apiKeyOnly?: boolean
+  compatible?: "openai" | "anthropic"
 }
 
 const normalizeBaseURL = (value: string) => value.trim().replace(/\/+$/, "")
+const normalizeAnthropicBaseURL = (value: string) => {
+  const baseURL = normalizeBaseURL(value)
+  if (/\/v1\/messages$/i.test(baseURL)) return baseURL.replace(/\/messages$/i, "")
+  if (/\/messages$/i.test(baseURL)) return baseURL.replace(/\/messages$/i, "")
+  if (/\/v1$/i.test(baseURL)) return baseURL
+  return `${baseURL}/v1`
+}
 
 export function DialogOpenAICompatible(props: Props = {}) {
   const dialog = useDialog()
@@ -62,6 +80,7 @@ export function DialogOpenAICompatible(props: Props = {}) {
     name: props.defaults?.name ?? "",
     baseURL: props.defaults?.baseURL ?? "",
     apiKey: "",
+    modelID: props.defaults?.modelID ?? "",
     err: {},
   })
 
@@ -69,8 +88,11 @@ export function DialogOpenAICompatible(props: Props = {}) {
   const [isFetching, setIsFetching] = createSignal(false)
   const [hasFetched, setHasFetched] = createSignal(false)
   const apiKeyOnly = () => props.apiKeyOnly === true
+  const compatible = () => props.compatible ?? "openai"
+  const modelFetchRoute = () =>
+    compatible() === "anthropic" ? "anthropic-compatible/models" : "openai-compatible/models"
 
-  const setField = (key: "providerID" | "name" | "baseURL" | "apiKey", value: string) => {
+  const setField = (key: "providerID" | "name" | "baseURL" | "apiKey" | "modelID", value: string) => {
     batch(() => {
       setForm(key, value)
       setForm("err", key, undefined)
@@ -120,14 +142,14 @@ export function DialogOpenAICompatible(props: Props = {}) {
           Authorization: `Basic ${btoa(`${currentServer.http.username ?? "opencode"}:${currentServer.http.password}`)}`,
         }
       : {}
-    const response = await fetch(`${currentServer.http.url}/provider/openai-compatible/models`, {
+    const response = await fetch(`${currentServer.http.url}/provider/${modelFetchRoute()}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...auth,
       },
       body: JSON.stringify({
-        baseURL: normalizeBaseURL(form.baseURL),
+        baseURL: compatible() === "anthropic" ? normalizeAnthropicBaseURL(form.baseURL) : normalizeBaseURL(form.baseURL),
         apiKey: form.apiKey.trim(),
       }),
     })
@@ -152,11 +174,13 @@ export function DialogOpenAICompatible(props: Props = {}) {
 
     setIsFetching(true)
     setForm("err", "fetch", undefined)
+    setForm("err", "modelID", undefined)
 
     try {
       const fetchedModels = await requestModels()
       setModels(fetchedModels)
       setHasFetched(true)
+      setForm("err", "modelID", undefined)
       showToast({
         variant: "success",
         icon: "circle-check",
@@ -206,7 +230,8 @@ export function DialogOpenAICompatible(props: Props = {}) {
     mutationFn: async (modelOverride?: FetchedModel[]) => {
       const providerID = form.providerID.trim()
       const name = form.name.trim()
-      const baseURL = normalizeBaseURL(form.baseURL)
+      const baseURL =
+        compatible() === "anthropic" ? normalizeAnthropicBaseURL(form.baseURL) : normalizeBaseURL(form.baseURL)
       const apiKey = form.apiKey.trim()
 
       const selectedModels = (modelOverride ?? models()).filter((m) => m.selected)
@@ -215,7 +240,26 @@ export function DialogOpenAICompatible(props: Props = {}) {
       }
 
       const modelConfig = Object.fromEntries(
-        selectedModels.map((m) => [m.id, { name: m.name }])
+        selectedModels.map((m) => [
+          m.id,
+          {
+            name: m.name,
+            ...(compatible() === "anthropic"
+              ? {
+                  limit: {
+                    context: 200_000,
+                    output: 8192,
+                  },
+                  modalities: {
+                    input: ["text", "image", "pdf"] as Array<"text" | "image" | "pdf">,
+                    output: ["text"] as Array<"text">,
+                  },
+                  tool_call: true,
+                  reasoning: true,
+                }
+              : {}),
+          },
+        ])
       )
 
       await globalSDK.client.auth.set({
@@ -232,7 +276,7 @@ export function DialogOpenAICompatible(props: Props = {}) {
       await globalSync.updateConfig({
         provider: {
           [providerID]: {
-            npm: OPENAI_COMPATIBLE,
+            npm: compatible() === "anthropic" ? ANTHROPIC_COMPATIBLE : OPENAI_COMPATIBLE,
             api: baseURL,
             name,
             options: {
@@ -243,6 +287,7 @@ export function DialogOpenAICompatible(props: Props = {}) {
         },
         disabled_providers: nextDisabled,
       })
+      await globalSDK.client.global.dispose()
 
       return { name }
     },
@@ -286,6 +331,26 @@ export function DialogOpenAICompatible(props: Props = {}) {
         .finally(() => setIsFetching(false))
       return
     }
+    if (compatible() === "anthropic" && !hasFetched()) {
+      if (!validateForm()) return
+      if (!form.modelID.trim()) {
+        setForm("err", "modelID", language.t("provider.custom.error.required"))
+        showToast({
+          variant: "error",
+          title: language.t("common.requestFailed"),
+          description: language.t("provider.openaiCompatible.error.fetchFirst"),
+        })
+        return
+      }
+      saveMutation.mutate([
+        {
+          id: form.modelID.trim(),
+          name: form.modelID.trim(),
+          selected: true,
+        },
+      ])
+      return
+    }
     if (!hasFetched()) {
       showToast({
         variant: "error",
@@ -321,7 +386,9 @@ export function DialogOpenAICompatible(props: Props = {}) {
         <form onSubmit={save} class="px-2.5 pb-6 flex flex-col gap-6">
           <Show when={!apiKeyOnly()}>
             <p class="text-14-regular text-text-base">
-              {language.t("provider.openaiCompatible.description")}
+              {compatible() === "anthropic"
+                ? language.t("provider.anthropicCompatible.description")
+                : language.t("provider.openaiCompatible.description")}
             </p>
           </Show>
 
@@ -352,6 +419,16 @@ export function DialogOpenAICompatible(props: Props = {}) {
                 onChange={(v) => setField("baseURL", v)}
                 validationState={form.err.baseURL ? "invalid" : undefined}
                 error={form.err.baseURL}
+              />
+            </Show>
+            <Show when={compatible() === "anthropic"}>
+              <TextField
+                label={language.t("provider.custom.models.id.label")}
+                placeholder={language.t("provider.custom.models.id.placeholder")}
+                value={form.modelID}
+                onChange={(v) => setField("modelID", v)}
+                validationState={form.err.modelID ? "invalid" : undefined}
+                error={form.err.modelID}
               />
             </Show>
             <TextField
@@ -426,7 +503,11 @@ export function DialogOpenAICompatible(props: Props = {}) {
             type="submit"
             size="large"
             variant="primary"
-            disabled={saveMutation.isPending || isFetching() || (!apiKeyOnly() && !hasFetched())}
+            disabled={
+              saveMutation.isPending ||
+              isFetching() ||
+              (!apiKeyOnly() && !hasFetched() && !(compatible() === "anthropic" && form.modelID.trim()))
+            }
           >
             {saveMutation.isPending
               ? language.t("common.saving")

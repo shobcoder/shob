@@ -6,6 +6,7 @@ import { TerminalPanel } from './TerminalPanel'
 import { BottomTerminalPanel } from './BottomTerminalPanel'
 import { WelcomeScreen } from './WelcomeScreen'
 import { SettingsPage } from './SettingsPage'
+import { MacSidebarRevealRow } from './mac-chrome'
 import { useStore } from '../store'
 import { createFileContext } from '@/context/file'
 import type { FileNode } from '@/types/file-node'
@@ -237,7 +238,15 @@ export function MainView() {
   const [activeTabId, setActiveTabId] = createSignal<string>("review")
   const [terminalTabs, setTerminalTabs] = createSignal<Array<{ id: string; session: Session }>>([])
   const [browserTabOpen, setBrowserTabOpen] = createSignal(false)
-  const [activePage, setActivePage] = createSignal<'workspace' | 'settings'>('workspace')
+  const [activePage, setActivePage] = createSignal<'workspace' | 'settings' | 'home'>('workspace')
+  const [previousPage, setPreviousPage] = createSignal<'workspace' | 'home'>('workspace')
+
+  const goToSettings = () => {
+    const current = activePage()
+    if (current === 'settings') return
+    setPreviousPage(current === 'home' ? 'home' : 'workspace')
+    setActivePage('settings')
+  }
   const [sessionPanelWidth, setSessionPanelWidth] = createSignal(DEFAULT_SESSION_PANEL_WIDTH)
   const [gitChangedFiles, setGitChangedFiles] = createSignal<string[]>([])
   const [gitKinds, setGitKinds] = createSignal<ReadonlyMap<string, DiffKind>>(new Map())
@@ -784,11 +793,22 @@ export function MainView() {
   })
 
   return (
-    <div class="grid h-full min-h-0 max-h-full flex-1 grid-cols-[auto_minmax(0,1fr)] overflow-hidden bg-background text-foreground">
-      <Sidebar
-        onOpenSettingsPage={() => setActivePage('settings')}
-        onOpenWorkspacePage={() => setActivePage('workspace')}
-      />
+    <div
+      class="grid h-full min-h-0 max-h-full flex-1 overflow-hidden bg-background text-foreground"
+      classList={{
+        'grid-cols-[auto_minmax(0,1fr)]': activePage() !== 'settings',
+        'grid-cols-[minmax(0,1fr)]': activePage() === 'settings',
+      }}
+    >
+      {/* Keep the Sidebar mounted to preserve its state, but collapse it on the
+          settings page so settings spans the full window width. */}
+      <div classList={{ contents: activePage() !== 'settings', hidden: activePage() === 'settings' }}>
+        <Sidebar
+          onOpenSettingsPage={goToSettings}
+          onOpenWorkspacePage={() => setActivePage('workspace')}
+          onOpenHomePage={() => setActivePage('home')}
+        />
+      </div>
       <div class="flex h-full min-h-0 max-h-full min-w-0 flex-1 flex-col overflow-hidden bg-background">
         {activePage() === 'workspace' ? (
           <LayoutProvider>
@@ -810,15 +830,18 @@ export function MainView() {
                   </div>
 
                   {projectSessions().length === 0 && (
-                    <div class="h-full min-h-0 min-w-0 flex-1 overflow-hidden">
-                      <WelcomeScreen
-                        projects={projects()}
-                        currentProject={currentProject()}
-                        onOpenFolder={handleOpenFolder}
-                        onCreateSession={handleCreateSession}
-                        onSelectProject={appStore.setCurrentProject}
-                        onToggleFileTree={handleToggleFileTree}
-                      />
+                    <div class="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                      <MacSidebarRevealRow />
+                      <div class="min-h-0 flex-1 overflow-hidden">
+                        <WelcomeScreen
+                          projects={projects()}
+                          currentProject={currentProject()}
+                          onOpenFolder={handleOpenFolder}
+                          onCreateSession={handleCreateSession}
+                          onSelectProject={appStore.setCurrentProject}
+                          onToggleFileTree={handleToggleFileTree}
+                        />
+                      </div>
                     </div>
                   )}
 
@@ -885,8 +908,31 @@ export function MainView() {
               </Show>
             </div>
           </LayoutProvider>
+        ) : activePage() === 'settings' ? (
+          <SettingsPage onGoBack={() => setActivePage(previousPage())} />
         ) : (
-          <SettingsPage />
+          <div class="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            <MacSidebarRevealRow />
+            <div class="min-h-0 flex-1 overflow-hidden">
+              <WelcomeScreen
+                projects={projects()}
+                currentProject={currentProject()}
+                onOpenFolder={handleOpenFolder}
+                onCreateSession={() => {
+                  setActivePage('workspace')
+                  void handleCreateSession()
+                }}
+                onSelectProject={(id) => {
+                  appStore.setCurrentProject(id)
+                  setActivePage('workspace')
+                }}
+                onToggleFileTree={() => {
+                  setActivePage('workspace')
+                  handleToggleFileTree()
+                }}
+              />
+            </div>
+          </div>
         )}
       </div>
     </div>

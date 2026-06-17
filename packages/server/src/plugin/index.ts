@@ -11,6 +11,7 @@ import { CopilotAuthPlugin } from "./github-copilot/copilot"
 import { KiloAuthPlugin } from "./kilo"
 import { AntigravityAuthPlugin } from "./antigravity"
 import { XaiAuthPlugin } from "./xai"
+import { ZaiAuthPlugin } from "./zai"
 import { QoderAuthPlugin } from "./qoder"
 import { CommandCodeAuthPlugin } from "./commandcode"
 import { ClineAuthPlugin } from "./cline"
@@ -58,6 +59,7 @@ export namespace Plugin {
     CodexAuthPlugin,
     AntigravityAuthPlugin,
     XaiAuthPlugin,
+    ZaiAuthPlugin,
     QoderAuthPlugin,
     CommandCodeAuthPlugin,
     ClineAuthPlugin,

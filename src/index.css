@@ -623,6 +623,41 @@ b {
   letter-spacing: 0 !important;
 }
 
+/* Shimmer effect for the currently running session's title */
+.shob-session-shimmer {
+  background: linear-gradient(
+    100deg,
+    var(--text-weak) 0%,
+    var(--text-weak) 35%,
+    var(--text-strong) 50%,
+    var(--text-weak) 65%,
+    var(--text-weak) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: shob-session-shimmer 1.6s linear infinite;
+}
+
+@keyframes shob-session-shimmer {
+  0% {
+    background-position: 150% 0;
+  }
+  100% {
+    background-position: -50% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shob-session-shimmer {
+    animation: none;
+  }
+}
+
+
+
 /* ═══════════════════════════════════════════════════
    WORKSPACE DIVIDER — expand line
    ═══════════════════════════════════════════════════ */
@@ -1303,6 +1338,39 @@ b {
   border-bottom: 0.5px solid color-mix(in srgb, var(--border-weaker-base, var(--border-weak-base)) 42%, transparent);
 }
 
+/* Agent header controls relocated into the window titlebar (Windows/Linux).
+   Keep the title cluster compact so it sits on the left of the 40px bar, and
+   align the right-hand control group to the bar's vertical center. */
+.shob-titlebar #shob-titlebar-left .agent-session-title-cluster {
+  flex: 0 1 auto;
+  min-height: 0;
+  padding: 0;
+}
+
+.shob-titlebar #shob-titlebar-left [data-slot="session-title-child"] {
+  font-size: 13px;
+  font-weight: var(--shob-font-weight-semibold);
+  color: var(--text-strong);
+}
+
+.shob-titlebar-agent-controls {
+  height: 100%;
+}
+
+/* Floating panel controls (Open with / terminal / review) anchored to the
+   agent view's top-right corner. A translucent backdrop keeps the transparent
+   toggle buttons legible when they overlap chat content. */
+.shob-agent-corner-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--background-stronger, var(--background)) 78%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
 .titlebar-icon {
   width: 32px !important;
   height: 24px !important;
@@ -1336,6 +1404,26 @@ b {
 .titlebar-window-close[data-variant="ghost"]:hover:not(:disabled) {
   background-color: var(--destructive) !important;
   color: #fff !important;
+}
+
+/* macOS custom window chrome: draggable regions with non-draggable interactive children.
+   Used by the in-sidebar header and the collapsed-sidebar reveal controls so the window
+   can be moved by its top strips while buttons/inputs stay clickable. */
+.mac-drag-region {
+  -webkit-app-region: drag;
+}
+
+.mac-drag-region button,
+.mac-drag-region a,
+.mac-drag-region input,
+.mac-drag-region select,
+.mac-drag-region textarea,
+.mac-drag-region [role="button"],
+.mac-drag-region [role="menuitem"],
+.mac-drag-region [contenteditable="true"],
+.mac-drag-region [contenteditable=""],
+.mac-drag-region .titlebar-icon {
+  -webkit-app-region: no-drag;
 }
 
 /* Agent timeline: terminal-style animated dots spinner for subagent task rows. */
@@ -1541,6 +1629,49 @@ b {
   font-size: 12px;
   font-weight: var(--agent-font-regular, 400);
   line-height: 1;
+}
+
+/* Minimal branch switcher: plain text trigger, no border/chevron. */
+.agent-header-branch-text {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: min(30vw, 220px);
+  height: 26px;
+  gap: 6px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--terminal-agent-dim, var(--text-weak));
+  font-family: var(--font-family-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: var(--agent-font-regular, 400);
+  line-height: 1;
+  outline: none;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.agent-header-branch-text > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-header-branch-text:hover:not(:disabled),
+.agent-header-branch-text[data-expanded] {
+  background: color-mix(in srgb, var(--surface-raised-base-hover) 60%, transparent);
+  color: var(--text-strong);
+}
+
+.agent-header-branch-text:focus-visible {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ring) 40%, transparent);
+}
+
+.agent-header-branch-text:disabled {
+  pointer-events: none;
+  opacity: 0.6;
 }
 
 .agent-header-branch-group {
@@ -3127,14 +3258,13 @@ html[data-color-scheme="dark"] .agent-terminal-composer-region {
 }
 
 .agent-terminal-prompt-shell {
-  --agent-prompt-input-bg: #151515;
+  --agent-prompt-input-bg: var(--input-base);
   --agent-prompt-control-muted: var(--text-base, #8a8a8a);
   --agent-prompt-control-weak: var(--text-weak, #5d5d5d);
   --agent-prompt-agent-color: var(--text-interactive-base, var(--icon-agent-build-base, #8a8a8a));
 
   min-width: 0;
   text-align: left !important;
-  border: 0 !important;
   border-radius: 22px !important;
   background: var(--agent-prompt-input-bg) !important;
   background-color: var(--agent-prompt-input-bg) !important;
@@ -3150,7 +3280,6 @@ html[data-color-scheme="dark"] .agent-terminal-composer-region {
 }
 
 .agent-terminal-prompt-shell:focus-within {
-  border-color: transparent !important;
   box-shadow: none !important;
 }
 
@@ -3427,7 +3556,7 @@ html[data-color-scheme="dark"] .agent-terminal-composer-region {
 .agent-terminal-prompt .agent-terminal-toolbar [data-action="prompt-model-variant"]:enabled:hover,
 .agent-terminal-prompt .agent-terminal-toolbar [data-action="prompt-model-variant"][data-expanded],
 .agent-terminal-prompt .agent-terminal-toolbar [data-action="prompt-improve"]:enabled:hover {
-  background: #242424 !important;
+  background: var(--surface-base-hover) !important;
 }
 
 .agent-terminal-prompt .agent-terminal-toolbar [data-action="prompt-model"] span,
@@ -3447,13 +3576,13 @@ html[data-color-scheme="dark"] .agent-terminal-composer-region {
   width: 30px !important;
   height: 30px !important;
   border-radius: 999px !important;
-  background: #8d8d8d !important;
-  color: #161616 !important;
+  background: var(--icon-strong-base) !important;
+  color: var(--icon-invert-base) !important;
   box-shadow: none !important;
 }
 
 .agent-terminal-prompt [data-action="prompt-submit"]:enabled:hover {
-  background: #a0a0a0 !important;
+  background: var(--icon-strong-hover) !important;
 }
 
 .agent-terminal-prompt [data-action="prompt-submit"]:enabled:active {
@@ -3466,15 +3595,15 @@ html[data-color-scheme="dark"] .agent-terminal-composer-region {
 }
 
 .agent-terminal-prompt [data-action="prompt-submit"]:disabled {
-  background: #4d4d4d !important;
-  color: #1a1a1a !important;
+  background: var(--icon-strong-disabled) !important;
+  color: var(--icon-invert-base) !important;
   opacity: 1 !important;
 }
 
 .agent-terminal-caret {
-  color: #fff !important;
+  color: var(--text-strong) !important;
   font-weight: 800 !important;
-  text-shadow: 0 0 10px color-mix(in srgb, #fff 22%, transparent);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--text-strong) 22%, transparent);
 }
 
 .agent-terminal-prompt-count {
@@ -3877,7 +4006,7 @@ html[data-color-scheme="dark"] .agent-terminal-composer-region {
 }
 
 .agent-terminal-prompt [data-component="prompt-input"]:focus {
-  caret-color: #fff !important;
+  caret-color: var(--text-strong) !important;
   animation: caret-blink 1.2s ease-in-out infinite;
 }
 

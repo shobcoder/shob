@@ -154,6 +154,7 @@ function assistantError(message: AssistantMessage) {
 }
 
 function isContextPart(part: Part) {
+  if (part.type === "reasoning") return true
   return part.type === "tool" && CONTEXT_GROUP_TOOLS.has(part.tool)
 }
 

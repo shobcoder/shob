@@ -10,7 +10,11 @@ import { useGlobalSync } from "@/context/global-sync"
 import { DialogConnectProvider } from "./dialog-connect-provider"
 import { DialogSelectProvider } from "./dialog-select-provider"
 import { DialogCustomProvider } from "./dialog-custom-provider"
-import { DialogOpenAICompatible, OPENCLAUDE_OPENAI_COMPATIBLE_PRESET } from "./dialog-openai-compatible"
+import {
+  CUSTOM_ANTHROPIC_COMPATIBLE_PRESET,
+  DialogOpenAICompatible,
+  OPENCLAUDE_OPENAI_COMPATIBLE_PRESET,
+} from "./dialog-openai-compatible"
 import { iconNames } from "../../../packages/ui/src/components/provider-icons/types"
 
 type ProviderSource = "env" | "api" | "config" | "custom"
@@ -192,7 +196,7 @@ export const SettingsProviders: Component = () => {
   const isConfigCustom = (providerID: string) => {
     const provider = globalSync.data.config.provider?.[providerID]
     if (!provider) return false
-    if (provider.npm !== "@ai-sdk/openai-compatible") return false
+    if (provider.npm !== "@ai-sdk/openai-compatible" && provider.npm !== "@ai-sdk/anthropic") return false
     if (!provider.models || Object.keys(provider.models).length === 0) return false
     return true
   }
@@ -310,6 +314,24 @@ export const SettingsProviders: Component = () => {
                 tag={language.t("settings.providers.tag.custom")}
                 connectLabel={language.t("common.connect")}
                 onConnect={() => dialog.show(() => <DialogOpenAICompatible />)}
+              />
+            </div>
+
+            <div data-component="anthropic-compatible-section">
+              <SimpleTopActionCard
+                iconId="anthropic"
+                title={CUSTOM_ANTHROPIC_COMPATIBLE_PRESET.name}
+                tag={language.t("settings.providers.tag.custom")}
+                connectLabel={language.t("common.connect")}
+                onConnect={() =>
+                  dialog.show(() => (
+                    <DialogOpenAICompatible
+                      defaults={CUSTOM_ANTHROPIC_COMPATIBLE_PRESET}
+                      iconID="anthropic"
+                      compatible="anthropic"
+                    />
+                  ))
+                }
               />
             </div>
 

@@ -21,7 +21,7 @@ function readSidecarCrash(): string | null {
       fs.unlinkSync(SIDECAR_CRASH_FILE)
       if (content) return content
     }
-  } catch {}
+  } catch { }
   return null
 }
 const HEALTH_POLL_INTERVAL_MS = 100
@@ -32,6 +32,23 @@ const SIDECAR_SERVICE_NAME = "shob-server"
 type StartServerOptions = {
   packaged?: boolean
   serverEntry?: string
+}
+
+function platformDataEnv(): Record<string, string> {
+  if (process.platform !== "darwin") return {}
+  const home = os.homedir()
+  // The server appends its app namespace ("shob") onto each XDG base, so point
+  // the bases at the macOS parent dirs — they resolve to ~/Library/Application
+  // Support/shob (data/config/state) and ~/Library/Caches/shob (cache).
+  const appSupport = path.join(home, "Library", "Application Support")
+  const caches = path.join(home, "Library", "Caches")
+  const defaults: Record<string, string> = {
+    XDG_DATA_HOME: appSupport,
+    XDG_CONFIG_HOME: appSupport,
+    XDG_STATE_HOME: appSupport,
+    XDG_CACHE_HOME: caches,
+  }
+  return Object.fromEntries(Object.entries(defaults).filter(([key]) => !process.env[key]))
 }
 
 export interface ServerInstance {
@@ -138,6 +155,7 @@ async function startPackagedServer(
     cwd: process.cwd(),
     env: {
       ...process.env,
+      ...platformDataEnv(),
       NODE_PATH: nodePath,
       OPENCODE_DISABLE_EMBEDDED_WEB_UI: "true",
     },
@@ -284,6 +302,7 @@ async function startDevServer(
     cwd: projectRoot,
     env: {
       ...process.env,
+      ...platformDataEnv(),
       OPENCODE_DISABLE_EMBEDDED_WEB_UI: "true",
     },
     stdio: ["ignore", "pipe", "pipe"],

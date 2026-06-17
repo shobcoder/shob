@@ -1,4 +1,5 @@
 import type { Session as LocalSession } from "@/types"
+import { nativeApi } from "@/services/native"
 import { sessionTitle } from "./session-title"
 
 const FALLBACK_SESSION_TITLE = "New session"
@@ -108,7 +109,7 @@ export function toLocalShobSession(
     managedWorktreeDirectory: workspaceMode === "worktree" ? workspaceDirectory : null,
     worktreeState: workspaceMode === "worktree" ? "ready" : undefined,
     parentSessionId: session.parentID ?? null,
-    shell: options.shell ?? (globalThis.navigator?.platform?.toLowerCase().includes("win") ? "powershell.exe" : "/bin/sh"),
+    shell: options.shell ?? nativeApi.defaultShell(),
     cliTool: "opencode",
     pendingLaunchCommand: null,
     pinned: options.pinned ?? false,

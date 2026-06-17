@@ -1,12 +1,14 @@
 import { createSignal, onMount, onCleanup, Show, Match, Switch } from "solid-js"
 import { Button } from "@/components/ui/button"
 import { nativeApi } from "@/services/native"
-import { CheckCircle2, AlertCircle, Loader2, Download, RotateCcw, Info } from "lucide-solid"
+import { CheckCircle2, AlertCircle, Loader2, Download, RotateCcw, Info, ExternalLink } from "lucide-solid"
 import { Ico } from "@/components/Ico"
+import { useWindowChrome } from "@/utils/window-chrome"
 
 type AboutStatus = "idle" | "checking" | "up-to-date" | "available" | "downloading" | "error" | "installing" | "dev"
 
 export function SettingsAbout() {
+  const chrome = useWindowChrome()
   const [appName, setAppName] = createSignal("shob")
   const [version, setVersion] = createSignal("")
   const [platform, setPlatform] = createSignal("")
@@ -209,6 +211,9 @@ export function SettingsAbout() {
         <div>
           <h3 class="font-medium text-foreground text-sm">Updates</h3>
           <p class="text-xs text-muted-foreground mt-0.5">Check for new versions, download updates in the background, and restart when ready.</p>
+          <Show when={chrome.isMac() && packaged()}>
+            <p class="text-xs text-muted-foreground mt-1">Automatic updates aren't available on macOS yet — download the latest build from the GitHub Releases page.</p>
+          </Show>
         </div>
 
         {/* Status Display */}
@@ -301,30 +306,46 @@ export function SettingsAbout() {
             </Show>
           </Button>
 
-          <Show when={status() === "available" && !updateDownloaded()}>
-            <Button
-              type="button"
-              size="sm"
-              class="bg-blue-600 hover:bg-blue-500 text-white"
-              disabled={downloadInFlight() || status() === "downloading" || status() === "installing"}
-              onClick={() => void downloadUpdate()}
-            >
-              <Download class="h-3.5 w-3.5 mr-1.5" />
-              Download now
-            </Button>
+          <Show when={chrome.isMac()}>
+            <Show when={status() === "available"}>
+              <Button
+                type="button"
+                size="sm"
+                class="bg-blue-600 hover:bg-blue-500 text-white"
+                onClick={() => void nativeApi.invoke("install_update")}
+              >
+                <ExternalLink class="h-3.5 w-3.5 mr-1.5" />
+                Open Releases page
+              </Button>
+            </Show>
           </Show>
 
-          <Show when={updateDownloaded()}>
-            <Button
-              type="button"
-              size="sm"
-              class="bg-emerald-600 hover:bg-emerald-500 text-white"
-              disabled={installInFlight() || status() === "installing"}
-              onClick={() => void installUpdate()}
-            >
-              <RotateCcw class="h-3.5 w-3.5 mr-1.5" />
-              Restart to install
-            </Button>
+          <Show when={!chrome.isMac()}>
+            <Show when={status() === "available" && !updateDownloaded()}>
+              <Button
+                type="button"
+                size="sm"
+                class="bg-blue-600 hover:bg-blue-500 text-white"
+                disabled={downloadInFlight() || status() === "downloading" || status() === "installing"}
+                onClick={() => void downloadUpdate()}
+              >
+                <Download class="h-3.5 w-3.5 mr-1.5" />
+                Download now
+              </Button>
+            </Show>
+
+            <Show when={updateDownloaded()}>
+              <Button
+                type="button"
+                size="sm"
+                class="bg-emerald-600 hover:bg-emerald-500 text-white"
+                disabled={installInFlight() || status() === "installing"}
+                onClick={() => void installUpdate()}
+              >
+                <RotateCcw class="h-3.5 w-3.5 mr-1.5" />
+                Restart to install
+              </Button>
+            </Show>
           </Show>
         </div>
 

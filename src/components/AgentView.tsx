@@ -1,4 +1,5 @@
-import { createEffect, createMemo, createSignal, ErrorBoundary, For, mapArray, onCleanup, onMount, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, ErrorBoundary, For, mapArray, onCleanup, onMount, Show, type JSX } from "solid-js"
+import { Portal } from "solid-js/web"
 import { PromptInput } from "../shob-ported/prompt-input"
 import {
   sendFollowupDraft,
@@ -15,6 +16,8 @@ import { DataProvider, FileComponentProvider } from "@opencode-ai/ui/context"
 import { AppIcon } from "@opencode-ai/ui/app-icon"
 import { Icon } from "@opencode-ai/ui/icon"
 import { sessionTitle } from "@/utils/session-title"
+import { MacSidebarReveal } from "./mac-chrome"
+import { useWindowChrome } from "@/utils/window-chrome"
 import { createSessionComposerState } from "@/shob-ported/composer/session-composer-state"
 import { SessionQuestionDock } from "@/shob-ported/composer/session-question-dock"
 import { SessionPermissionDock } from "@/shob-ported/composer/session-permission-dock"
@@ -605,7 +608,10 @@ function AgentHeaderPanelControls(props: { projectPath?: string }) {
         aria-label="Toggle terminal panel"
         aria-pressed={isTerminalPanelOpen()}
       >
-        <Icon name="panel-bottom" size="normal" />
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" class="shrink-0">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2" />
+          <line x1="21" y1="9" x2="3" y2="9" stroke="currentColor" stroke-miterlimit="10" stroke-width="2" />
+        </svg>
       </Button>
       <Button
         variant="ghost"
@@ -615,7 +621,14 @@ function AgentHeaderPanelControls(props: { projectPath?: string }) {
         aria-label="Toggle review panel"
         aria-pressed={isReviewVisible()}
       >
-        <Icon name="panel-right" size="normal" />
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" class="shrink-0">
+          <path
+            fill="currentColor"
+            fill-rule="evenodd"
+            clip-rule="evenodd"
+            d="M3.25 1A2.25 2.25 0 001 3.25v9.5A2.25 2.25 0 003.25 15h9.5A2.25 2.25 0 0015 12.75v-9.5A2.25 2.25 0 0012.75 1h-9.5zM2.5 3.25a.75.75 0 01.75-.75h1.8v11h-1.8a.75.75 0 01-.75-.75v-9.5zM6.45 13.5h6.3a.75.75 0 00.75-.75v-9.5a.75.75 0 00-.75-.75h-6.3v11z"
+          />
+        </svg>
       </Button>
     </div>
   )
@@ -693,21 +706,16 @@ function BranchSwitcher(props: { projectPath?: string; currentBranch: string; on
 
   return (
     <DropdownMenu open={branchMenuOpen()} onOpenChange={handleBranchMenuOpenChange} placement="bottom-end" gutter={7}>
-      <div class="agent-header-branch-group">
-        <div class="agent-header-branch" title={`Current branch: ${props.currentBranch}`} aria-label={`Current branch: ${props.currentBranch}`}>
-          <Icon name="branch" size="small" />
-          <span>{props.currentBranch}</span>
-        </div>
-        <DropdownMenuTrigger
-          class="agent-header-branch-trigger"
-          title="Switch branch"
-          aria-label="Choose git branch"
-          disabled={!projectPath() || Boolean(switchingBranch())}
-          onClick={(event: MouseEvent) => event.stopPropagation()}
-        >
-          <ChevronDown size={15} strokeWidth={2.25} class="shrink-0" />
-        </DropdownMenuTrigger>
-      </div>
+      <DropdownMenuTrigger
+        class="agent-header-branch-text"
+        title={`Current branch: ${props.currentBranch}`}
+        aria-label="Switch git branch"
+        disabled={!projectPath() || Boolean(switchingBranch())}
+        onClick={(event: MouseEvent) => event.stopPropagation()}
+      >
+        <Icon name="branch" size="small" />
+        <span>{props.currentBranch}</span>
+      </DropdownMenuTrigger>
       <DropdownMenuContent class="agent-header-branch-menu w-[260px] rounded-xl border border-border-weak-base bg-surface-raised-base/95 p-1.5 text-[13px] shadow-2xl backdrop-blur">
         <div class="agent-header-branch-search-wrap">
           <input
@@ -904,6 +912,17 @@ function AgentViewInner(props: AgentViewProps) {
     }))
   }
   const title = createMemo(() => currentLocalSession()?.name || sessionTitle(info()?.title) || "New session")
+  const windowChrome = useWindowChrome()
+  // On macOS with a collapsed sidebar the header hosts the reveal controls, which
+  // already supply the traffic-light inset — so drop the header's own left padding.
+  const collapsedHeaderPadLeft = () =>
+    windowChrome.isMac() && !windowChrome.sidebarVisible() ? "0px" : undefined
+  // On Windows/Linux the custom window titlebar hosts the header controls via portals.
+  // (On macOS there is no custom titlebar, so the in-view header is kept instead.)
+  const [titlebarLeftEl, setTitlebarLeftEl] = createSignal<HTMLElement | null>(null)
+  onMount(() => {
+    setTitlebarLeftEl(document.getElementById("shob-titlebar-left"))
+  })
   const statusInfo = createMemo<SessionStatus>(() => {
     const sessionID = activeSessionId()
     return sessionID ? sync.data.session_status[sessionID] ?? idleStatus : idleStatus
@@ -1694,6 +1713,65 @@ function AgentViewInner(props: AgentViewProps) {
     })
   }
 
+  // Shared header content, rendered either inside the in-view strip (macOS) or
+  // portalled into the window titlebar (Windows/Linux).
+  const renderTitleCluster = (): JSX.Element => (
+    <div class="agent-session-title-cluster flex min-w-0 flex-1 items-center gap-2">
+      <h1 data-slot="session-title-child" class="max-w-[min(56vw,620px)] truncate text-[13px] font-semibold text-text-strong">
+        {title()}
+      </h1>
+      <Show when={currentLocalSession()?.pinned}>
+        <Pin size={12} class="shrink-0 fill-current text-text-weaker" />
+      </Show>
+      <DropdownMenu open={sessionMenuOpen()} onOpenChange={setSessionMenuOpen} placement="bottom-start" gutter={4}>
+        <DropdownMenuTrigger
+          class="agent-session-menu-trigger flex size-7 shrink-0 items-center justify-center rounded-lg text-text-weak transition-colors hover:text-text-strong data-expanded:text-text-strong"
+          title="Chat actions"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <MoreHorizontal size={15} />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent class="w-[210px] rounded-lg border border-border-weak-base bg-surface-raised-base/95 p-1.5 text-[13px] shadow-2xl backdrop-blur">
+          <DropdownMenuItem
+            class="gap-2 rounded-md px-2 py-1.5 text-[13px] text-text-base focus:bg-surface-raised-base-hover"
+            onClick={(e: MouseEvent) => runSessionMenuAction(e, togglePinChat)}
+          >
+            <Pin size={14} class={currentLocalSession()?.pinned ? "fill-current" : ""} />
+            {currentLocalSession()?.pinned ? "Unpin chat" : "Pin chat"}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            class="gap-2 rounded-md px-2 py-1.5 text-[13px] text-text-base focus:bg-surface-raised-base-hover"
+            onClick={(e: MouseEvent) => runSessionMenuAction(e, openRenameDialog)}
+          >
+            <Pencil size={14} />
+            Rename chat
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            class="gap-2 rounded-md px-2 py-1.5 text-[13px] text-text-base focus:bg-surface-raised-base-hover"
+            onClick={(e: MouseEvent) => runSessionMenuAction(e, () => void copySessionAsMarkdown())}
+          >
+            <Copy size={14} />
+            Copy as Markdown
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <Show when={activeSessionId()}>
+        {(id) => <SessionContextUsage sessionId={id()} onClick={openContextUsage} />}
+      </Show>
+    </div>
+  )
+
+  const renderBranchSwitcher = (): JSX.Element => (
+    <>
+      <Show when={currentBranchName()}>
+        {(branch) => <BranchSwitcher projectPath={activeProjectPath()} currentBranch={branch()} onBranchChanged={setCurrentBranchName} />}
+      </Show>
+      <Show when={currentLocalSession()?.workspaceMode === "worktree" && !currentBranchName()}>
+        <Button size="small" variant="ghost" onClick={createBranchHere}>Create branch here</Button>
+      </Show>
+    </>
+  )
+
   return (
     <DataProvider
       data={sync.data}
@@ -1815,6 +1893,11 @@ function AgentViewInner(props: AgentViewProps) {
           }}
         >
           <div class="agent-terminal-scroll-frame relative min-h-0 flex-1 overflow-hidden">
+            <div class="shob-agent-corner-controls pointer-events-none absolute right-3 top-2 z-40 flex items-center justify-end">
+              <div class="shob-agent-corner-toolbar pointer-events-auto">
+                <AgentHeaderPanelControls projectPath={activeProjectPath()} />
+              </div>
+            </div>
             <div
               class="pointer-events-none absolute bottom-6 left-1/2 z-[60] -translate-x-1/2 transition-all duration-200 ease-out"
               classList={{
@@ -1863,65 +1946,31 @@ function AgentViewInner(props: AgentViewProps) {
                   when={isNewSession()}
                   fallback={
                     <>
-                <div
-                  data-session-title
-                  class="agent-terminal-title sticky top-0 z-30 w-full px-3 md:px-4"
-                >
-                  <div class="flex w-full items-center gap-2.5">
-                    <div class="agent-session-title-cluster flex min-w-0 flex-1 items-center gap-2">
-                      <h1 data-slot="session-title-child" class="max-w-[min(56vw,620px)] truncate text-[13px] font-semibold text-text-strong">
-                        {title()}
-                      </h1>
-                      <Show when={currentLocalSession()?.pinned}>
-                        <Pin size={12} class="shrink-0 fill-current text-text-weaker" />
-                      </Show>
-                      <DropdownMenu open={sessionMenuOpen()} onOpenChange={setSessionMenuOpen} placement="bottom-start" gutter={4}>
-                        <DropdownMenuTrigger
-                          class="agent-session-menu-trigger flex size-7 shrink-0 items-center justify-center rounded-lg text-text-weak transition-colors hover:text-text-strong data-expanded:text-text-strong"
-                          title="Chat actions"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <MoreHorizontal size={15} />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent class="w-[210px] rounded-lg border border-border-weak-base bg-surface-raised-base/95 p-1.5 text-[13px] shadow-2xl backdrop-blur">
-                          <DropdownMenuItem
-                            class="gap-2 rounded-md px-2 py-1.5 text-[13px] text-text-base focus:bg-surface-raised-base-hover"
-                            onClick={(e: MouseEvent) => runSessionMenuAction(e, togglePinChat)}
-                          >
-                            <Pin size={14} class={currentLocalSession()?.pinned ? "fill-current" : ""} />
-                            {currentLocalSession()?.pinned ? "Unpin chat" : "Pin chat"}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            class="gap-2 rounded-md px-2 py-1.5 text-[13px] text-text-base focus:bg-surface-raised-base-hover"
-                            onClick={(e: MouseEvent) => runSessionMenuAction(e, openRenameDialog)}
-                          >
-                            <Pencil size={14} />
-                            Rename chat
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            class="gap-2 rounded-md px-2 py-1.5 text-[13px] text-text-base focus:bg-surface-raised-base-hover"
-                            onClick={(e: MouseEvent) => runSessionMenuAction(e, () => void copySessionAsMarkdown())}
-                          >
-                            <Copy size={14} />
-                            Copy as Markdown
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      <Show when={activeSessionId()}>
-                        {(id) => <SessionContextUsage sessionId={id()} onClick={openContextUsage} />}
-                      </Show>
-                    </div>
-                    <div class="ml-auto flex shrink-0 items-center gap-2">
-                      <Show when={currentBranchName()}>
-                        {(branch) => <BranchSwitcher projectPath={activeProjectPath()} currentBranch={branch()} onBranchChanged={setCurrentBranchName} />}
-                      </Show>
-                      <Show when={currentLocalSession()?.workspaceMode === "worktree" && !currentBranchName()}>
-                        <Button size="small" variant="ghost" onClick={createBranchHere}>Create branch here</Button>
-                      </Show>
-                      <AgentHeaderPanelControls projectPath={activeProjectPath()} />
+                <Show when={windowChrome.isMac()}>
+                  <div
+                    data-session-title
+                    class="agent-terminal-title sticky top-0 z-30 w-full px-3 md:px-4 mac-drag-region"
+                    style={{ "padding-left": collapsedHeaderPadLeft() }}
+                  >
+                    <div class="flex w-full items-center gap-2.5">
+                      <MacSidebarReveal />
+                      {renderTitleCluster()}
+                      <div class="ml-auto flex shrink-0 items-center gap-2">
+                        {renderBranchSwitcher()}
+                      </div>
                     </div>
                   </div>
-                </div>
+                </Show>
+                <Show when={!windowChrome.isMac() && titlebarLeftEl()}>
+                  {(el) => (
+                    <Portal mount={el()}>
+                      <div class="shob-titlebar-agent-controls flex min-w-0 items-center gap-2">
+                        {renderTitleCluster()}
+                        {renderBranchSwitcher()}
+                      </div>
+                    </Portal>
+                  )}
+                </Show>
 
                 <div
                   ref={setContentRef}
@@ -1940,17 +1989,26 @@ function AgentViewInner(props: AgentViewProps) {
                   }
                 >
                   <div ref={setContentRef} class="agent-terminal-new-session-stage">
-                    <div class="agent-terminal-new-session-header sticky top-0 z-30 w-full px-1 md:px-1.5">
-                      <div class="flex w-full items-center justify-end gap-1.5">
-                        <Show when={currentBranchName()}>
-                          {(branch) => <BranchSwitcher projectPath={activeProjectPath()} currentBranch={branch()} onBranchChanged={setCurrentBranchName} />}
-                        </Show>
-                        <Show when={currentLocalSession()?.workspaceMode === "worktree" && !currentBranchName()}>
-                          <Button size="small" variant="ghost" onClick={createBranchHere}>Create branch here</Button>
-                        </Show>
-                        <AgentHeaderPanelControls projectPath={activeProjectPath()} />
+                    <Show when={windowChrome.isMac()}>
+                      <div
+                        class="agent-terminal-new-session-header sticky top-0 z-30 w-full px-1 md:px-1.5 mac-drag-region"
+                        style={{ "padding-left": collapsedHeaderPadLeft() }}
+                      >
+                        <div class="flex w-full items-center justify-end gap-1.5">
+                          <MacSidebarReveal class="mr-auto" />
+                          {renderBranchSwitcher()}
+                        </div>
                       </div>
-                    </div>
+                    </Show>
+                    <Show when={!windowChrome.isMac() && titlebarLeftEl()}>
+                      {(el) => (
+                        <Portal mount={el()}>
+                          <div class="shob-titlebar-agent-controls flex min-w-0 items-center gap-2">
+                            {renderBranchSwitcher()}
+                          </div>
+                        </Portal>
+                      )}
+                    </Show>
                     <div class="agent-terminal-new-session relative z-10 w-full">
                       <Show
                         when={worktreePreparation()}

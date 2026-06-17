@@ -1,6 +1,6 @@
-import { Clock, FolderOpen, PanelLeftOpen, Plus } from "lucide-solid"
+import { Archive, FolderOpen, PanelLeftOpen, Plus } from "lucide-solid"
 import { createMemo } from "solid-js"
-import shobIcon from "../assets/icon/shob.png"
+import logoImage from "../assets/icon/logo.png"
 import type { Project } from "../types"
 
 interface WelcomeScreenProps {
@@ -12,27 +12,6 @@ interface WelcomeScreenProps {
   onToggleFileTree: () => void
 }
 
-const formatProjectActivity = (project: Project) => {
-  const latestActivity = Math.max(
-    ...project.sessions.map((session) => session.lastActiveAt ?? session.createdAt ?? 0),
-    0,
-  )
-
-  if (latestActivity <= 0) return "New"
-
-  const diffMinutes = Math.floor(Math.max(0, Date.now() - latestActivity) / 60000)
-  if (diffMinutes < 1) return "Now"
-  if (diffMinutes < 60) return `${diffMinutes}m`
-
-  const diffHours = Math.floor(diffMinutes / 60)
-  if (diffHours < 24) return `${diffHours}h`
-
-  const diffDays = Math.floor(diffHours / 24)
-  return `${diffDays}d`
-}
-
-const projectLabel = (project: Project) => project.name.trim() || "Untitled"
-
 export function WelcomeScreen({
   projects,
   currentProject,
@@ -41,103 +20,52 @@ export function WelcomeScreen({
   onSelectProject,
   onToggleFileTree,
 }: WelcomeScreenProps) {
-  const recentProjects = createMemo(() => {
-    return [...projects].sort((left, right) => {
-      const leftActivity = Math.max(...left.sessions.map((session) => session.lastActiveAt ?? session.createdAt ?? 0), 0)
-      const rightActivity = Math.max(...right.sessions.map((session) => session.lastActiveAt ?? session.createdAt ?? 0), 0)
-      return rightActivity - leftActivity
-    })
-  })
-
   return (
-    <div class="h-full overflow-y-auto bg-background text-foreground">
-      <div class="mx-auto flex min-h-full w-full max-w-6xl items-center justify-center px-6 py-12 sm:px-10 lg:px-14">
-        <main class="grid w-full items-center gap-10 text-center lg:grid-cols-[minmax(0,1fr)_minmax(190px,260px)_minmax(0,1fr)] lg:gap-12 lg:text-left">
-          <section class="mx-auto flex w-full max-w-[300px] flex-col items-center gap-5 lg:mx-0 lg:items-start lg:justify-self-end">
-            <div class="space-y-3">
-              <h1 class="text-[38px] font-light uppercase leading-none tracking-[0.24em] text-foreground sm:text-[46px]">
-                Shob
-              </h1>
-              <p class="max-w-[270px] text-[13px] leading-5 text-muted-foreground">
-                Keep projects, sessions, and context ready for focused AI work.
-              </p>
-            </div>
+    <div class="h-full min-h-screen w-full overflow-y-auto bg-background text-foreground flex flex-col items-center justify-center p-6 sm:p-10">
+      <div class="w-full max-w-[800px] m-auto flex flex-col items-center justify-center">
+        {/* Logo */}
+        <img src={logoImage} alt="Logo" class="w-full max-w-[320px] sm:max-w-[420px] mx-auto -mb-6 sm:-mb-10 object-contain" />
 
-            <div class="flex w-full max-w-[260px] flex-col gap-2" aria-label="Start">
-              <button
-                type="button"
-                onClick={() => void onOpenFolder()}
-                class="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-[8px] border border-border/70 bg-white/[0.04] px-4 text-[14px] font-medium text-foreground transition hover:border-border hover:bg-white/[0.07]"
-              >
-                <FolderOpen class="h-4 w-4 shrink-0" stroke-width={1.8} />
-                <span class="truncate">Open project</span>
-              </button>
-              <div class="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => void onCreateSession()}
-                  disabled={!currentProject}
-                  class="inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-[8px] border border-border/55 bg-transparent px-2.5 text-[13px] font-medium text-foreground/85 transition hover:border-border hover:bg-white/[0.04] hover:text-foreground disabled:cursor-not-allowed disabled:border-border/30 disabled:text-muted-foreground/55 disabled:hover:bg-transparent"
-                >
-                  <Plus class="h-3.5 w-3.5 shrink-0" stroke-width={1.8} />
-                  <span class="truncate">Session</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={onToggleFileTree}
-                  disabled={!currentProject}
-                  class="inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-[8px] border border-border/55 bg-transparent px-2.5 text-[13px] font-medium text-foreground/85 transition hover:border-border hover:bg-white/[0.04] hover:text-foreground disabled:cursor-not-allowed disabled:border-border/30 disabled:text-muted-foreground/55 disabled:hover:bg-transparent"
-                >
-                  <PanelLeftOpen class="h-3.5 w-3.5 shrink-0" stroke-width={1.8} />
-                  <span class="truncate">Explorer</span>
-                </button>
-              </div>
-            </div>
-          </section>
+        {/* 3 Cards */}
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 w-full place-content-center">
+          {/* Card 1: Open project */}
+          <button
+            type="button"
+            onClick={() => void onOpenFolder()}
+            class="group flex flex-col justify-center items-center gap-3 text-center bg-card/50 hover:bg-accent/50 border border-border/50 hover:border-border rounded-2xl p-5 sm:p-6 h-[140px] sm:h-[160px] transition-all"
+          >
+            <FolderOpen class="h-6 w-6 text-muted-foreground group-hover:text-foreground transition-colors" stroke-width={1.5} />
+            <span class="text-[14px] sm:text-[15px] font-medium tracking-wide text-muted-foreground group-hover:text-foreground transition-colors">Open project</span>
+          </button>
 
-          <figure class="mx-auto flex w-[min(58vw,260px)] flex-col items-center justify-center lg:justify-self-center">
-            <img src={shobIcon} alt="" class="w-[62%] rounded-[7px]" />
-          </figure>
+          {/* Card 2: Create Session */}
+          <button
+            type="button"
+            onClick={() => void onCreateSession()}
+            disabled={!currentProject}
+            class="group flex flex-col justify-center items-center gap-3 text-center bg-card/50 hover:bg-accent/50 border border-border/50 hover:border-border rounded-2xl p-5 sm:p-6 h-[140px] sm:h-[160px] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-card/50 disabled:hover:border-border/50"
+          >
+            <Plus class="h-6 w-6 text-muted-foreground group-hover:text-foreground transition-colors" stroke-width={1.5} />
+            <span class="text-[14px] sm:text-[15px] font-medium tracking-wide text-muted-foreground group-hover:text-foreground transition-colors">Create session</span>
+          </button>
 
-          <section class="mx-auto w-full max-w-[330px] lg:mx-0 lg:justify-self-start">
-            <div class="mb-4 space-y-2">
-              <div class="flex items-center justify-center gap-2 lg:justify-start">
-                <Clock class="h-3.5 w-3.5 text-muted-foreground" stroke-width={1.8} />
-                <h2 class="text-[12px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Recent</h2>
-              </div>
-              <p class="text-[13px] leading-5 text-muted-foreground">
-                Return to the projects you were working on.
-              </p>
-            </div>
-            {recentProjects().length === 0 ? (
-              <p class="text-sm text-muted-foreground">No projects yet. Open one to get started.</p>
-            ) : (
-              <div class="flex flex-col gap-1">
-                {recentProjects().map((project) => {
-                  const isCurrent = project.id === currentProject?.id
+          {/* Card 3: Explorer */}
+          <button
+            type="button"
+            onClick={onToggleFileTree}
+            disabled={!currentProject}
+            class="group flex flex-col justify-center items-center gap-3 text-center bg-card/50 hover:bg-accent/50 border border-border/50 hover:border-border rounded-2xl p-5 sm:p-6 h-[140px] sm:h-[160px] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-card/50 disabled:hover:border-border/50"
+          >
+            <PanelLeftOpen class="h-6 w-6 text-muted-foreground group-hover:text-foreground transition-colors" stroke-width={1.5} />
+            <span class="text-[14px] sm:text-[15px] font-medium tracking-wide text-muted-foreground group-hover:text-foreground transition-colors">Explorer</span>
+          </button>
+        </div>
 
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => onSelectProject(project.id)}
-                      class={`grid w-full grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 rounded-[8px] px-3 py-2.5 text-left transition ${
-                        isCurrent ? "bg-white/[0.05] text-foreground" : "text-foreground/80 hover:bg-white/[0.03] hover:text-foreground"
-                      }`}
-                    >
-                      <span class="truncate text-[15px] font-normal tracking-[0.01em]">{projectLabel(project)}</span>
-                      <span class={`row-span-2 shrink-0 self-center text-[11px] uppercase tracking-[0.18em] ${isCurrent ? "text-foreground/80" : "text-muted-foreground"}`}>
-                        {formatProjectActivity(project)}
-                      </span>
-                      <span class={`truncate font-mono text-[12px] ${isCurrent ? "text-zinc-400" : "text-muted-foreground"}`}>
-                        {project.path}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </section>
-        </main>
+        {/* Below text */}
+        <div class="mt-10 sm:mt-14 flex items-center gap-2.5 text-muted-foreground text-[13px] tracking-wide">
+          <Archive class="h-4 w-4 opacity-80" stroke-width={1.5} />
+          <span>{projects.length} {projects.length === 1 ? "project" : "projects"} ready</span>
+        </div>
       </div>
     </div>
   )

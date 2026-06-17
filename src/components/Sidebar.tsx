@@ -1,5 +1,5 @@
 import { createEffect, createMemo, createSignal, For, Match, onCleanup, onMount, Show, Switch } from "solid-js"
-import { Check, FolderOpen, MoreHorizontal, Pencil, Pin, Plus, Search, Settings, SquarePen, X } from "lucide-solid"
+import { Check, FolderOpen, MoreHorizontal, Pencil, Pin, Plus, Search, Settings, SquarePen, X, Home } from "lucide-solid"
 import {
   DragDropProvider,
   DragDropSensors,
@@ -11,6 +11,7 @@ import {
   useSortableContext,
 } from "@thisbeyond/solid-dnd"
 import { nativeApi } from "../services/native"
+import { MacSidebarHeader } from "./mac-chrome"
 import { useStore } from "../store"
 import type { Project } from "../types"
 import { ResizeHandle } from "@/shob-ported/resize-handle"
@@ -206,7 +207,7 @@ const PinnedSessionRow = (props: {
       title={`${props.hit.session.name} · ${props.hit.project.name}`}
       onClick={() => props.onSelect(props.hit.project.id, props.hit.session.id)}
     >
-      <span class="shob-sidebar-main-label min-w-0 truncate text-[13px] font-normal leading-4">{props.hit.session.name}</span>
+      <span class={`shob-sidebar-main-label min-w-0 truncate text-[13px] font-normal leading-4 ${isWorking() ? "shob-session-shimmer" : ""}`}>{props.hit.session.name}</span>
       <span class="flex min-w-7 items-center justify-end">
         <Switch
           fallback={
@@ -337,6 +338,8 @@ function FolderSection(props: {
   onToggleProjectPin: (projectId: string) => void | Promise<void>
   isOpen: boolean
   onToggleProjectOpen: (projectId: string) => void
+  showAllSessions: boolean
+  onToggleShowAllSessions: (projectId: string) => void
   hidePinnedSessions?: boolean
 }) {
   const globalSync = useGlobalSync()
@@ -344,7 +347,6 @@ function FolderSection(props: {
   const notification = useNotification()
   const permission = usePermission()
 
-  const [showAllSessions, setShowAllSessions] = createSignal(false)
   const [projectMenuOpen, setProjectMenuOpen] = createSignal(false)
   const [renameProjectOpen, setRenameProjectOpen] = createSignal(false)
   const [renameProjectValue, setRenameProjectValue] = createSignal(props.project.name)
@@ -507,7 +509,7 @@ function FolderSection(props: {
   const sessionTree = (sessionId: string) => sessionsByParent().map.get(sessionId) ?? []
   const rootSessions = createMemo(() => sessionsByParent().map.get(sessionsByParent().ROOT) ?? [])
   const visibleRootSessions = createMemo(() =>
-    showAllSessions() ? rootSessions() : rootSessions().slice(0, PROJECT_SESSION_PREVIEW_LIMIT),
+    props.showAllSessions ? rootSessions() : rootSessions().slice(0, PROJECT_SESSION_PREVIEW_LIMIT),
   )
   const hiddenRootSessionCount = createMemo(() => Math.max(0, rootSessions().length - PROJECT_SESSION_PREVIEW_LIMIT))
 
@@ -540,7 +542,15 @@ function FolderSection(props: {
     </Switch>
   )
 
-  const renderSessionNode = (session: Project["sessions"][number], level = 0) => (
+  // starts at `34 + level*22`px; each guide "spine" aligns perfectly with the left edge of the parent text.
+  const GUIDE_SPINE = (level: number) => 12 + level * 22
+
+  const renderSessionNode = (
+    session: Project["sessions"][number],
+    level = 0,
+    ancestorHasNext: boolean[] = [],
+    hasNextSibling = false,
+  ) => (
     <>
       <div
         class={`group/session relative flex h-8 cursor-pointer items-center justify-between rounded-[5px] pr-3 transition-colors border ${
@@ -548,20 +558,50 @@ function FolderSection(props: {
             ? "bg-surface-raised-strong text-text-strong border-border/70 shadow-sm"
             : "text-text-base hover:bg-surface-raised-base-hover hover:text-text-strong border-transparent"
         }`}
-        style={{ "padding-left": `${34 + level * 14}px` }}
+        style={{ "padding-left": `${34 + level * 22}px` }}
         onClick={() => {
           setConfirmDeleteSessionId(null)
           props.onSelectSession(props.project.id, session.id)
         }}
       >
+        <Show when={level > 0}>
+          {/* Continuing vertical lines for ancestors that still have siblings below. */}
+          {ancestorHasNext.map((continues, index) =>
+            continues ? (
+              <span
+                class="pointer-events-none absolute w-px bg-text-weaker opacity-40"
+                style={{ left: `${GUIDE_SPINE(index + 1)}px`, top: "-2px", height: "36px" }}
+                aria-hidden="true"
+              />
+            ) : null,
+          )}
+          {/* Vertical drop for the current node.
+              If hasNextSibling, it goes all the way through to bridge to the next sibling.
+              If not, it stops exactly where the curve starts. */}
+          <span
+            class="pointer-events-none absolute w-px bg-text-weaker opacity-40"
+            style={{
+              left: `${GUIDE_SPINE(level)}px`,
+              top: "-2px",
+              height: hasNextSibling ? "36px" : "8px"
+            }}
+            aria-hidden="true"
+          />
+          {/* Beautiful sweeping curve for every item, creating a smooth branch effect */}
+          <span
+            class="pointer-events-none absolute border-l border-b border-text-weaker opacity-40 rounded-bl-[10px]"
+            style={{ left: `${GUIDE_SPINE(level)}px`, top: "6px", height: "11px", width: "16px" }}
+            aria-hidden="true"
+          />
+        </Show>
         <div class="min-w-0 flex flex-1 items-center">
           <Show
             when={editingSessionId() === session.id}
             fallback={
               <span
                 class={`shob-sidebar-main-label truncate text-[13px] leading-4 ${
-                  props.activeSessionId === session.id ? "font-medium text-text-strong" : "font-normal text-current"
-                }`}
+                  props.activeSessionId === session.id ? "font-medium text-text-strong" : "font-normal text-text-base group-hover/session:text-text-strong transition-colors"
+                } ${isSessionWorking(session.id) ? "shob-session-shimmer" : ""}`}
                 onDblClick={(e) => {
                   e.stopPropagation()
                   setConfirmDeleteSessionId(null)
@@ -633,7 +673,14 @@ function FolderSection(props: {
         </div>
       </div>
       <For each={sessionTree(session.id)}>
-        {(child) => renderSessionNode(child, level + 1)}
+        {(child, index) =>
+          renderSessionNode(
+            child,
+            level + 1,
+            level === 0 ? [] : [...ancestorHasNext, hasNextSibling],
+            index() < sessionTree(session.id).length - 1,
+          )
+        }
       </For>
     </>
   )
@@ -893,10 +940,10 @@ function FolderSection(props: {
                 class="shob-sidebar-main-label h-8 rounded-[5px] pl-[34px] pr-3 text-left text-[13px] font-normal text-text-weaker transition-colors hover:bg-surface-raised-base-hover hover:text-text-base"
                 onClick={(e) => {
                   e.stopPropagation()
-                  setShowAllSessions((current) => !current)
+                  props.onToggleShowAllSessions(props.project.id)
                 }}
               >
-                {showAllSessions() ? "Show less" : "Show more"}
+                {props.showAllSessions ? "Show less" : "Show more"}
               </button>
             </Show>
           </Show>
@@ -921,6 +968,8 @@ type SortableProjectGroupProps = {
   onToggleProjectPin: (projectId: string) => void | Promise<void>
   isProjectOpen: (projectId: string) => boolean
   onToggleProjectOpen: (projectId: string) => void
+  showsAllSessions: (projectId: string) => boolean
+  onToggleShowAllSessions: (projectId: string) => void
   onReorderProjects: (groupProjectIds: string[], reorderedGroupIds: string[]) => void
 }
 
@@ -966,6 +1015,8 @@ function SortableProjectItems(props: SortableProjectItemsProps) {
           onToggleProjectPin={props.onToggleProjectPin}
           isOpen={props.isProjectOpen(project.id)}
           onToggleProjectOpen={props.onToggleProjectOpen}
+          showAllSessions={props.showsAllSessions(project.id)}
+          onToggleShowAllSessions={props.onToggleShowAllSessions}
           hidePinnedSessions
         />
       )}
@@ -1009,6 +1060,8 @@ function SortableProjectGroup(props: SortableProjectGroupProps) {
             onToggleProjectPin={props.onToggleProjectPin}
             isProjectOpen={props.isProjectOpen}
             onToggleProjectOpen={props.onToggleProjectOpen}
+            showsAllSessions={props.showsAllSessions}
+            onToggleShowAllSessions={props.onToggleShowAllSessions}
             onSortedProjectIdsChange={(nextProjectIds) => setSortedProjectIds(nextProjectIds)}
           />
         </SortableProvider>
@@ -1020,6 +1073,7 @@ function SortableProjectGroup(props: SortableProjectGroupProps) {
 export function Sidebar(props: {
   onOpenSettingsPage?: () => void
   onOpenWorkspacePage?: () => void
+  onOpenHomePage?: () => void
 }) {
   const projects = useStore((s) => s.projects)
   const currentProjectId = useStore((s) => s.currentProjectId)
@@ -1045,6 +1099,7 @@ export function Sidebar(props: {
   const [searchQuery, setSearchQuery] = createSignal("")
   const [sidebarNow, setSidebarNow] = createSignal(Date.now())
   const [projectOpenById, setProjectOpenById] = createSignal<Record<string, boolean>>({})
+  const [showAllSessionsByProjectId, setShowAllSessionsByProjectId] = createSignal<Record<string, boolean>>({})
   let sidebarResizeFrame: number | undefined
   let pendingSidebarWidth: number | undefined
 
@@ -1061,11 +1116,19 @@ export function Sidebar(props: {
   const unpinnedProjects = createMemo(() => projects().filter((project) => !project.pinned))
 
   const isProjectOpen = (projectId: string) => projectOpenById()[projectId] ?? true
+  const showsAllSessions = (projectId: string) => showAllSessionsByProjectId()[projectId] ?? false
 
   const handleToggleProjectOpen = (projectId: string) => {
     setProjectOpenById((current) => ({
       ...current,
       [projectId]: !(current[projectId] ?? true),
+    }))
+  }
+
+  const handleToggleShowAllSessions = (projectId: string) => {
+    setShowAllSessionsByProjectId((current) => ({
+      ...current,
+      [projectId]: !(current[projectId] ?? false),
     }))
   }
 
@@ -1149,6 +1212,13 @@ export function Sidebar(props: {
         detail: { isSidebarVisible: isSidebarVisible() },
       }),
     )
+  })
+
+  // Publish the live sidebar width (0 when collapsed) so the window titlebar can
+  // align the agent header items with the left edge of the agent view.
+  createEffect(() => {
+    const width = isSidebarVisible() ? sidebarWidth() : 0
+    document.documentElement.style.setProperty("--shob-sidebar-width", `${width}px`)
   })
 
   onMount(() => {
@@ -1347,8 +1417,15 @@ export function Sidebar(props: {
           onResizeEnd={endSidebarResize}
         />
         <div class="shob-sidebar relative flex h-full min-h-0 max-h-full flex-col overflow-hidden bg-background-stronger text-text-base select-none">
+          <MacSidebarHeader />
           <div class="sticky top-0 z-20 shrink-0 bg-background-stronger/95 px-1.5 pb-3 pt-2 backdrop-blur">
             <nav class="flex flex-col gap-0.5">
+              <SidebarActionButton
+                label="Home"
+                title="Go to home"
+                icon={Home}
+                onClick={() => props.onOpenHomePage?.()}
+              />
               <SidebarActionButton
                 label="New session"
                 title="Start a new session"
@@ -1421,6 +1498,8 @@ export function Sidebar(props: {
                     onToggleProjectPin={handleToggleProjectPin}
                     isProjectOpen={isProjectOpen}
                     onToggleProjectOpen={handleToggleProjectOpen}
+                    showsAllSessions={showsAllSessions}
+                    onToggleShowAllSessions={handleToggleShowAllSessions}
                     onReorderProjects={handleReorderProjects}
                   />
                   <SortableProjectGroup
@@ -1437,6 +1516,8 @@ export function Sidebar(props: {
                     onToggleProjectPin={handleToggleProjectPin}
                     isProjectOpen={isProjectOpen}
                     onToggleProjectOpen={handleToggleProjectOpen}
+                    showsAllSessions={showsAllSessions}
+                    onToggleShowAllSessions={handleToggleShowAllSessions}
                     onReorderProjects={handleReorderProjects}
                   />
                 </div>

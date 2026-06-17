@@ -451,7 +451,7 @@ export const actions: AppActions = {
         store.availableShells.find((item) => item === store.preferredShell) ??
         store.availableShells[0] ??
         store.preferredShell ??
-        'powershell.exe';
+        nativeApi.defaultShell();
       const installedCliTools = store.cliTools.filter((tool) => tool.installed);
       const selectedCli =
         installedCliTools.find((tool) => tool.id === cliId) ??
@@ -615,25 +615,25 @@ export const actions: AppActions = {
     const normalizedIncoming = sessions
       .filter((session) => session.id?.startsWith('ses'))
       .filter((session) => !session.time?.archived)
-        .map((session): Session => {
-          const normalized = toLocalShobSession(session, {
-            shell: store.preferredShell ?? (process.platform === 'win32' ? 'powershell.exe' : '/bin/sh'),
-            pinned: existingPinned.get(session.id) ?? false,
-            projectDirectory: project.path,
-          });
-          const incomingDirectory = session.directory;
-          const existing = project.sessions.find((item) => item.id === session.id);
-          return {
-            ...normalized,
-            ...existing,
-            name: normalized.name,
-            createdAt: normalized.createdAt,
-            lastActiveAt: normalized.lastActiveAt,
-            workspaceDirectory:
-              incomingDirectory && !sameWorkspaceDirectory(incomingDirectory, project.path)
-                ? incomingDirectory
-                : existingWorkspaceDirectories.get(session.id) ?? null,
-          };
+      .map((session): Session => {
+        const normalized = toLocalShobSession(session, {
+          shell: store.preferredShell ?? nativeApi.defaultShell(),
+          pinned: existingPinned.get(session.id) ?? false,
+          projectDirectory: project.path,
+        });
+        const incomingDirectory = session.directory;
+        const existing = project.sessions.find((item) => item.id === session.id);
+        return {
+          ...normalized,
+          ...existing,
+          name: normalized.name,
+          createdAt: normalized.createdAt,
+          lastActiveAt: normalized.lastActiveAt,
+          workspaceDirectory:
+            incomingDirectory && !sameWorkspaceDirectory(incomingDirectory, project.path)
+              ? incomingDirectory
+              : existingWorkspaceDirectories.get(session.id) ?? null,
+        };
       });
     const normalized = preserveIsolatedWorkspaceSessions(project.path, normalizedIncoming, project.sessions)
       .sort((left, right) => {

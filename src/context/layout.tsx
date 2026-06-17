@@ -243,7 +243,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           opened: false,
         },
         review: {
-          diffStyle: "split" as ReviewDiffStyle,
+          diffStyle: "unified" as ReviewDiffStyle,
           panelOpened: false,
         },
         fileTree: {
@@ -633,7 +633,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         },
       },
       review: {
-        diffStyle: createMemo(() => store.review?.diffStyle ?? "split"),
+        diffStyle: createMemo(() => store.review?.diffStyle ?? "unified"),
         setDiffStyle(diffStyle: ReviewDiffStyle) {
           if (!store.review) {
             setStore("review", { diffStyle, panelOpened: true })
@@ -768,7 +768,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         function setReviewPanelOpened(next: boolean) {
           const current = store.review
           if (!current) {
-            setStore("review", { diffStyle: "split" as ReviewDiffStyle, panelOpened: next })
+            setStore("review", { diffStyle: "unified" as ReviewDiffStyle, panelOpened: next })
             return
           }
 

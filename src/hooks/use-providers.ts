@@ -6,12 +6,14 @@ export const popularProviders = [
   "github-copilot",
   "openai",
   "xai",
+  "zai-coding-plan",
   "google",
   "antigravity",
   "cline",
   "openrouter",
   "kilo",
   "vercel",
+  "mimo-free",
 ]
 const popularProviderSet = new Set(popularProviders)
 

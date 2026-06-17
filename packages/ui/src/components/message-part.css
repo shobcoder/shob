@@ -741,8 +741,8 @@
     color: var(--text-strong);
   }
 
-  > [data-slot="collapsible-trigger"][aria-expanded="true"] [data-slot="context-tool-group-trigger"] {
-    color: var(--text-strong);
+  &[data-status="running"] > [data-slot="collapsible-trigger"] {
+    display: none;
   }
 }
 

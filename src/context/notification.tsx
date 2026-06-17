@@ -12,7 +12,7 @@ import { base64Encode } from "@opencode-ai/util/encode"
 import { decode64 } from "@/utils/base64"
 import { EventSessionError } from "@opencode-ai/sdk/v2"
 import { Persist, persisted } from "@/utils/persist"
-import { playSoundById } from "@/utils/sound"
+import { playSoundById, playTaskSound } from "@/utils/sound"
 
 type NotificationBase = {
   directory?: string
@@ -233,8 +233,9 @@ export const { use: useNotification, provider: NotificationProvider } = createSi
         if (!session) return
         if (session.parentID) return
 
-        if (settings.sounds.agentEnabled()) {
-          void playSoundById(settings.sounds.agent())
+        // Play the selected "task complete" sound (if enabled) on every completed turn.
+        if (settings.sounds.taskCompleteEnabled()) {
+          void playTaskSound(settings.sounds.taskComplete(), settings.sounds.taskCompleteVolume())
         }
 
         append({
@@ -245,6 +246,7 @@ export const { use: useNotification, provider: NotificationProvider } = createSi
           session: sessionID,
         })
 
+        // Surface a desktop notification when a task completes (if enabled).
         const href = `/${base64Encode(directory)}/session/${sessionID}`
         if (settings.notifications.agent()) {
           void platform.notify(language.t("notification.session.responseReady.title"), session.title ?? sessionID, href)

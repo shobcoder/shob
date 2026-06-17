@@ -819,6 +819,7 @@ function ContextTools(props: {
   createEffect((prev?: boolean) => {
     const active = busy()
     if (active && !prev && !open()) setOpen(true)
+    if (!active && prev && open()) setOpen(false)
     return active
   })
 
@@ -898,22 +899,25 @@ export function AssistantPartGroupView(props: {
           return (
             <Show when={refs().length > 0}>
               {(() => {
-                const toolsList = createMemo(() => {
+                const allPartsList = createMemo(() => {
                   return refs()
                     .map((ref) => part().get(ref.messageID)?.get(ref.partID))
-                    .filter((item): item is ToolPart => item?.type === "tool")
+                    .filter((item): item is PartType => !!item)
+                })
+                const allToolsList = createMemo(() => {
+                  return allPartsList().filter((item): item is ToolPart => item.type === "tool")
                 })
                 const stats = createMemo(() => {
-                  return statsOf(toolsList())
+                  return statsOf(allToolsList())
                 })
                 return (
-                  <Show when={toolsList().length > 0}>
+                  <Show when={allPartsList().length > 0}>
                     <ContextTools
                       running={() => stats().running}
                       generating={() => !!props.generating}
                       span={() => stats().span}
-                      count={toolsList().length}
-                      tools={toolsList()}
+                      count={allToolsList().length}
+                      tools={allToolsList()}
                     >
                       <div data-component="context-tool-batch">
                         <For each={refs()}>
@@ -921,7 +925,7 @@ export function AssistantPartGroupView(props: {
                             const message = createMemo(() => msgs().get(ref.messageID))
                             const item = createMemo(() => part().get(ref.messageID)?.get(ref.partID))
                             return (
-                              <Show when={message() && item() && isContextGroupTool(item()!)}>
+                              <Show when={message() && item()}>
                                 <Part
                                   part={item()!}
                                   message={message()!}

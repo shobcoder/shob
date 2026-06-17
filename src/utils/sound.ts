@@ -1,6 +1,9 @@
 let files: Record<string, () => Promise<string>> | undefined
 let loads: Record<SoundID, () => Promise<string>> | undefined
 
+// Bundled "task complete" sound. Vite resolves this to a hashed asset URL.
+import doneSoundUrl from "@/assets/audio/done.mp3"
+
 function getFiles() {
   if (files) return files
   files = import.meta.glob("../../../ui/src/assets/audio/*.aac", { import: "default" }) as Record<
@@ -86,10 +89,11 @@ export function soundSrc(id: string | undefined) {
   return next
 }
 
-export function playSound(src: string | undefined) {
+export function playSound(src: string | undefined, volume = 1) {
   if (typeof Audio === "undefined") return
   if (!src) return
   const audio = new Audio(src)
+  audio.volume = Math.max(0, Math.min(1, volume))
   audio.play().catch(() => undefined)
   return () => {
     audio.pause()
@@ -97,6 +101,25 @@ export function playSound(src: string | undefined) {
   }
 }
 
-export function playSoundById(id: string | undefined) {
-  return soundSrc(id).then((src) => playSound(src))
+export function playSoundById(id: string | undefined, volume = 1) {
+  return soundSrc(id).then((src) => playSound(src, volume))
+}
+
+// "task complete" sound — default volume kept low.
+export const DONE_VOLUME = 0.3
+
+export function playDoneSound(volume = DONE_VOLUME) {
+  return playSound(doneSoundUrl, volume)
+}
+
+// Options shown in the "task complete" sound picker. Only real, bundled sounds
+// belong here — "done" is the default mp3 that ships with the app.
+export const TASK_SOUND_OPTIONS = [{ id: "done", label: "Done (default)" }] as const
+
+export type TaskSoundID = (typeof TASK_SOUND_OPTIONS)[number]["id"]
+
+// Play whichever task-complete sound is selected, at the given volume.
+export function playTaskSound(id: string | undefined, volume = DONE_VOLUME) {
+  if (!id || id === "done") return playDoneSound(volume)
+  return playSoundById(id, volume)
 }

@@ -48,13 +48,15 @@ export const DialogManageModels: Component = () => {
         </div>
       }
       description={language.t("dialog.model.manage.description")}
+      transition
       action={
-        <Button class="h-7 -my-1 text-14-medium" icon="plus-small" tabIndex={-1} onClick={handleConnectProvider}>
-          {language.t("command.provider.connect")}
+        <Button variant="ghost" class="h-8 px-4 text-xs font-medium !rounded-full !bg-[rgba(128,128,128,0.1)] hover:!bg-[rgba(128,128,128,0.2)] !border !border-[rgba(128,128,128,0.2)] backdrop-blur-md shadow-sm transition-all" tabIndex={-1} onClick={handleConnectProvider}>
+          Connect
         </Button>
       }
     >
       <List
+        class="mt-2 h-[400px] [&_[data-slot=list-search-wrapper]]:border-b [&_[data-slot=list-search-wrapper]]:border-border-base [&_[data-slot=list-search]]:!bg-transparent [&_[data-slot=list-search]]:!rounded-none [&_[data-slot=list-search]]:!p-3 [&_[data-slot=list-scroll]]:p-2 [&_[data-slot=list-group]]:mt-1 [&_[data-slot=list-header]]:!static [&_[data-slot=list-header]]:!bg-transparent [&_[data-slot=list-header]]:!py-1.5 [&_[data-slot=list-header]]:!px-2 [&_[data-slot=list-header]]:!text-xs [&_[data-slot=list-header]]:font-medium [&_[data-slot=list-header]]:text-text-weak [&_[data-slot=list-item]]:rounded-sm [&_[data-slot=list-item][data-active=true]]:!bg-surface-raised [&_[data-slot=list-item][data-active=true]]:text-text-strong"
         search={{ placeholder: language.t("dialog.model.search.placeholder"), autofocus: true }}
         emptyMessage={language.t("dialog.model.empty")}
         key={(x) => `${x?.provider?.id}:${x?.id}`}

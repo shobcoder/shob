@@ -223,7 +223,14 @@ export namespace Config {
       })
       if (!md) continue
 
-      const patterns = ["/.opencode/command/", "/.opencode/commands/", "/command/", "/commands/"]
+      const patterns = [
+        "/.shob/command/",
+        "/.shob/commands/",
+        "/.opencode/command/",
+        "/.opencode/commands/",
+        "/command/",
+        "/commands/",
+      ]
       const file = rel(item, patterns) ?? path.basename(item)
       const name = trim(file)
 
@@ -262,7 +269,14 @@ export namespace Config {
       })
       if (!md) continue
 
-      const patterns = ["/.opencode/agent/", "/.opencode/agents/", "/agent/", "/agents/"]
+      const patterns = [
+        "/.shob/agent/",
+        "/.shob/agents/",
+        "/.opencode/agent/",
+        "/.opencode/agents/",
+        "/agent/",
+        "/agents/",
+      ]
       const file = rel(item, patterns) ?? path.basename(item)
       const agentName = trim(file)
 
@@ -1171,13 +1185,15 @@ export namespace Config {
   export class Service extends Context.Service<Service, Interface>()("@opencode/Config") {}
 
   function globalConfigFile() {
-    const candidates = ["opencode.jsonc", "opencode.json", "config.json"].map((file) =>
+    // Prefer an existing shob file, then legacy opencode/config files; when none
+    // exist yet, create shob.json so new global config is written under shob's identity.
+    const candidates = ["shob.jsonc", "shob.json", "opencode.jsonc", "opencode.json", "config.json"].map((file) =>
       path.join(Global.Path.config, file),
     )
     for (const file of candidates) {
       if (existsSync(file)) return file
     }
-    return candidates[0]
+    return path.join(Global.Path.config, "shob.json")
   }
 
   function patchJsonc(input: string, patch: unknown, path: string[] = []): string {
@@ -1327,6 +1343,9 @@ export namespace Config {
             mergeDeep(yield* loadFile(path.join(Global.Path.config, "config.json"))),
             mergeDeep(yield* loadFile(path.join(Global.Path.config, "opencode.json"))),
             mergeDeep(yield* loadFile(path.join(Global.Path.config, "opencode.jsonc"))),
+            // shob files merge last so they override any legacy opencode config.
+            mergeDeep(yield* loadFile(path.join(Global.Path.config, "shob.json"))),
+            mergeDeep(yield* loadFile(path.join(Global.Path.config, "shob.jsonc"))),
           )
 
           const legacy = path.join(Global.Path.config, "config")
@@ -1447,8 +1466,8 @@ export namespace Config {
           const deps: Promise<void>[] = []
 
           for (const dir of unique(directories)) {
-            if (dir.endsWith(".opencode") || dir === Flag.OPENCODE_CONFIG_DIR) {
-              for (const file of ["opencode.json", "opencode.jsonc"]) {
+            if (ConfigPaths.PROJECT_DIRS.some((d) => dir.endsWith(d)) || dir === Flag.OPENCODE_CONFIG_DIR) {
+              for (const file of ConfigPaths.CONFIG_NAMES.flatMap((name) => [`${name}.json`, `${name}.jsonc`])) {
                 const source = path.join(dir, file)
                 log.debug(`loading config from ${source}`)
                 yield* merge(source, yield* loadFile(source))
@@ -1521,7 +1540,7 @@ export namespace Config {
           }
 
           if (existsSync(managedDir)) {
-            for (const file of ["opencode.json", "opencode.jsonc"]) {
+            for (const file of ConfigPaths.CONFIG_NAMES.flatMap((name) => [`${name}.json`, `${name}.jsonc`])) {
               const source = path.join(managedDir, file)
               yield* merge(source, yield* loadFile(source), "global")
             }

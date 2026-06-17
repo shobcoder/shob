@@ -215,16 +215,24 @@ export const DialogSelectModel: Component<{ provider?: string; model?: ModelStat
   return (
     <Dialog
       title={language.t("dialog.model.select.title")}
+      transition
       action={
-        <Button class="h-7 -my-1 text-14-medium" icon="plus-small" tabIndex={-1} onClick={provider}>
-          {language.t("command.provider.connect")}
+        <Button variant="ghost" class="h-8 px-4 text-xs font-medium !rounded-full !bg-[rgba(128,128,128,0.1)] hover:!bg-[rgba(128,128,128,0.2)] !border !border-[rgba(128,128,128,0.2)] backdrop-blur-md shadow-sm transition-all" tabIndex={-1} onClick={provider}>
+          Connect
         </Button>
       }
     >
-      <ModelList provider={props.provider} model={props.model} onSelect={() => dialog.close()} />
-      <Button variant="ghost" class="ml-3 mt-5 mb-6 text-text-base self-start" onClick={manage}>
-        {language.t("dialog.model.manage")}
-      </Button>
+      <ModelList
+        provider={props.provider}
+        model={props.model}
+        onSelect={() => dialog.close()}
+        class="mt-2 h-[350px] [&_[data-slot=list-search-wrapper]]:border-b [&_[data-slot=list-search-wrapper]]:border-border-base [&_[data-slot=list-search]]:!bg-transparent [&_[data-slot=list-search]]:!rounded-none [&_[data-slot=list-search]]:!p-3 [&_[data-slot=list-scroll]]:p-2 [&_[data-slot=list-group]]:mt-1 [&_[data-slot=list-header]]:!static [&_[data-slot=list-header]]:!bg-transparent [&_[data-slot=list-header]]:!py-1.5 [&_[data-slot=list-header]]:!px-2 [&_[data-slot=list-header]]:!text-xs [&_[data-slot=list-header]]:font-medium [&_[data-slot=list-header]]:text-text-weak [&_[data-slot=list-item]]:rounded-sm [&_[data-slot=list-item][data-active=true]]:!bg-surface-raised [&_[data-slot=list-item][data-active=true]]:text-text-strong"
+      />
+      <div class="p-2 border-t border-border-base">
+        <Button variant="ghost" class="h-8 px-2 text-sm font-medium w-full justify-start text-text-weak hover:text-text-strong hover:bg-surface-raised" onClick={manage}>
+          {language.t("dialog.model.manage")}
+        </Button>
+      </div>
     </Dialog>
   )
 }

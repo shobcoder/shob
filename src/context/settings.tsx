@@ -16,6 +16,9 @@ export interface SoundSettings {
   permissions: string
   errorsEnabled: boolean
   errors: string
+  taskCompleteEnabled: boolean
+  taskComplete: string
+  taskCompleteVolume: number
 }
 
 export interface Settings {
@@ -117,6 +120,9 @@ const defaultSettings: Settings = {
     permissions: "staplebops-02",
     errorsEnabled: true,
     errors: "nope-03",
+    taskCompleteEnabled: true,
+    taskComplete: "done",
+    taskCompleteVolume: 0.3,
   },
 }
 
@@ -268,6 +274,24 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
         errors: withFallback(() => store.sounds?.errors, defaultSettings.sounds.errors),
         setErrors(value: string) {
           setStore("sounds", "errors", value)
+        },
+        taskCompleteEnabled: withFallback(
+          () => store.sounds?.taskCompleteEnabled,
+          defaultSettings.sounds.taskCompleteEnabled,
+        ),
+        setTaskCompleteEnabled(value: boolean) {
+          setStore("sounds", "taskCompleteEnabled", value)
+        },
+        taskComplete: withFallback(() => store.sounds?.taskComplete, defaultSettings.sounds.taskComplete),
+        setTaskComplete(value: string) {
+          setStore("sounds", "taskComplete", value)
+        },
+        taskCompleteVolume: withFallback(
+          () => store.sounds?.taskCompleteVolume,
+          defaultSettings.sounds.taskCompleteVolume,
+        ),
+        setTaskCompleteVolume(value: number) {
+          setStore("sounds", "taskCompleteVolume", Math.max(0, Math.min(1, value)))
         },
       },
     }

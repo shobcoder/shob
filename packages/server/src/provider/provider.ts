@@ -59,6 +59,7 @@ import { Installation } from "../installation"
 import { ModelID, ProviderID } from "./schema"
 import { ProviderError } from "./error"
 import { buildClineHeaders } from "../plugin/cline"
+import { createMimoFreeFetch, MIMO_CHAT_URL } from "./mimo-free/fetch"
 
 export namespace Provider {
   const log = Log.create({ service: "provider" })
@@ -897,6 +898,15 @@ export namespace Provider {
           },
         }
       }),
+      "mimo-free": () =>
+        Effect.succeed({
+          autoload: true,
+          options: {
+            apiKey: "mimo-free",
+            baseURL: MIMO_CHAT_URL,
+            fetch: createMimoFreeFetch(),
+          },
+        }),
       qoder: () =>
         Effect.succeed({
           autoload: false,
@@ -1593,6 +1603,14 @@ export namespace Provider {
 
       const list = Effect.fn("Provider.list")(() => InstanceState.use(state, (s) => s.providers))
 
+      function normalizeAnthropicCompatibleBaseURL(value: string) {
+        const url = value.replace(/\/+$/, "")
+        if (/\/v1\/messages$/i.test(url)) return url.replace(/\/messages$/i, "")
+        if (/\/messages$/i.test(url)) return url.replace(/\/messages$/i, "")
+        if (/\/v1$/i.test(url)) return url
+        return `${url}/v1`
+      }
+
       async function resolveSDK(model: Model, s: State) {
         try {
           using _ = log.time("getSDK", {
@@ -1600,6 +1618,10 @@ export namespace Provider {
           })
           const provider = s.providers[model.providerID]
           const options = { ...provider.options }
+          const isAnthropicCompatibleProvider =
+            model.api.npm === "@ai-sdk/anthropic" &&
+            model.providerID !== "anthropic" &&
+            model.providerID !== "google-vertex-anthropic"
 
           if (model.providerID === "google-vertex" && !model.api.npm.includes("@ai-sdk/openai-compatible")) {
             delete options.fetch
@@ -1630,8 +1652,16 @@ export namespace Provider {
             return url
           })
 
-          if (baseURL !== undefined) options["baseURL"] = baseURL
+          if (baseURL !== undefined) {
+            options["baseURL"] = isAnthropicCompatibleProvider ? normalizeAnthropicCompatibleBaseURL(baseURL) : baseURL
+          }
           if (options["apiKey"] === undefined && provider.key) options["apiKey"] = provider.key
+          if (isAnthropicCompatibleProvider && provider.key) {
+            options["headers"] = {
+              ...options["headers"],
+              Authorization: `Bearer ${provider.key}`,
+            }
+          }
           if (model.headers)
             options["headers"] = {
               ...options["headers"],

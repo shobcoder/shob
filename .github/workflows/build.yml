@@ -15,7 +15,10 @@ permissions:
 
 concurrency:
   group: build-${{ github.event.release.tag_name || github.ref_name }}
-  cancel-in-progress: true
+  # Never cancel an in-progress release build. Cancelling mid-build (e.g. a
+  # newer push to main) surfaces as "The operation was canceled" on whatever
+  # step is active (often the cache restore). Let started builds finish.
+  cancel-in-progress: false
 
 jobs:
   prepare-release:
@@ -258,7 +261,9 @@ jobs:
 
           gh release view $tag --repo "$env:GITHUB_REPOSITORY" *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --repo "$env:GITHUB_REPOSITORY" --title $tag --notes "Automated release $tag"
+            # --generate-notes builds the changelog from every commit/PR title
+            # since the previous tag, so the release lists all the commit titles.
+            gh release create $tag --repo "$env:GITHUB_REPOSITORY" --title $tag --generate-notes
           }
 
           foreach ($file in $files) {
