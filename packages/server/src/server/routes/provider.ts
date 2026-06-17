@@ -14,7 +14,7 @@ import { Log } from "../../util/log"
 
 const log = Log.create({ service: "server" })
 
-const OpenAICompatibleFetchedModel = z.object({
+const CompatibleFetchedModel = z.object({
   id: z.string(),
   name: z.string().optional(),
 })
@@ -28,6 +28,40 @@ function isGitlawbOpenGateway(baseURL: string) {
   } catch {
     return false
   }
+}
+
+function normalizeAnthropicCompatibleBaseURL(value: string) {
+  const url = value.trim().replace(/\/+$/, "")
+  if (/\/v1\/messages$/i.test(url)) return url.replace(/\/messages$/i, "")
+  if (/\/messages$/i.test(url)) return url.replace(/\/messages$/i, "")
+  if (/\/v1$/i.test(url)) return url
+  return `${url}/v1`
+}
+
+function parseCompatibleModels(input: unknown) {
+  const list =
+    typeof input === "object" && input !== null && Array.isArray((input as { data?: unknown }).data)
+      ? (input as { data: unknown[] }).data
+      : Array.isArray(input)
+        ? input
+        : undefined
+
+  if (!list) return
+
+  return list
+    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+    .map((item) => {
+      const id = typeof item.id === "string" ? item.id : typeof item.name === "string" ? item.name : undefined
+      if (!id) return
+      const name =
+        typeof item.display_name === "string"
+          ? item.display_name
+          : typeof item.name === "string" && item.name !== id
+            ? item.name
+            : undefined
+      return name ? { id, name } : { id }
+    })
+    .filter((item): item is { id: string; name?: string } => item !== undefined)
 }
 
 async function fetchGitlawbOpenGatewayCatalog() {
@@ -117,7 +151,7 @@ export const ProviderRoutes = lazy(() =>
               "application/json": {
                 schema: resolver(
                   z.object({
-                    data: z.array(OpenAICompatibleFetchedModel),
+                    data: z.array(CompatibleFetchedModel),
                   }),
                 ),
               },
@@ -178,7 +212,7 @@ export const ProviderRoutes = lazy(() =>
 
         const data = (() => {
           try {
-            return JSON.parse(text) as { data?: unknown }
+            return JSON.parse(text) as unknown
           } catch {
             return undefined
           }
@@ -186,20 +220,90 @@ export const ProviderRoutes = lazy(() =>
         if (!data) {
           return c.json({ error: "Invalid JSON response from API" }, 400)
         }
-        if (!Array.isArray(data.data)) {
+        const models = parseCompatibleModels(data)
+        if (!models) {
           return c.json({ error: "Invalid response format from API" }, 400)
         }
 
-        return c.json({
-          data: data.data
-            .filter((item): item is { id: string; name?: string } => {
-              return typeof item === "object" && item !== null && typeof (item as { id?: unknown }).id === "string"
-            })
-            .map((item) => ({
-              id: item.id,
-              name: typeof item.name === "string" ? item.name : undefined,
-            })),
+        return c.json({ data: models })
+      },
+    )
+    .post(
+      "/anthropic-compatible/models",
+      describeRoute({
+        summary: "Fetch Anthropic-compatible models",
+        description: "Fetch model IDs from an Anthropic-compatible provider's /models endpoint.",
+        operationId: "provider.anthropicCompatible.models",
+        responses: {
+          200: {
+            description: "Fetched models",
+            content: {
+              "application/json": {
+                schema: resolver(
+                  z.object({
+                    data: z.array(CompatibleFetchedModel),
+                  }),
+                ),
+              },
+            },
+          },
+          ...errors(400),
+        },
+      }),
+      validator(
+        "json",
+        z.object({
+          baseURL: z.string(),
+          apiKey: z.string(),
+          headers: z.record(z.string(), z.string()).optional(),
+        }),
+      ),
+      async (c) => {
+        const input = c.req.valid("json")
+        const baseURL = normalizeAnthropicCompatibleBaseURL(input.baseURL)
+        if (!/^https?:\/\//.test(baseURL)) {
+          return c.json({ error: "Base URL must start with http:// or https://" }, 400)
+        }
+
+        const response = await fetch(`${baseURL}/models`, {
+          headers: {
+            Accept: "application/json",
+            "anthropic-version": "2023-06-01",
+            "x-api-key": input.apiKey,
+            Authorization: `Bearer ${input.apiKey}`,
+            ...(input.headers ?? {}),
+          },
+        }).catch((error) => {
+          throw new Error(error instanceof Error ? error.message : String(error))
         })
+
+        const text = await response.text()
+        if (!response.ok) {
+          return c.json(
+            {
+              error: `Failed to fetch models: ${response.status} ${response.statusText}`,
+              body: text,
+            },
+            400,
+          )
+        }
+
+        const data = (() => {
+          try {
+            return JSON.parse(text) as unknown
+          } catch {
+            return undefined
+          }
+        })()
+        if (!data) {
+          return c.json({ error: "Invalid JSON response from API" }, 400)
+        }
+        const models = parseCompatibleModels(data)
+        if (!models) {
+          return c.json({ error: "Invalid response format from API" }, 400)
+        }
+
+        return c.json({ data: models })
       },
     )
     .get(

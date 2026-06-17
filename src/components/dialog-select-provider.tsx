@@ -8,8 +8,13 @@ import { ProviderIcon } from "@opencode-ai/ui/provider-icon"
 import { DialogConnectProvider } from "./shob-settings/dialog-connect-provider"
 import { useLanguage } from "@/context/language"
 import { DialogCustomProvider } from "./shob-settings/dialog-custom-provider"
+import {
+  CUSTOM_ANTHROPIC_COMPATIBLE_PRESET,
+  DialogOpenAICompatible,
+} from "./shob-settings/dialog-openai-compatible"
 
 const CUSTOM_ID = "_custom"
+const ANTHROPIC_COMPATIBLE_ID = "_anthropic_compatible"
 
 export const DialogSelectProvider: Component = () => {
   const dialog = useDialog()
@@ -24,6 +29,7 @@ export const DialogSelectProvider: Component = () => {
     if (id === "openai") return language.t("dialog.provider.openai.note")
     if (id.startsWith("github-copilot")) return language.t("dialog.provider.copilot.note")
     if (id === "opencode-go") return language.t("dialog.provider.opencodeGo.tagline")
+    if (id === ANTHROPIC_COMPATIBLE_ID) return "Custom Anthropic Messages API endpoint"
   }
 
   return (
@@ -35,13 +41,21 @@ export const DialogSelectProvider: Component = () => {
         key={(x) => x?.id}
         items={() => {
           language.locale()
-          return [{ id: CUSTOM_ID, name: customLabel() }, ...providers.all()]
+          return [
+            { id: CUSTOM_ID, name: customLabel() },
+            { id: ANTHROPIC_COMPATIBLE_ID, name: CUSTOM_ANTHROPIC_COMPATIBLE_PRESET.name },
+            ...providers.all(),
+          ]
         }}
         filterKeys={["id", "name"]}
-        groupBy={(x) => (popularProviders.includes(x.id) ? popularGroup() : otherGroup())}
+        groupBy={(x) =>
+          x.id === ANTHROPIC_COMPATIBLE_ID || popularProviders.includes(x.id) ? popularGroup() : otherGroup()
+        }
         sortBy={(a, b) => {
           if (a.id === CUSTOM_ID) return -1
           if (b.id === CUSTOM_ID) return 1
+          if (a.id === ANTHROPIC_COMPATIBLE_ID) return -1
+          if (b.id === ANTHROPIC_COMPATIBLE_ID) return 1
           if (popularProviders.includes(a.id) && popularProviders.includes(b.id))
             return popularProviders.indexOf(a.id) - popularProviders.indexOf(b.id)
           return a.name.localeCompare(b.name)
@@ -58,17 +72,33 @@ export const DialogSelectProvider: Component = () => {
             dialog.show(() => <DialogCustomProvider back="providers" />)
             return
           }
+          if (x.id === ANTHROPIC_COMPATIBLE_ID) {
+            dialog.show(() => (
+              <DialogOpenAICompatible
+                defaults={CUSTOM_ANTHROPIC_COMPATIBLE_PRESET}
+                iconID="anthropic"
+                compatible="anthropic"
+              />
+            ))
+            return
+          }
           dialog.show(() => <DialogConnectProvider provider={x.id} />)
         }}
       >
         {(i) => (
           <div class="px-1.25 w-full flex items-center gap-x-3">
-            <ProviderIcon data-slot="list-item-extra-icon" id={i.id} />
+            <ProviderIcon
+              data-slot="list-item-extra-icon"
+              id={i.id === ANTHROPIC_COMPATIBLE_ID ? "anthropic" : i.id}
+            />
             <span>{i.name}</span>
             <Show when={i.id === "opencode"}>
               <div class="text-14-regular text-text-weak">{language.t("dialog.provider.opencode.tagline")}</div>
             </Show>
             <Show when={i.id === CUSTOM_ID}>
+              <Tag>{language.t("settings.providers.tag.custom")}</Tag>
+            </Show>
+            <Show when={i.id === ANTHROPIC_COMPATIBLE_ID}>
               <Tag>{language.t("settings.providers.tag.custom")}</Tag>
             </Show>
             <Show when={i.id === "opencode"}>
