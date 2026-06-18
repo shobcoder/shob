@@ -36,6 +36,7 @@ import { useKV } from "../../context/kv"
 import { useTextareaKeybindings } from "../textarea-keybindings"
 import { DialogSkill } from "../dialog-skill"
 import { InlineSpinner } from "../spinner"
+import { SPINNER_VERBS } from "../../util/verbs"
 
 export type PromptProps = {
   sessionID?: string
@@ -97,6 +98,106 @@ export function Prompt(props: PromptProps) {
   const [auto, setAuto] = createSignal<AutocompleteRef>()
   const currentProviderLabel = createMemo(() => local.model.parsed().provider)
   const hasRightContent = createMemo(() => Boolean(props.right))
+
+  const [spinnerVerb, setSpinnerVerb] = createSignal(SPINNER_VERBS[randomIndex(SPINNER_VERBS.length)] ?? "Working")
+  createEffect(() => {
+    const timer = setInterval(() => {
+       if (status().type === "busy") {
+           setSpinnerVerb(SPINNER_VERBS[randomIndex(SPINNER_VERBS.length)] ?? "Working")
+       }
+    }, 2500)
+    onCleanup(() => clearInterval(timer))
+  })
+
+  const activeActivity = createMemo(() => {
+    if (status().type !== "busy") return undefined
+    const msgs = sync.data.message[props.sessionID ?? ""]
+    if (!msgs || msgs.length === 0) return `${spinnerVerb()}...`
+    const last = msgs[msgs.length - 1]
+    if (last?.role !== "assistant") return `${spinnerVerb()}...`
+    
+    const parts = sync.data.part[last.id] ?? []
+    const runningTools = parts.filter((p: any) => p.type === "tool" && p.state?.status === "running")
+    if (runningTools.length > 0) {
+      const lastTool: any = runningTools[runningTools.length - 1]
+      const input = lastTool.state?.input || {}
+      
+      switch (lastTool.tool) {
+        case "bash": {
+          const cmd = (input.command || input.description || "...") as string
+          const short = cmd.length > 30 ? cmd.slice(0, 30) + "..." : cmd
+          return `Running command \`${short}\``
+        }
+        case "read": {
+          const path = (input.filePath || input.path || "") as string
+          const file = path.split(/[/\\]/).pop() || "file"
+          return `Reading \`${file}\``
+        }
+        case "edit":
+        case "write": {
+          const path = (input.filePath || input.path || "") as string
+          const file = path.split(/[/\\]/).pop() || "file"
+          return `Editing \`${file}\``
+        }
+        case "list":
+        case "glob":
+        case "grep":
+        case "codesearch":
+        case "websearch":
+          return `Searching...`
+      }
+      return `Running \`${lastTool.tool}\`...`
+    }
+    return `${spinnerVerb()}...`
+  })
+
+  const currentBusyMessage = createMemo(() => {
+    if (!props.sessionID) return undefined
+    const messages = sync.data.message[props.sessionID]
+    if (!messages) return undefined
+    return messages.findLast((m): m is AssistantMessage => m.role === "assistant" && !m.time.completed)
+  })
+
+  const [now, setNow] = createSignal(Date.now())
+  createEffect(() => {
+    if (status().type !== "busy") return
+    const interval = setInterval(() => setNow(Date.now()), 1000)
+    onCleanup(() => clearInterval(interval))
+  })
+
+  const busyStartTime = createMemo(() => {
+    const msg = currentBusyMessage()
+    if (msg) return msg.time.created
+    if (!props.sessionID) return undefined
+    const messages = sync.data.message[props.sessionID]
+    if (!messages || messages.length === 0) return undefined
+    return messages[messages.length - 1].time.created
+  })
+
+  const busyDuration = createMemo(() => {
+    const start = busyStartTime()
+    if (!start) return undefined
+    const seconds = Math.floor((now() - start) / 1000)
+    if (seconds < 0) return undefined
+    const m = Math.floor(seconds / 60)
+    const s = seconds % 60
+    if (m > 0) return `${m}m ${s}s`
+    return `${s}s`
+  })
+
+  const busyTokens = createMemo(() => {
+    const msg = currentBusyMessage()
+    if (!msg) return undefined
+    const input = msg.tokens?.input ?? 0
+    const output = msg.tokens?.output ?? 0
+    const reasoning = msg.tokens?.reasoning ?? 0
+    const cacheRead = msg.tokens?.cache?.read ?? 0
+    const cacheWrite = msg.tokens?.cache?.write ?? 0
+    const t = input + output + reasoning + cacheRead + cacheWrite
+    if (t === 0) return undefined
+    if (t > 1000) return `${(t / 1000).toFixed(1)}k`
+    return t.toString()
+  })
 
   function promptModelWarning() {
     toast.show({
@@ -896,7 +997,7 @@ export function Prompt(props: PromptProps) {
           </Show>
         </box>
         <box
-          border={["top", "right", "bottom", "left"]}
+          border={["top", "right", "bottom"]}
           borderColor={theme.border}
         >
           <box
@@ -1114,7 +1215,21 @@ export function Prompt(props: PromptProps) {
                     <InlineSpinner color={theme.textMuted} frames={spinnerDef().frames} interval={40} />
                   </Show>
                 </box>
-                <box flexDirection="row" gap={1} flexShrink={0}>
+                <box flexDirection="column" gap={0} flexShrink={0}>
+                  <box flexDirection="row" gap={1}>
+                    <Show when={status().type === "busy" && activeActivity()}>
+                      <text fg={theme.text}>{activeActivity()}</text>
+                    </Show>
+                    <Show when={status().type === "busy" && busyDuration()}>
+                      <text fg={theme.textMuted}>
+                        ({busyDuration()}
+                        <Show when={busyTokens()}>
+                          {" · ↑ "}{busyTokens()} tokens
+                        </Show>
+                        )
+                      </text>
+                    </Show>
+                  </box>
                   {(() => {
                     const retry = createMemo(() => {
                       const s = status()

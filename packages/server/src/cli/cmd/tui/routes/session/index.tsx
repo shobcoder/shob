@@ -321,13 +321,35 @@ export function Session() {
 
   const local = useLocal()
 
+  // Collect the subagent session IDs spawned from this session. Prefer the
+  // synced child sessions, but fall back to the `task` tool parts, which always
+  // carry the spawned subagent's sessionID (the same source the AGENT tool uses
+  // on click). The fallback matters because `children()` reads from
+  // `sync.data.session`, which can lag behind the rendered task parts — that gap
+  // is why Ctrl+X ↓ ("view subagents") could silently do nothing.
+  function subagentIDs() {
+    const fromSessions = children()
+      .filter((x) => !!x.parentID)
+      .map((x) => x.id)
+    if (fromSessions.length) return fromSessions
+
+    const ids: string[] = []
+    for (const message of messages()) {
+      for (const part of sync.data.part[message.id] ?? []) {
+        if (part.type !== "tool" || part.tool !== "task") continue
+        const sessionID = (part.state as any)?.metadata?.sessionId
+        if (sessionID && !ids.includes(sessionID)) ids.push(sessionID)
+      }
+    }
+    return ids
+  }
+
   function moveFirstChild() {
-    if (children().length === 1) return
-    const next = children().find((x) => !!x.parentID)
+    const next = subagentIDs()[0]
     if (next) {
       navigate({
         type: "session",
-        sessionID: next.id,
+        sessionID: next,
       })
     }
   }
@@ -515,7 +537,7 @@ export function Session() {
       },
       onSelect: async (dialog) => {
         const status = sync.data.session_status?.[route.sessionID]
-        if (status?.type !== "idle") await sdk.client.session.abort({ sessionID: route.sessionID }).catch(() => {})
+        if (status?.type !== "idle") await sdk.client.session.abort({ sessionID: route.sessionID }).catch(() => { })
         const revert = session()?.revert?.messageID
         const message = messages().findLast((x) => (!revert || x.id < revert) && x.role === "user")
         if (!message) return
@@ -1224,9 +1246,7 @@ function UserMessage(props: {
       <Show when={text()}>
         <box
           id={props.message.id}
-          border={["left"]}
-          borderColor={color()}
-          customBorderChars={SplitBorder.customBorderChars}
+          border={[]}
           marginTop={props.index === 0 ? 0 : 1}
         >
           <box
@@ -1237,19 +1257,19 @@ function UserMessage(props: {
               setHover(false)
             }}
             onMouseUp={props.onMouseUp}
-            paddingTop={props.index === 0 ? 0 : 1}
+            paddingTop={0}
             paddingLeft={1}
             flexShrink={0}
           >
             <box flexDirection="row" gap={1}>
-              <text fg={color()} bold>
+              <text fg={color()}>
                 you
               </text>
               <Show when={hover() || metadataVisible()}>
                 <text fg={theme.textMuted}>{Locale.todayTimeOrDateTime(props.message.time.created)}</text>
               </Show>
             </box>
-            <box paddingTop={1}>
+            <box paddingTop={0}>
               <text fg={theme.text}>{text()?.text}</text>
             </box>
             <Show when={files().length}>
@@ -1356,7 +1376,7 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
       <Switch>
         <Match when={props.last || final() || props.message.error?.name === "MessageAbortedError"}>
           <box paddingLeft={1} marginTop={1}>
-            <text marginTop={1}>
+            <text>
               <span
                 style={{
                   fg:
@@ -1427,7 +1447,7 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
   const { theme, syntax } = useTheme()
   return (
     <Show when={props.part.text.trim()}>
-      <box id={"text-" + props.part.id} paddingLeft={1} marginTop={1} flexShrink={0}>
+      <box id={"text-" + props.part.id} paddingLeft={1} marginTop={0} flexShrink={0}>
         <Switch>
           <Match when={Flag.SHOB_EXPERIMENTAL_MARKDOWN}>
             <markdown
