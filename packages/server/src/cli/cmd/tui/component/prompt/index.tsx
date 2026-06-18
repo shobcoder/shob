@@ -5,7 +5,6 @@ import { fileURLToPath } from "url"
 import { Filesystem } from "@/util/filesystem"
 import { useLocal } from "@tui/context/local"
 import { useTheme } from "@tui/context/theme"
-import { EmptyBorder, SplitBorder } from "@tui/component/border"
 import { useSDK } from "@tui/context/sdk"
 import { useRoute } from "@tui/context/route"
 import { useSync } from "@tui/context/sync"
@@ -879,22 +878,38 @@ export function Prompt(props: PromptProps) {
         promptPartTypeId={() => promptPartTypeId}
       />
       <box ref={(r) => (anchor = r)} visible={props.visible !== false}>
+        <box flexDirection="row" justifyContent="space-between" paddingBottom={1}>
+          <box flexDirection="row" gap={1}>
+            <text fg={highlight()}>{store.mode === "shell" ? "Shell" : "Auto (High)"}</text>
+            <text fg={theme.textMuted}>·</text>
+            <text fg={theme.warning}>{store.mode === "shell" ? "terminal command" : "allow all commands"}</text>
+          </box>
+          <Show when={store.mode === "normal"}>
+            <box flexDirection="row" gap={1}>
+              <text flexShrink={0}>{local.model.parsed().model}</text>
+              <text fg={theme.textMuted}>-</text>
+              <text fg={theme.textMuted}>{currentProviderLabel()}</text>
+              <Show when={showVariant()}>
+                <text fg={theme.textMuted}>[{local.model.variant.current()}]</text>
+              </Show>
+            </box>
+          </Show>
+        </box>
         <box
-          border={["left"]}
-          borderColor={highlight()}
-          customBorderChars={{
-            ...SplitBorder.customBorderChars,
-            bottomLeft: "╹",
-          }}
+          border={["top", "right", "bottom", "left"]}
+          borderColor={theme.border}
         >
           <box
-            paddingLeft={2}
-            paddingRight={2}
-            paddingTop={1}
+            paddingLeft={1}
+            paddingRight={1}
+            flexDirection="row"
             flexShrink={0}
-            backgroundColor={theme.backgroundElement}
             flexGrow={1}
           >
+            <text flexShrink={0} fg={theme.warning}>
+              {store.mode === "shell" ? "!" : "›"}
+            </text>
+            <box width={1} flexShrink={0} />
             <textarea
               placeholder={placeholderText()}
               placeholderColor={theme.textMuted}
@@ -1080,63 +1095,10 @@ export function Prompt(props: PromptProps) {
                 }, 0)
               }}
               onMouseDown={(r: MouseEvent) => r.target?.focus()}
-              focusedBackgroundColor={theme.backgroundElement}
               cursorColor={theme.text}
               syntaxStyle={syntax()}
             />
-            <box flexDirection="row" flexShrink={0} paddingTop={1} gap={1} justifyContent="space-between">
-              <box flexDirection="row" gap={1}>
-                <text fg={highlight()}>
-                  {store.mode === "shell" ? "Shell" : Locale.titlecase(local.agent.current().name)}{" "}
-                </text>
-                <Show when={store.mode === "normal"}>
-                  <box flexDirection="row" gap={1}>
-                    <text flexShrink={0} fg={keybind.leader ? theme.textMuted : theme.text}>
-                      {local.model.parsed().model}
-                    </text>
-                    <text fg={theme.textMuted}>{currentProviderLabel()}</text>
-                    <Show when={showVariant()}>
-                      <text fg={theme.textMuted}>·</text>
-                      <text>
-                        <span style={{ fg: theme.warning, bold: true }}>{local.model.variant.current()}</span>
-                      </text>
-                    </Show>
-                  </box>
-                </Show>
-              </box>
-              <Show when={hasRightContent()}>
-                <box flexDirection="row" gap={1} alignItems="center">
-                  {props.right}
-                </box>
-              </Show>
-            </box>
           </box>
-        </box>
-        <box
-          height={1}
-          border={["left"]}
-          borderColor={highlight()}
-          customBorderChars={{
-            ...EmptyBorder,
-            vertical: theme.backgroundElement.a !== 0 ? "╹" : " ",
-          }}
-        >
-          <box
-            height={1}
-            border={["bottom"]}
-            borderColor={theme.backgroundElement}
-            customBorderChars={
-              theme.backgroundElement.a !== 0
-                ? {
-                    ...EmptyBorder,
-                    horizontal: "▀",
-                  }
-                : {
-                    ...EmptyBorder,
-                    horizontal: " ",
-                  }
-            }
-          />
         </box>
         <box width="100%" flexDirection="row" justifyContent="space-between">
           <Show when={status().type !== "idle"} fallback={props.hint ?? <text />}>

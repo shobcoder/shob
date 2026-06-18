@@ -317,8 +317,9 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
         const mode = pick(kv.get("theme_mode", props.mode))
         draft.mode = lock ?? mode ?? props.mode
         draft.lock = lock
-        const active = config.theme ?? kv.get("theme", "shob")
-        draft.active = typeof active === "string" ? active : "shob"
+        const saved = kv.get("theme")
+        const active = config.theme ?? (saved === "shob" || typeof saved !== "string" ? "system" : saved)
+        draft.active = active
         draft.ready = false
       }),
     )
@@ -421,10 +422,6 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
       }
 
       return resolveTheme(store.themes.shob, store.mode)
-    })
-
-    createEffect(() => {
-      renderer.setBackgroundColor(values().background)
     })
 
     const syntax = createMemo(() => generateSyntax(values()))
@@ -563,7 +560,8 @@ function generateSystem(colors: TerminalColors, mode: "dark" | "light"): ThemeJs
       textMuted,
       selectedListItemText: bg,
 
-      // Background colors - use transparent to respect terminal transparency
+      // Main background is transparent so Shob blends into the user's terminal,
+      // while popups still get panel/menu colors for readability.
       background: transparent,
       backgroundPanel: grays[2],
       backgroundElement: grays[3],
