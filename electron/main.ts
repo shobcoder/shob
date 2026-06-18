@@ -558,7 +558,78 @@ async function revealInFinder(targetPath: string) {
   shell.showItemInFolder(targetPath);
 }
 
-type OpenProjectTarget = "vscode" | "explorer" | "terminal" | "git-bash" | "wsl";
+type OpenProjectTarget = string;
+
+// macOS "Open with" catalog. Each entry maps a stable id to its on-disk app
+// name (used both for detection and `open -a`) and the bundled AppIcon id the
+// renderer should show. Unlike the Windows/Linux path, the menu is built from
+// what's actually installed (detectMacOpenWithApps) rather than a fixed list.
+type MacOpenWithKind = "editor" | "terminal" | "reveal";
+interface MacOpenWithApp {
+  id: string;
+  label: string;
+  icon: string;
+  kind: MacOpenWithKind;
+  appName?: string; // bundle name without ".app"; omitted for reveal (handled specially)
+}
+
+const MAC_OPEN_WITH_CATALOG: MacOpenWithApp[] = [
+  { id: "vscode", label: "VS Code", icon: "vscode", kind: "editor", appName: "Visual Studio Code" },
+  { id: "cursor", label: "Cursor", icon: "cursor", kind: "editor", appName: "Cursor" },
+  { id: "zed", label: "Zed", icon: "zed", kind: "editor", appName: "Zed" },
+  { id: "sublime-text", label: "Sublime Text", icon: "sublime-text", kind: "editor", appName: "Sublime Text" },
+  { id: "xcode", label: "Xcode", icon: "xcode", kind: "editor", appName: "Xcode" },
+  { id: "terminal", label: "Terminal", icon: "terminal", kind: "terminal", appName: "Terminal" },
+  { id: "iterm2", label: "iTerm", icon: "iterm2", kind: "terminal", appName: "iTerm" },
+  { id: "ghostty", label: "Ghostty", icon: "ghostty", kind: "terminal", appName: "Ghostty" },
+  { id: "warp", label: "Warp", icon: "warp", kind: "terminal", appName: "Warp" },
+  { id: "finder", label: "Finder", icon: "finder", kind: "reveal" },
+];
+
+const MAC_APP_DIRS = [
+  "/Applications",
+  "/Applications/Utilities",
+  "/System/Applications",
+  "/System/Applications/Utilities",
+  path.join(os.homedir(), "Applications"),
+];
+
+function macAppInstalled(appName: string) {
+  return MAC_APP_DIRS.some((dir) => fsSync.existsSync(path.join(dir, `${appName}.app`)));
+}
+
+type DetectedOpenWithApp = { id: string; label: string; icon: string; kind: MacOpenWithKind };
+
+// The installed-app set doesn't change within a session, and every header mount
+// queries it — so detect once and reuse (each call would otherwise re-run ~45
+// existsSync checks).
+let macOpenWithAppsCache: DetectedOpenWithApp[] | undefined;
+
+function detectMacOpenWithApps(): DetectedOpenWithApp[] {
+  if (!macOpenWithAppsCache) {
+    macOpenWithAppsCache = MAC_OPEN_WITH_CATALOG.filter(
+      (app) => app.kind === "reveal" || (app.appName ? macAppInstalled(app.appName) : false),
+    ).map(({ id, label, icon, kind }) => ({ id, label, icon, kind }));
+  }
+  return macOpenWithAppsCache;
+}
+
+function listOpenWithApps() {
+  if (process.platform === "darwin") return { apps: detectMacOpenWithApps() };
+  // Windows/Linux keep the renderer's existing static list.
+  return { apps: [] as DetectedOpenWithApp[] };
+}
+
+async function openProjectWithMac(projectPath: string, id: string) {
+  const app = MAC_OPEN_WITH_CATALOG.find((entry) => entry.id === id);
+  if (!app) throw new Error("Unsupported open target");
+  if (app.kind === "reveal") {
+    const error = await shell.openPath(projectPath);
+    if (error) throw new Error(error);
+    return;
+  }
+  await launchDetached("open", ["-a", app.appName as string, projectPath], projectPath);
+}
 
 type SkillStoreCatalogItem = {
   id: string;
@@ -952,6 +1023,11 @@ function toWslPath(targetPath: string) {
 
 async function openProjectWith(targetPath: string, target: OpenProjectTarget) {
   const projectPath = assertProjectDirectory(targetPath);
+
+  // On macOS the menu is detection-driven, so any catalog id may arrive here.
+  if (process.platform === "darwin" && MAC_OPEN_WITH_CATALOG.some((app) => app.id === target)) {
+    return openProjectWithMac(projectPath, target);
+  }
 
   if (target === "explorer") {
     const error = await shell.openPath(projectPath);
@@ -1350,6 +1426,7 @@ const handlers: Record<string, (payload?: any) => Promise<any> | any> = {
   close_window: async () => mainWindow?.close(),
   reveal_in_finder: async ({ path: targetPath }) => revealInFinder(targetPath),
   open_project_with: async ({ path: targetPath, target }) => openProjectWith(targetPath, target),
+  list_open_with_apps: async () => listOpenWithApps(),
   show_open_dialog: async (options) => {
     const result = await dialog.showOpenDialog(mainWindow!, {
       title: options?.title,

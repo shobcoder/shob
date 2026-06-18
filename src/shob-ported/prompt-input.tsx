@@ -2068,7 +2068,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                 data-action="prompt-improve"
                 type="button"
                 disabled={improvingPrompt()}
-                class="size-8 rounded-lg! border border-border/30 hover:bg-accent/50 text-foreground transition-colors duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                class="size-8 flex items-center justify-center rounded-lg! border border-border/30 hover:bg-accent/50 text-foreground transition-colors duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                 classList={{
                   "is-busy": improvingPrompt(),
                 }}

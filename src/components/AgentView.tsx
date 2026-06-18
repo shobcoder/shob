@@ -9,6 +9,7 @@ import { useNavigate, useParams } from "@solidjs/router"
 import { AssistantPartGroupView, Message } from "@shob-ai/ui/message-part"
 import { DataProvider, FileComponentProvider } from "@shob-ai/ui/context"
 import { AppIcon } from "@shob-ai/ui/app-icon"
+import type { IconName } from "@shob-ai/ui/icons/app"
 import { Icon } from "@shob-ai/ui/icon"
 import { sessionTitle } from "@/utils/session-title"
 import { MacSidebarReveal } from "./mac-chrome"
@@ -63,21 +64,26 @@ interface AgentViewProps {
   reviewDiffs?: () => AgentTurnDiff[]
 }
 
-type OpenWithTarget = "vscode" | "explorer" | "terminal" | "git-bash" | "wsl"
-type OpenWithAppIcon = "vscode" | "file-explorer" | "terminal"
+type OpenWithKind = "editor" | "terminal" | "reveal"
 
-const openWithOptions: Array<{
-  id: OpenWithTarget
+type OpenWithApp = {
+  id: string
   label: string
-  icon?: OpenWithAppIcon
+  icon?: IconName
+  kind: OpenWithKind
   badge?: string
   badgeClass?: string
-}> = [
-  { id: "vscode", label: "VS Code", icon: "vscode" },
-  { id: "explorer", label: "File Explorer", icon: "file-explorer" },
-  { id: "terminal", label: "Terminal", icon: "terminal" },
-  { id: "git-bash", label: "Git Bash", badge: "GB", badgeClass: "bg-surface-success-weak text-text-on-success-base" },
-  { id: "wsl", label: "WSL", badge: "WSL", badgeClass: "bg-surface-info-weak text-text-on-info-base" },
+}
+
+// Windows/Linux fallback. On macOS this is replaced at runtime by the set of
+// editors/terminals actually installed (native `list_open_with_apps`), so the
+// menu shows Finder/Ghostty/Zed/etc. instead of these Windows-centric entries.
+const fallbackOpenWithApps: OpenWithApp[] = [
+  { id: "vscode", label: "VS Code", icon: "vscode", kind: "editor" },
+  { id: "explorer", label: "File Explorer", icon: "file-explorer", kind: "reveal" },
+  { id: "terminal", label: "Terminal", icon: "terminal", kind: "terminal" },
+  { id: "git-bash", label: "Git Bash", kind: "terminal", badge: "GB", badgeClass: "bg-surface-success-weak text-text-on-success-base" },
+  { id: "wsl", label: "WSL", kind: "terminal", badge: "WSL", badgeClass: "bg-surface-info-weak text-text-on-info-base" },
 ]
 
 const unknownNativeCommand = (error: unknown) => String(error instanceof Error ? error.message : error).includes("Unknown IPC command")
@@ -369,7 +375,7 @@ function AgentTurnDiffSummaryCard(props: { message: ChatMessage }) {
   )
 }
 
-function OpenWithOptionIcon(props: { option: (typeof openWithOptions)[number] }) {
+function OpenWithOptionIcon(props: { option: OpenWithApp }) {
   if (props.option.icon) {
     return <AppIcon id={props.option.icon} class="size-5 shrink-0 rounded-[4px]" />
   }
@@ -420,11 +426,15 @@ function AgentHeaderPanelControls(props: { projectPath?: string }) {
   const [isReviewVisible, setIsReviewVisible] = createSignal(false)
   const [isTerminalPanelOpen, setIsTerminalPanelOpen] = createSignal(false)
   const [openWithMenuOpen, setOpenWithMenuOpen] = createSignal(false)
-  const [openingTarget, setOpeningTarget] = createSignal<OpenWithTarget | null>(null)
+  const [openingTarget, setOpeningTarget] = createSignal<string | null>(null)
+  const [openWithApps, setOpenWithApps] = createSignal<OpenWithApp[]>(fallbackOpenWithApps)
+  // The primary (always-visible) button launches the first installed editor,
+  // falling back to whatever the platform offers first (e.g. Finder).
+  const primaryApp = createMemo(() => openWithApps().find((app) => app.kind === "editor") ?? openWithApps()[0])
   const panelButtonClass =
     "size-8 rounded-md border-0 bg-transparent px-0 text-text-weaker shadow-none transition-colors hover:bg-surface-raised-base/45 hover:text-text-base aria-pressed:bg-surface-raised-base/55 aria-pressed:text-text-base focus-visible:ring-2 focus-visible:ring-ring/35 active:not-aria-[haspopup]:translate-y-0"
 
-  const openProjectWith = (target: OpenWithTarget) => {
+  const openProjectWith = (target: string) => {
     const projectPath = props.projectPath?.trim()
     if (!projectPath) {
       showToast({
@@ -462,6 +472,17 @@ function AgentHeaderPanelControls(props: { projectPath?: string }) {
   }
 
   onMount(() => {
+    // Ask the native side which editors/terminals are actually installed. On
+    // macOS this returns a detected, platform-correct list; elsewhere it returns
+    // an empty list and we keep the static fallback above.
+    void nativeApi
+      .invoke("list_open_with_apps")
+      .then((result) => {
+        const apps = (result as { apps?: OpenWithApp[] } | undefined)?.apps
+        if (apps && apps.length > 0) setOpenWithApps(apps)
+      })
+      .catch(() => undefined)
+
     const handleReviewState = (event: Event) => {
       const detail = (event as CustomEvent<{ isReviewVisible: boolean }>).detail
       if (detail) setIsReviewVisible(Boolean(detail.isReviewVisible))
@@ -486,17 +507,22 @@ function AgentHeaderPanelControls(props: { projectPath?: string }) {
         <button
           type="button"
           class="group/open-with flex h-9 w-9 items-center justify-center text-text-weak outline-none transition-colors hover:bg-surface-raised-base-hover hover:text-text-strong focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-60"
-          title="Open in VS Code"
-          aria-label="Open project in VS Code"
-          disabled={Boolean(openingTarget())}
+          title={`Open in ${primaryApp()?.label ?? "editor"}`}
+          aria-label={`Open project in ${primaryApp()?.label ?? "editor"}`}
+          disabled={Boolean(openingTarget()) || !primaryApp()}
           onClick={(event) => {
             event.stopPropagation()
-            openProjectWith("vscode")
+            const app = primaryApp()
+            if (app) openProjectWith(app.id)
           }}
         >
           <Show
-            when={openingTarget() === "vscode"}
-            fallback={<AppIcon id="vscode" class="size-[26px] shrink-0 transition-transform group-hover/open-with:scale-105" />}
+            when={openingTarget() === primaryApp()?.id}
+            fallback={
+              <Show when={primaryApp()?.icon} fallback={<OpenWithOptionIcon option={primaryApp()!} />}>
+                {(icon) => <AppIcon id={icon()} class="size-[26px] shrink-0 transition-transform group-hover/open-with:scale-105" />}
+              </Show>
+            }
           >
             <span class="size-3.5 rounded-full border border-text-weaker border-t-text-strong animate-spin" />
           </Show>
@@ -512,7 +538,7 @@ function AgentHeaderPanelControls(props: { projectPath?: string }) {
             <ChevronDown size={17} strokeWidth={2.25} class="shrink-0" />
           </DropdownMenuTrigger>
           <DropdownMenuContent class="w-[228px] rounded-xl border border-border-weak-base bg-surface-raised-base/95 p-1.5 text-[13px] shadow-2xl backdrop-blur">
-            <For each={openWithOptions}>
+            <For each={openWithApps()}>
               {(option) => (
                 <DropdownMenuItem
                   class="min-h-9 gap-2.5 rounded-lg px-2 py-2 text-[13px] text-text-base focus:bg-surface-raised-base-hover"
@@ -1765,11 +1791,18 @@ function AgentViewInner(props: AgentViewProps) {
           }}
         >
           <div class="agent-terminal-scroll-frame relative min-h-0 flex-1 overflow-hidden">
-            <div class="shob-agent-corner-controls pointer-events-none absolute right-3 top-2 z-40 flex items-center justify-end">
-              <div class="shob-agent-corner-toolbar pointer-events-auto">
-                <AgentHeaderPanelControls projectPath={activeProjectPath()} />
+            {/* On Windows/Linux the title moved into the OS titlebar, so the panel
+                controls float in the now-empty top-right corner. On macOS the in-view
+                header still spans the full width, so a floating overlay would sit on top
+                of the branch switcher and swallow its clicks — there the controls are
+                rendered inline in the header instead (see the mac header below). */}
+            <Show when={!windowChrome.isMac()}>
+              <div class="shob-agent-corner-controls pointer-events-none absolute right-3 top-2 z-40 flex items-center justify-end">
+                <div class="shob-agent-corner-toolbar pointer-events-auto">
+                  <AgentHeaderPanelControls projectPath={activeProjectPath()} />
+                </div>
               </div>
-            </div>
+            </Show>
             <div
               class="pointer-events-none absolute bottom-6 left-1/2 z-[60] -translate-x-1/2 transition-all duration-200 ease-out"
               classList={{
@@ -1829,6 +1862,7 @@ function AgentViewInner(props: AgentViewProps) {
                       {renderTitleCluster()}
                       <div class="ml-auto flex shrink-0 items-center gap-2">
                         {renderBranchSwitcher()}
+                        <AgentHeaderPanelControls projectPath={activeProjectPath()} />
                       </div>
                     </div>
                   </div>
@@ -1869,6 +1903,7 @@ function AgentViewInner(props: AgentViewProps) {
                         <div class="flex w-full items-center justify-end gap-1.5">
                           <MacSidebarReveal class="mr-auto" />
                           {renderBranchSwitcher()}
+                          <AgentHeaderPanelControls projectPath={activeProjectPath()} />
                         </div>
                       </div>
                     </Show>

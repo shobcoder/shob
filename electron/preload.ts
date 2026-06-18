@@ -35,6 +35,7 @@ const allowedCommands = new Set([
   "close_window",
   "reveal_in_finder",
   "open_project_with",
+  "list_open_with_apps",
   "show_open_dialog",
   "open_external",
   "get_app_info",

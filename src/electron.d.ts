@@ -63,7 +63,16 @@ export interface ElectronOpenDialogOptions {
   }>
 }
 
-export type ElectronOpenWithTarget = "vscode" | "explorer" | "terminal" | "git-bash" | "wsl"
+// Windows/Linux use a fixed set; macOS targets are detection-driven (any catalog
+// id from list_open_with_apps), so the type stays open as a string.
+export type ElectronOpenWithTarget = string
+
+export interface ElectronOpenWithApp {
+  id: string
+  label: string
+  icon: string
+  kind: "editor" | "terminal" | "reveal"
+}
 
 export interface ElectronTerminalSpawnOptions {
   id?: string
@@ -339,6 +348,7 @@ export interface NativeCommandMap {
   set_titlebar_theme: { args: { mode: "light" | "dark" }; result: void }
   reveal_in_finder: { args: { path: string }; result: void }
   open_project_with: { args: { path: string; target: ElectronOpenWithTarget }; result: void }
+  list_open_with_apps: { args?: undefined; result: { apps: ElectronOpenWithApp[] } }
   show_open_dialog: { args: ElectronOpenDialogOptions; result: string | string[] | null }
   open_external: { args: { url: string }; result: void }
 }
