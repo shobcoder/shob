@@ -1,0 +1,32 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "tasks": {
+    "build": {
+      "outputs": [
+        "dist/**",
+        "dist-renderer/**",
+        "electron-dist/**"
+      ]
+    },
+    "build:renderer": {
+      "outputs": ["dist-renderer/**"]
+    },
+    "build:electron:tsc": {
+      "outputs": ["electron-dist/**"]
+    },
+    "typecheck": {
+      "dependsOn": ["^typecheck"],
+      "outputs": []
+    },
+    "lint": {
+      "outputs": []
+    },
+    "test": {
+      "outputs": [".artifacts/**", "coverage/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}

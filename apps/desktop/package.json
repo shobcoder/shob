@@ -1,0 +1,162 @@
+{
+  "name": "shob-desktop",
+  "private": true,
+  "description": "Desktop app for running and organizing multiple CLI agent sessions in one workspace.",
+  "author": "shobcoder",
+  "version": "0.0.74",
+  "type": "module",
+  "main": "electron-dist/main.js",
+  "scripts": {
+    "dev": "node ../../scripts/sync-app-icons.mjs && node ../../scripts/dev-electron.mjs",
+    "electron": "node ../../scripts/dev-electron.mjs",
+    "build": "node ../../scripts/sync-app-icons.mjs && bun run build:renderer && bun run build:electron:tsc",
+    "build:electron": "node ../../scripts/clean-release.mjs && bun run build && bun ../../scripts/build-sidecar.mjs && electron-builder --publish never",
+    "lint": "eslint .",
+    "test": "bun test --timeout 30000",
+    "preview": "vite preview",
+    "sync:icons": "node ../../scripts/sync-app-icons.mjs",
+    "dev:electron:tsc": "tsc -p tsconfig.electron.json --watch --preserveWatchOutput",
+    "build:renderer": "tsc -b && vite build",
+    "build:electron:tsc": "tsc -p tsconfig.electron.json"
+  },
+  "build": {
+    "appId": "app.shob.desktop",
+    "productName": "shob",
+    "npmRebuild": false,
+    "asar": true,
+    "compression": "maximum",
+    "files": [
+      "dist-renderer/**",
+      "electron-dist/**",
+      "package.json",
+      "!**/*.map"
+    ],
+    "extraResources": [
+      {
+        "from": "../../dist-server",
+        "to": "dist-server",
+        "filter": [
+          "**/*",
+          "!**/*.map"
+        ]
+      },
+      "electron/icons/**",
+      "../../skills/**"
+    ],
+    "directories": {
+      "buildResources": "electron/icons",
+      "output": "../../release"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "shobcoder",
+        "repo": "shob"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "electron/icons/icon.ico",
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "electron/icons/icon.icns"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "maintainer": "shobcoder <shobcoder@users.noreply.github.com>",
+      "category": "Development",
+      "icon": "electron/icons/icon.png",
+      "desktop": {
+        "entry": {
+          "StartupWMClass": "shob"
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "@lydell/node-pty": "^1.2.0-beta.12",
+    "@shob-ai/sdk": "file:../../packages/sdk/js",
+    "@shob-ai/ui": "file:../../packages/ui",
+    "@shob-ai/util": "file:../../packages/util",
+    "chokidar": "^5.0.0",
+    "electron-store": "^11.0.2",
+    "electron-updater": "^6.8.3"
+  },
+  "devDependencies": {
+    "@ark-ui/solid": "^5.36.2",
+    "@effect/platform": "^0.96.1",
+    "@effect/platform-node": "4.0.0-beta.65",
+    "@effect/platform-node-shared": "^0.59.0",
+    "@eslint/js": "^9.39.4",
+    "@fontsource-variable/inter": "^5.2.8",
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
+    "@kobalte/core": "^0.13.7",
+    "@shob-ai/server": "file:../../packages/server",
+    "@solid-primitives/i18n": "^2.2.1",
+    "@solid-primitives/storage": "^4.3.4",
+    "@solidjs/router": "^0.15.3",
+    "@tailwindcss/vite": "^4.3.1",
+    "@tanstack/solid-query": "^5.100.14",
+    "@thisbeyond/solid-dnd": "^0.7.5",
+    "@types/node": "^24.12.0",
+    "@xterm/addon-clipboard": "0.3.0-beta.213",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/addon-search": "0.17.0-beta.213",
+    "@xterm/addon-serialize": "0.15.0-beta.213",
+    "@xterm/addon-unicode11": "0.10.0-beta.213",
+    "@xterm/addon-web-links": "^0.12.0",
+    "@xterm/xterm": "6.1.0-beta.213",
+    "chart.js": "^4.5.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "date-fns": "^4.1.0",
+    "diff": "^9.0.0",
+    "effect": "4.0.0-beta.65",
+    "electron": "41.5.0",
+    "electron-builder": "^26.8.1",
+    "embla-carousel-solid": "^8.6.0",
+    "eslint": "^9.39.4",
+    "globals": "^17.4.0",
+    "highlight.js": "^11.11.1",
+    "lru-cache": "11",
+    "lucide-solid": "^1.6.0",
+    "png-to-ico": "^3.0.1",
+    "semver": "7",
+    "solid-chartjs": "^1.3.11",
+    "solid-js": "^1.9.5",
+    "solid-sonner": "^0.3.1",
+    "tailwind-merge": "^3.5.0",
+    "tailwindcss": "^4.3.1",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.57.0",
+    "vite": "^8.0.1",
+    "vite-plugin-solid": "^2.11.6",
+    "wait-on": "^9.0.5"
+  },
+  "optionalDependencies": {
+    "@lydell/node-pty-darwin-arm64": "1.2.0-beta.12",
+    "@lydell/node-pty-darwin-x64": "1.2.0-beta.12",
+    "@lydell/node-pty-linux-arm64": "1.2.0-beta.12",
+    "@lydell/node-pty-linux-x64": "1.2.0-beta.12",
+    "@lydell/node-pty-win32-arm64": "1.2.0-beta.12",
+    "@lydell/node-pty-win32-x64": "1.2.0-beta.12",
+    "@parcel/watcher-darwin-arm64": "2.5.1",
+    "@parcel/watcher-darwin-x64": "2.5.1",
+    "@parcel/watcher-linux-arm64-glibc": "2.5.1",
+    "@parcel/watcher-linux-arm64-musl": "2.5.1",
+    "@parcel/watcher-linux-x64-glibc": "2.5.1",
+    "@parcel/watcher-linux-x64-musl": "2.5.1",
+    "@parcel/watcher-win32-arm64": "2.5.1",
+    "@parcel/watcher-win32-x64": "2.5.1"
+  }
+}

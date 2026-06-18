@@ -4,12 +4,12 @@ import {
   orderAssistantDisplayParts,
   type AssistantPartEntry,
   type AssistantPartGroup,
-} from "../../packages/ui/src/components/message-part-order"
+} from "../../../../packages/ui/src/components/message-part-order"
 import {
   activityKindForVisibleParts,
   activityTitleForVisibleParts,
   type ActivityKind,
-} from "../../packages/ui/src/components/session-activity"
+} from "../../../../packages/ui/src/components/session-activity"
 
 type UserMessage = Extract<Message, { role: "user" }>
 

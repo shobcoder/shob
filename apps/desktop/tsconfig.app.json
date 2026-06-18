@@ -1,0 +1,44 @@
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../node_modules/.tmp/apps-desktop-tsconfig.app.tsbuildinfo",
+    "target": "ES2023",
+    "useDefineForClassFields": true,
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "types": ["vite/client"],
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@shob-ai/sdk/*": ["../../packages/sdk/js/src/*"],
+      "@shob-ai/sdk": ["../../packages/sdk/js/src/index.ts"],
+      "@shob-ai/plugin/*": ["../../packages/plugin/src/*"],
+      "@shob-ai/plugin": ["../../packages/plugin/src/index.ts"],
+      "@shob-ai/server/*": ["../../packages/server/src/*"],
+      "@shob-ai/server": ["../../packages/server/src/index.ts"],
+      "@shob-ai/ui/hooks": ["../../packages/ui/src/hooks/index.ts"],
+      "@shob-ai/ui/i18n/*": ["../../packages/ui/src/i18n/*"],
+      "@shob-ai/ui/context/*": ["../../packages/ui/src/context/*"],
+      "@shob-ai/ui/context": ["../../packages/ui/src/context/index.ts"],
+      "@shob-ai/ui/*": ["../../packages/ui/src/components/*"],
+      "@shob-ai/ui": ["../../packages/ui/src/index.ts"],
+      "@shob-ai/util/*": ["../../packages/util/src/*"],
+      "@shob-ai/util": ["../../packages/util/src/index.ts"]
+    },
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": false,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "strict": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "erasableSyntaxOnly": false,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
+  },
+  "include": ["src"]
+}
+

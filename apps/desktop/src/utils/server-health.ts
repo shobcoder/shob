@@ -32,7 +32,9 @@ function timeoutSignal(timeoutMs: number) {
         signal: timeout.call(AbortSignal, timeoutMs),
         clear: undefined as (() => void) | undefined,
       }
-    } catch {}
+    } catch {
+      // Fall through to manual AbortController timeout.
+    }
   }
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)

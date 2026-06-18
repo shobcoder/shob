@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@import "../packages/ui/src/styles/index.css";
+@import "../../../packages/ui/src/styles/index.css";
 
 @import "./components/ui/collapsible.css";
 @import "./components/ui/icon.css";

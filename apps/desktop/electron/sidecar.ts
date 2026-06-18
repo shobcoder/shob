@@ -38,7 +38,9 @@ function post(message: SidecarMessage) {
 process.on("unhandledRejection", (reason) => {
   try {
     parentPort.postMessage({ type: "error", error: { message: String(reason), stack: "" } })
-  } catch {}
+  } catch {
+    // Parent process may already be gone.
+  }
   setTimeout(() => process.exit(1), 200)
 })
 
@@ -52,7 +54,9 @@ function writeCrashFile(reason: string) {
     const file = `${tmpdir()}/shob-sidecar-crash.log`
     writeFileSync(file, `${new Date().toISOString()}\n${reason}\n`)
     console.error("[sidecar] crash written:", file, reason.slice(0, 300))
-  } catch {}
+  } catch {
+    // Crash file is best effort; the process will still exit.
+  }
 }
 
 process.on("uncaughtException", (error) => {

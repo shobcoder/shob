@@ -7,11 +7,12 @@ import pngToIco from "png-to-ico";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
+const appDir = path.join(rootDir, "apps", "desktop");
 
-const sourceIcon = path.join(rootDir, "src", "assets", "icon", "shob.png");
-const devSourceIcon = path.join(rootDir, "src", "assets", "icon", "olova-dev.png");
-const iconDir = path.join(rootDir, "electron", "icons");
-const devIconDir = path.join(rootDir, "electron", "dev-icons");
+const sourceIcon = path.join(appDir, "src", "assets", "icon", "shob.png");
+const devSourceIcon = path.join(appDir, "src", "assets", "icon", "olova-dev.png");
+const iconDir = path.join(appDir, "electron", "icons");
+const devIconDir = path.join(appDir, "electron", "dev-icons");
 const iconPng = path.join(iconDir, "icon.png");
 const iconIco = path.join(iconDir, "icon.ico");
 const iconIcns = path.join(iconDir, "icon.icns");
@@ -82,7 +83,7 @@ async function main() {
   await syncIco();
   await syncIcns();
   await syncDevTaskbarIcon();
-  console.log("[icons] synced app icons from src/assets/icon/shob.png");
+  console.log("[icons] synced app icons from apps/desktop/src/assets/icon/shob.png");
 }
 
 main().catch((error) => {
