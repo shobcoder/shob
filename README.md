@@ -67,3 +67,13 @@ We are actively improving the platform and building new capabilities based on co
 **GitHub Repository:** [https://github.com/shobcoder/shob](https://github.com/shobcoder/shob)
 
 If you find the project useful, consider giving it a star and sharing your feedback.
+
+## Star History
+
+<a href="https://www.star-history.com/?repos=shobcoder%2Fshob&type=date&legend=bottom-right">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=shobcoder/shob&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=shobcoder/shob&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=shobcoder/shob&type=date&legend=top-left" />
+ </picture>
+</a>
