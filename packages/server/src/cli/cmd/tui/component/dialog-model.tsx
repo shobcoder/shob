@@ -68,6 +68,7 @@ export function DialogModel(props: { providerID?: string }) {
 
     const providerOptions = pipe(
       sync.data.provider,
+      filter((provider) => (props.providerID ? provider.id === props.providerID : true)),
       sortBy(
         (provider) => provider.id !== "shob",
         (provider) => provider.name,
@@ -77,7 +78,6 @@ export function DialogModel(props: { providerID?: string }) {
           provider.models,
           entries(),
           filter(([_, info]) => info.status !== "deprecated"),
-          filter(([_, info]) => (props.providerID ? info.providerID === props.providerID : true)),
           map(([model, info]) => ({
             value: { providerID: provider.id, modelID: model },
             title: info.name ?? model,
