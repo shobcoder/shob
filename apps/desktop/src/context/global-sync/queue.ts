@@ -63,8 +63,7 @@ export function createRefreshQueue(input: QueueInput) {
       }
     } finally {
       running = false
-      if (input.paused()) return
-      if (root || queued.size) schedule()
+      if (!input.paused() && (root || queued.size)) schedule()
     }
   }
 

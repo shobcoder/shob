@@ -9,6 +9,7 @@ import { app, utilityProcess } from "electron"
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const projectRoot = path.resolve(__dirname, "..")
+const monorepoRoot = path.resolve(projectRoot, "..", "..")
 const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath
 
 const START_TIMEOUT_MS = 120000
@@ -21,7 +22,9 @@ function readSidecarCrash(): string | null {
       fs.unlinkSync(SIDECAR_CRASH_FILE)
       if (content) return content
     }
-  } catch { }
+  } catch {
+    // Ignore stale or inaccessible crash logs.
+  }
   return null
 }
 const HEALTH_POLL_INTERVAL_MS = 100
@@ -288,7 +291,7 @@ async function startDevServer(
   options: StartServerOptions,
 ): Promise<ServerInstance> {
   const bunPath = resolveBun()
-  const serverEntry = options.serverEntry ?? path.resolve(projectRoot, "packages", "server", "src", "index.ts")
+  const serverEntry = options.serverEntry ?? path.resolve(monorepoRoot, "packages", "server", "src", "index.ts")
 
   console.log(`[shob] starting server on ${hostname}:${port} with ${bunPath}`)
 
@@ -299,7 +302,7 @@ async function startDevServer(
     `--hostname=${hostname}`,
     `--port=${port}`,
   ], {
-    cwd: projectRoot,
+    cwd: monorepoRoot,
     env: {
       ...process.env,
       ...platformDataEnv(),

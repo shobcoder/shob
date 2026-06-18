@@ -15,7 +15,7 @@ import {
   DialogOpenAICompatible,
   OPENCLAUDE_OPENAI_COMPATIBLE_PRESET,
 } from "./dialog-openai-compatible"
-import { iconNames } from "../../../packages/ui/src/components/provider-icons/types"
+import { iconNames } from "../../../../../packages/ui/src/components/provider-icons/types"
 
 type ProviderSource = "env" | "api" | "config" | "custom"
 type ProviderItem = ReturnType<ReturnType<typeof useProviders>["connected"]>[number]

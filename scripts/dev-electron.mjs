@@ -8,11 +8,12 @@ import { ensureElectronInstalled } from "./ensure-electron.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
+const appDir = path.join(rootDir, "apps", "desktop");
 
 const host = "127.0.0.1";
 const startPort = 5173;
 const maxPort = 5300;
-const electronMain = path.join(rootDir, "electron-dist", "main.js");
+const electronMain = path.join(appDir, "electron-dist", "main.js");
 const tscBin = path.join(rootDir, "node_modules", "typescript", "bin", "tsc");
 const viteBin = path.join(rootDir, "node_modules", "vite", "bin", "vite.js");
 const electronCli = path.join(rootDir, "node_modules", "electron", "cli.js");
@@ -68,7 +69,7 @@ function waitForHttp(url, timeoutMs = 60000) {
 
 function spawnNodeScript(scriptPath, args, extraEnv = {}) {
   const child = spawn(process.execPath, [scriptPath, ...args], {
-    cwd: rootDir,
+    cwd: appDir,
     stdio: "inherit",
     env: { ...process.env, ...extraEnv },
   });

@@ -118,8 +118,8 @@ export function SessionReviewTab(props: SessionReviewTabProps) {
   }
 
   createEffect(() => {
-    props.diffs().length
-    props.diffStyle
+    void props.diffs().length
+    void props.diffStyle
     if (!layout.ready()) return
     queueRestore()
   })

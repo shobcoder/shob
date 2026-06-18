@@ -234,7 +234,8 @@ describe("agent timeline rows", () => {
     expect(second[2]).toBe(first[2])
     expect(changed[0]).toBe(first[0])
     expect(changed[1]).not.toBe(first[1])
-    expect(changed).toHaveLength(4)
+    expect(changed).toHaveLength(3)
+    expect(assistantPartIDs(changed)).toEqual(["reasoning_1", "tool_1"])
   })
 
   test("turn builder reads only the active turn assistant parts", () => {
