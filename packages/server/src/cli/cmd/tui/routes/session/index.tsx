@@ -6,6 +6,7 @@ import {
   For,
   Match,
   on,
+  onCleanup,
   onMount,
   Show,
   Switch,
@@ -1412,31 +1413,68 @@ const PART_MAPPING = {
 function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: AssistantMessage }) {
   const { theme, subtleSyntax } = useTheme()
   const ctx = use()
+  const keybind = useKeybind()
   const content = createMemo(() => {
     // Filter out redacted reasoning chunks from OpenRouter
     // OpenRouter sends encrypted reasoning data that appears as [REDACTED]
     return props.part.text.replace("[REDACTED]", "").trim()
   })
+
+  const [now, setNow] = createSignal(Date.now())
+  createEffect(() => {
+    if (props.part.time?.end) return
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    onCleanup(() => clearInterval(timer))
+  })
+
+  const durationMs = createMemo(() => {
+    const start = props.part.time?.start
+    if (!start) return 0
+    const end = props.part.time?.end ?? now()
+    return end - start
+  })
+
+  const durationLabel = createMemo(() => {
+    const ms = durationMs()
+    const seconds = Math.round(ms / 1000)
+    if (seconds <= 0) return ""
+    if (seconds === 1) return "1 second"
+    return `${seconds} seconds`
+  })
+
   return (
-    <Show when={content() && ctx.showThinking()}>
+    <Show when={content()}>
       <box
         id={"text-" + props.part.id}
-        paddingLeft={2}
-        marginTop={1}
+        paddingLeft={3}
+        marginTop={0}
         flexDirection="column"
-        border={["left"]}
-        customBorderChars={SplitBorder.customBorderChars}
-        borderColor={theme.backgroundElement}
       >
-        <code
-          filetype="markdown"
-          drawUnstyledText={false}
-          streaming={true}
-          syntaxStyle={subtleSyntax()}
-          content={"_Thinking:_ " + content()}
-          conceal={ctx.conceal()}
-          fg={theme.textMuted}
-        />
+        <text fg={theme.textMuted}>
+          * Thought{durationLabel() ? ` for ${durationLabel()}` : ""}{" "}
+          <Show when={content() && !ctx.showThinking()}>
+            <span style={{ fg: theme.textMuted }}>{keybind.print("display_thinking") || "ctrl+o"} to expand</span>
+          </Show>
+        </text>
+        <Show when={ctx.showThinking()}>
+          <box
+            paddingLeft={2}
+            marginTop={0}
+            border={["left"]}
+            customBorderChars={SplitBorder.customBorderChars}
+            borderColor={theme.backgroundElement}
+          >
+            <code
+              filetype="markdown"
+              drawUnstyledText={false}
+              streaming={true}
+              syntaxStyle={subtleSyntax()}
+              content={content()}
+              conceal={ctx.conceal()}
+              fg={theme.textMuted}
+            />
+          </box>
+        </Show>
       </box>
     </Show>
   )
@@ -1444,32 +1482,35 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
 
 function TextPart(props: { last: boolean; part: TextPart; message: AssistantMessage }) {
   const ctx = use()
-  const { theme, syntax } = useTheme()
+  const { theme } = useTheme()
   return (
     <Show when={props.part.text.trim()}>
-      <box id={"text-" + props.part.id} paddingLeft={1} marginTop={0} flexShrink={0}>
-        <Switch>
-          <Match when={Flag.SHOB_EXPERIMENTAL_MARKDOWN}>
-            <markdown
-              syntaxStyle={syntax()}
-              streaming={true}
-              content={props.part.text.trim()}
-              conceal={ctx.conceal()}
-              fg={theme.markdownText}
-            />
-          </Match>
-          <Match when={!Flag.SHOB_EXPERIMENTAL_MARKDOWN}>
-            <code
-              filetype="markdown"
-              drawUnstyledText={false}
-              streaming={true}
-              syntaxStyle={syntax()}
-              content={props.part.text.trim()}
-              conceal={ctx.conceal()}
-              fg={theme.text}
-            />
-          </Match>
-        </Switch>
+      <box id={"text-" + props.part.id} paddingLeft={1} marginTop={0} flexShrink={0} flexDirection="row">
+        <text fg={theme.textMuted}>{":: "}</text>
+        <box>
+          <Switch>
+            <Match when={Flag.SHOB_EXPERIMENTAL_MARKDOWN}>
+              <markdown
+                syntaxStyle={undefined as any}
+                streaming={true}
+                content={props.part.text.trim()}
+                conceal={ctx.conceal()}
+                fg={theme.markdownText}
+              />
+            </Match>
+            <Match when={!Flag.SHOB_EXPERIMENTAL_MARKDOWN}>
+              <code
+                filetype="markdown"
+                drawUnstyledText={false}
+                streaming={true}
+                syntaxStyle={undefined as any}
+                content={props.part.text.trim()}
+                conceal={ctx.conceal()}
+                fg={theme.text}
+              />
+            </Match>
+          </Switch>
+        </box>
       </box>
     </Show>
   )
@@ -2077,18 +2118,35 @@ function Task(props: ToolProps<typeof TaskTool>) {
     return assistant - first
   })
 
+  const tokens = createMemo(() => {
+    let input = 0
+    let output = 0
+    for (const msg of messages()) {
+      if (msg.role === "assistant") {
+        input += msg.tokens?.input ?? 0
+        output += msg.tokens?.output ?? 0
+      }
+    }
+    const total = input + output
+    if (total === 0) return ""
+    if (total >= 1000) return `${(total / 1000).toFixed(1)}k tokens`
+    return `${total} tokens`
+  })
+
   const content = createMemo(() => {
     if (!props.input.description) return ""
     let content = [`${Locale.titlecase(props.input.subagent_type ?? "General")} Task — ${props.input.description}`]
 
     if (isRunning() && tools().length > 0) {
-      // content[0] += ` · ${tools().length} toolcalls`
       if (current()) content.push(`↳ ${Locale.titlecase(current()!.tool)} ${(current()!.state as any).title}`)
       else content.push(`↳ ${tools().length} toolcalls`)
     }
 
     if (props.part.state.status === "completed") {
-      content.push(`└ ${tools().length} toolcalls · ${Locale.duration(duration())}`)
+      const stats = [Locale.duration(duration())]
+      const t = tokens()
+      if (t) stats.push(t)
+      content.push(`└ Done (${stats.join(" | ")})`)
     }
 
     return content.join("\n")
@@ -2097,7 +2155,7 @@ function Task(props: ToolProps<typeof TaskTool>) {
   return (
     <InlineTool
       icon="│"
-      label="AGENT"
+      label="EXPLORE"
       labelColor={theme.secondary}
       spinner={isRunning()}
       complete={props.input.description}

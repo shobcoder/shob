@@ -36,7 +36,7 @@ import { useKV } from "../../context/kv"
 import { useTextareaKeybindings } from "../textarea-keybindings"
 import { DialogSkill } from "../dialog-skill"
 import { InlineSpinner } from "../spinner"
-import { SPINNER_VERBS } from "../../util/verbs"
+
 
 export type PromptProps = {
   sessionID?: string
@@ -99,56 +99,99 @@ export function Prompt(props: PromptProps) {
   const currentProviderLabel = createMemo(() => local.model.parsed().provider)
   const hasRightContent = createMemo(() => Boolean(props.right))
 
-  const [spinnerVerb, setSpinnerVerb] = createSignal(SPINNER_VERBS[randomIndex(SPINNER_VERBS.length)] ?? "Working")
-  createEffect(() => {
-    const timer = setInterval(() => {
-       if (status().type === "busy") {
-           setSpinnerVerb(SPINNER_VERBS[randomIndex(SPINNER_VERBS.length)] ?? "Working")
-       }
-    }, 2500)
-    onCleanup(() => clearInterval(timer))
-  })
+  const toolLabel = (tool: any): string => {
+    const input = tool.state?.input || {}
+    switch (tool.tool) {
+      case "bash": {
+        const cmd = (input.command || "...") as string
+        const short = cmd.length > 30 ? cmd.slice(0, 30) + "..." : cmd
+        return `Running \`${short}\``
+      }
+      case "read": {
+        const filePath = (input.filePath || "") as string
+        const file = filePath.split(/[/\\]/).pop() || "file"
+        return `Reading \`${file}\``
+      }
+      case "write": {
+        const filePath = (input.filePath || "") as string
+        const file = filePath.split(/[/\\]/).pop() || "file"
+        return `Writing \`${file}\``
+      }
+      case "edit":
+      case "apply_patch": {
+        const filePath = (input.filePath || "") as string
+        const file = filePath.split(/[/\\]/).pop() || "file"
+        return `Editing \`${file}\``
+      }
+      case "glob": {
+        const pattern = (input.pattern || "") as string
+        return pattern ? `Finding \`${pattern}\`` : "Finding files..."
+      }
+      case "grep": {
+        const pattern = (input.pattern || "") as string
+        return pattern ? `Searching \`${pattern}\`` : "Searching..."
+      }
+      case "list": {
+        const p = (input.path || "") as string
+        const dir = p.split(/[/\\]/).pop() || "directory"
+        return `Listing \`${dir}\``
+      }
+      case "codesearch":
+        return "Searching code..."
+      case "websearch":
+        return "Searching web..."
+      case "webfetch":
+        return "Fetching page..."
+      case "task":
+        return "Running subtask..."
+      case "todowrite":
+        return "Updating todos..."
+      case "question":
+        return "Asking question..."
+      case "skill":
+        return "Running skill..."
+    }
+    const title = (tool.state as any)?.title
+    if (title) return title
+    return `Running \`${tool.tool}\`...`
+  }
 
   const activeActivity = createMemo(() => {
     if (status().type !== "busy") return undefined
     const msgs = sync.data.message[props.sessionID ?? ""]
-    if (!msgs || msgs.length === 0) return `${spinnerVerb()}...`
+    if (!msgs || msgs.length === 0) return "Working..."
     const last = msgs[msgs.length - 1]
-    if (last?.role !== "assistant") return `${spinnerVerb()}...`
+    if (last?.role !== "assistant") return "Working..."
     
     const parts = sync.data.part[last.id] ?? []
-    const runningTools = parts.filter((p: any) => p.type === "tool" && p.state?.status === "running")
-    if (runningTools.length > 0) {
-      const lastTool: any = runningTools[runningTools.length - 1]
-      const input = lastTool.state?.input || {}
-      
-      switch (lastTool.tool) {
-        case "bash": {
-          const cmd = (input.command || input.description || "...") as string
-          const short = cmd.length > 30 ? cmd.slice(0, 30) + "..." : cmd
-          return `Running command \`${short}\``
-        }
-        case "read": {
-          const path = (input.filePath || input.path || "") as string
-          const file = path.split(/[/\\]/).pop() || "file"
-          return `Reading \`${file}\``
-        }
-        case "edit":
-        case "write": {
-          const path = (input.filePath || input.path || "") as string
-          const file = path.split(/[/\\]/).pop() || "file"
-          return `Editing \`${file}\``
-        }
-        case "list":
-        case "glob":
-        case "grep":
-        case "codesearch":
-        case "websearch":
-          return `Searching...`
+    if (parts.length === 0) return "Working..."
+
+    // Walk backwards through parts to find the most recent meaningful activity
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const part = parts[i] as any
+      // If this part is a tool (any status), show what it's doing
+      if (part.type === "tool") {
+        return toolLabel(part)
       }
-      return `Running \`${lastTool.tool}\`...`
+      // If this is an incomplete reasoning part, the model is thinking
+      if (part.type === "reasoning" && !part.time?.end) {
+        return "Reasoning..."
+      }
+      // If this is an incomplete text part, the model is writing
+      if (part.type === "text" && !part.time?.end) {
+        return "Writing response..."
+      }
+      // Completed text means the model just finished writing
+      if (part.type === "text" && part.time?.end) {
+        return "Exploring..."
+      }
+      // Completed reasoning means moving on to next step
+      if (part.type === "reasoning" && part.time?.end) {
+        return "Exploring..."
+      }
     }
-    return `${spinnerVerb()}...`
+
+    return "Working..."
   })
 
   const currentBusyMessage = createMemo(() => {
@@ -979,13 +1022,29 @@ export function Prompt(props: PromptProps) {
         promptPartTypeId={() => promptPartTypeId}
       />
       <box ref={(r) => (anchor = r)} visible={props.visible !== false}>
-        <box flexDirection="row" justifyContent="space-between" paddingBottom={1}>
-          <box flexDirection="row" gap={1}>
-            <text fg={highlight()}>{store.mode === "shell" ? "Shell" : "Auto (High)"}</text>
-            <text fg={theme.textMuted}>·</text>
-            <text fg={theme.warning}>{store.mode === "shell" ? "terminal command" : "allow all commands"}</text>
-          </box>
-          <Show when={store.mode === "normal"}>
+        <box flexDirection="row" justifyContent="space-between" paddingBottom={0}>
+          <Switch>
+            <Match when={status().type === "busy" && activeActivity()}>
+              <box flexDirection="row" gap={1} flexGrow={1} justifyContent="space-between">
+                <box flexDirection="row" gap={1}>
+                  <box backgroundColor={theme.backgroundElement} paddingLeft={1} paddingRight={1}>
+                    <text fg={theme.text}>☆ {activeActivity()}</text>
+                  </box>
+                  <text fg={theme.textMuted}>
+                    esc to interrupt {busyDuration() ? `• ${busyDuration()}` : ""} {busyTokens() ? `• ↓ ${busyTokens()}` : ""}
+                  </text>
+                </box>
+              </box>
+            </Match>
+            <Match when={true}>
+              <box flexDirection="row" gap={1}>
+                <text fg={highlight()}>{store.mode === "shell" ? "Shell" : "Auto (High)"}</text>
+                <text fg={theme.textMuted}>·</text>
+                <text fg={theme.warning}>{store.mode === "shell" ? "terminal command" : "allow all commands"}</text>
+              </box>
+            </Match>
+          </Switch>
+          <Show when={status().type !== "busy" && store.mode === "normal"}>
             <box flexDirection="row" gap={1}>
               <text flexShrink={0}>{local.model.parsed().model}</text>
               <text fg={theme.textMuted}>-</text>
@@ -997,7 +1056,7 @@ export function Prompt(props: PromptProps) {
           </Show>
         </box>
         <box
-          border={["top", "right", "bottom"]}
+          border={["top", "bottom"]}
           borderColor={theme.border}
         >
           <box
@@ -1202,100 +1261,82 @@ export function Prompt(props: PromptProps) {
           </box>
         </box>
         <box width="100%" flexDirection="row" justifyContent="space-between">
-          <Show when={status().type !== "idle"} fallback={props.hint ?? <text />}>
-            <box
-              flexDirection="row"
-              gap={1}
-              flexGrow={1}
-              justifyContent={status().type === "retry" ? "space-between" : "flex-start"}
-            >
-              <box flexShrink={0} flexDirection="row" gap={1}>
-                <box marginLeft={1}>
-                  <Show when={kv.get("animations_enabled", true)} fallback={<text fg={theme.textMuted}>[⋯]</text>}>
-                    <InlineSpinner color={theme.textMuted} frames={spinnerDef().frames} interval={40} />
-                  </Show>
-                </box>
-                <box flexDirection="column" gap={0} flexShrink={0}>
-                  <box flexDirection="row" gap={1}>
-                    <Show when={status().type === "busy" && activeActivity()}>
-                      <text fg={theme.text}>{activeActivity()}</text>
-                    </Show>
-                    <Show when={status().type === "busy" && busyDuration()}>
-                      <text fg={theme.textMuted}>
-                        ({busyDuration()}
-                        <Show when={busyTokens()}>
-                          {" · ↑ "}{busyTokens()} tokens
-                        </Show>
-                        )
-                      </text>
-                    </Show>
+          <box flexDirection="column" gap={0}>
+            {(() => {
+              const retry = createMemo(() => {
+                const s = status()
+                if (s.type !== "retry") return
+                return s
+              })
+              const message = createMemo(() => {
+                const r = retry()
+                if (!r) return
+                if (r.message.includes("exceeded your current quota") && r.message.includes("gemini"))
+                  return "gemini is way too hot right now"
+                if (r.message.length > 80) return r.message.slice(0, 80) + "..."
+                return r.message
+              })
+              const isTruncated = createMemo(() => {
+                const r = retry()
+                if (!r) return false
+                return r.message.length > 120
+              })
+              const [seconds, setSeconds] = createSignal(0)
+              onMount(() => {
+                const timer = setInterval(() => {
+                  const next = retry()?.next
+                  if (next) setSeconds(Math.round((next - Date.now()) / 1000))
+                }, 1000)
+                onCleanup(() => clearInterval(timer))
+              })
+              const handleMessageClick = () => {
+                const r = retry()
+                if (!r) return
+                if (isTruncated()) {
+                  DialogAlert.show(dialog, "Retry Error", r.message)
+                }
+              }
+
+              const retryText = () => {
+                const r = retry()
+                if (!r) return ""
+                const baseMessage = message()
+                const truncatedHint = isTruncated() ? " (click to expand)" : ""
+                const duration = formatDuration(seconds())
+                const retryInfo = ` [retrying ${duration ? `in ${duration} ` : ""}attempt #${r.attempt}]`
+                return baseMessage + truncatedHint + retryInfo
+              }
+
+              return (
+                <Show when={retry()}>
+                  <box onMouseUp={handleMessageClick}>
+                    <text fg={theme.error}>{retryText()}</text>
                   </box>
-                  {(() => {
-                    const retry = createMemo(() => {
-                      const s = status()
-                      if (s.type !== "retry") return
-                      return s
-                    })
-                    const message = createMemo(() => {
-                      const r = retry()
-                      if (!r) return
-                      if (r.message.includes("exceeded your current quota") && r.message.includes("gemini"))
-                        return "gemini is way too hot right now"
-                      if (r.message.length > 80) return r.message.slice(0, 80) + "..."
-                      return r.message
-                    })
-                    const isTruncated = createMemo(() => {
-                      const r = retry()
-                      if (!r) return false
-                      return r.message.length > 120
-                    })
-                    const [seconds, setSeconds] = createSignal(0)
-                    onMount(() => {
-                      const timer = setInterval(() => {
-                        const next = retry()?.next
-                        if (next) setSeconds(Math.round((next - Date.now()) / 1000))
-                      }, 1000)
+                </Show>
+              )
+            })()}
+            
+            <Show when={status().type !== "retry" && status().type !== "busy"}>
+              {props.hint ?? <text />}
+            </Show>
+            
+            <Show when={status().type !== "retry"}>
+              <box flexDirection="row" gap={1}>
+                <Show when={store.interrupt > 0}>
+                   <text fg={theme.primary}>esc again to interrupt</text>
+                </Show>
+                <Switch>
 
-                      onCleanup(() => {
-                        clearInterval(timer)
-                      })
-                    })
-                    const handleMessageClick = () => {
-                      const r = retry()
-                      if (!r) return
-                      if (isTruncated()) {
-                        DialogAlert.show(dialog, "Retry Error", r.message)
-                      }
-                    }
-
-                    const retryText = () => {
-                      const r = retry()
-                      if (!r) return ""
-                      const baseMessage = message()
-                      const truncatedHint = isTruncated() ? " (click to expand)" : ""
-                      const duration = formatDuration(seconds())
-                      const retryInfo = ` [retrying ${duration ? `in ${duration} ` : ""}attempt #${r.attempt}]`
-                      return baseMessage + truncatedHint + retryInfo
-                    }
-
-                    return (
-                      <Show when={retry()}>
-                        <box onMouseUp={handleMessageClick}>
-                          <text fg={theme.error}>{retryText()}</text>
-                        </box>
-                      </Show>
-                    )
-                  })()}
-                </box>
+                  <Match when={store.mode === "shell"}>
+                    <text fg={theme.textMuted}>
+                      <span style={{ fg: theme.text }}>esc</span> exit shell mode
+                    </text>
+                  </Match>
+                </Switch>
               </box>
-              <text fg={store.interrupt > 0 ? theme.primary : theme.text}>
-                esc{" "}
-                <span style={{ fg: store.interrupt > 0 ? theme.primary : theme.textMuted }}>
-                  {store.interrupt > 0 ? "again to interrupt" : "interrupt"}
-                </span>
-              </text>
-            </box>
-          </Show>
+            </Show>
+          </box>
+
           <Show when={status().type !== "retry"}>
             <box gap={2} flexDirection="row">
               <Switch>
@@ -1309,18 +1350,13 @@ export function Prompt(props: PromptProps) {
                       )}
                     </Match>
                     <Match when={true}>
-                      <text fg={theme.text}>
-                        {keybind.print("agent_cycle")} <span style={{ fg: theme.textMuted }}>agents</span>
+                      <text fg={theme.textMuted}>
+                        <span style={{ fg: theme.text }}>[{keybind.print("agent_cycle")}]</span> agents
                       </text>
                     </Match>
                   </Switch>
-                  <text fg={theme.text}>
-                    {keybind.print("command_list")} <span style={{ fg: theme.textMuted }}>commands</span>
-                  </text>
-                </Match>
-                <Match when={store.mode === "shell"}>
-                  <text fg={theme.text}>
-                    esc <span style={{ fg: theme.textMuted }}>exit shell mode</span>
+                  <text fg={theme.textMuted}>
+                    <span style={{ fg: theme.text }}>[{keybind.print("command_list")}]</span> commands
                   </text>
                 </Match>
               </Switch>
