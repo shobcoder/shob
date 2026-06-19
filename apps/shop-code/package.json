@@ -1,10 +1,10 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "shop-code",
-  "version": "0.0.74",
+  "name": "shob-code",
+  "version": "0.0.1",
   "type": "module",
   "license": "MIT",
-  "description": "Publishable Shob CLI package.",
+  "description": "Shob – an AI agent that delivers high-quality coding & automation work",
   "bin": {
     "shob": "./bin/shob.cjs"
   },

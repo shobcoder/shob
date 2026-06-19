@@ -226,6 +226,8 @@ export const TuiThreadCommand = cmd({
     } finally {
       unguard?.()
     }
+    // ensure mouse tracking is off, cursor is visible, and format is reset
+    process.stdout.write("\x1b[?1003l\x1b[?1006l\x1b[?25h\x1b[0m")
     process.exit(0)
   },
 })

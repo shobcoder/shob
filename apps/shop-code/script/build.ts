@@ -8,8 +8,8 @@ import { createSolidTransformPlugin } from "@opentui/solid/bun-plugin"
 const dir = path.resolve(import.meta.dirname, "..")
 const root = path.resolve(dir, "../..")
 const server = path.resolve(dir, "../../packages/server")
-const rootPkg = await Bun.file(path.join(root, "package.json")).json()
-const version = String(rootPkg.version ?? "0.0.0")
+const pkg = await Bun.file(path.join(dir, "package.json")).json()
+const version = String(pkg.version ?? "0.0.0")
 const channel = process.env.SHOB_CHANNEL || "local"
 
 process.chdir(dir)

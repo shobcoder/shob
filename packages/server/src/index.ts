@@ -106,13 +106,13 @@ const cli = yargs(args)
       args: process.argv.slice(2),
     })
 
-    const marker = path.join(Global.Path.data, "shob.db")
-    if (!(await Filesystem.exists(marker))) {
-      const [{ JsonMigration }, { Database }, { drizzle }] = await Promise.all([
-        import("./storage/json-migration"),
-        import("./storage/db"),
-        import("drizzle-orm/bun-sqlite"),
-      ])
+    const [{ JsonMigration }, { Database }, { drizzle }] = await Promise.all([
+      import("./storage/json-migration"),
+      import("./storage/db"),
+      import("drizzle-orm/bun-sqlite"),
+    ])
+    
+    if (!(await Filesystem.exists(Database.Path))) {
       const tty = process.stderr.isTTY
       process.stderr.write("Performing one time database migration, may take a few minutes..." + EOL)
       const width = 36
