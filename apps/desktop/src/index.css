@@ -1357,6 +1357,11 @@ b {
   height: 100%;
 }
 
+.shob-titlebar-panel-controls {
+  height: 100%;
+  padding-right: 6px;
+}
+
 /* Floating panel controls (Open with / terminal / review) anchored to the
    agent view's top-right corner. A translucent backdrop keeps the transparent
    toggle buttons legible when they overlap chat content. */

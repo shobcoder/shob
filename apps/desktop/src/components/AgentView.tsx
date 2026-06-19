@@ -89,6 +89,7 @@ const fallbackOpenWithApps: OpenWithApp[] = [
 const unknownNativeCommand = (error: unknown) => String(error instanceof Error ? error.message : error).includes("Unknown IPC command")
 
 const vscodeProjectUri = (projectPath: string) => `vscode://file/${encodeURI(projectPath.replace(/\\/g, "/"))}`
+const LAPTOP_TITLEBAR_CONTROLS_QUERY = "(max-width: 1440px)"
 
 const basename = (path?: string | null) => {
   if (!path) return "No project"
@@ -823,8 +824,19 @@ function AgentViewInner(props: AgentViewProps) {
   // On Windows/Linux the custom window titlebar hosts the header controls via portals.
   // (On macOS there is no custom titlebar, so the in-view header is kept instead.)
   const [titlebarLeftEl, setTitlebarLeftEl] = createSignal<HTMLElement | null>(null)
+  const [titlebarRightEl, setTitlebarRightEl] = createSignal<HTMLElement | null>(null)
+  const [useTitlebarPanelControls, setUseTitlebarPanelControls] = createSignal(false)
   onMount(() => {
     setTitlebarLeftEl(document.getElementById("shob-titlebar-left"))
+    setTitlebarRightEl(document.getElementById("shob-titlebar-right"))
+  })
+  onMount(() => {
+    if (windowChrome.isMac()) return
+    const media = window.matchMedia(LAPTOP_TITLEBAR_CONTROLS_QUERY)
+    const sync = () => setUseTitlebarPanelControls(media.matches)
+    sync()
+    media.addEventListener("change", sync)
+    onCleanup(() => media.removeEventListener("change", sync))
   })
   const statusInfo = createMemo<SessionStatus>(() => {
     const sessionID = activeSessionId()
@@ -1796,12 +1808,21 @@ function AgentViewInner(props: AgentViewProps) {
                 header still spans the full width, so a floating overlay would sit on top
                 of the branch switcher and swallow its clicks — there the controls are
                 rendered inline in the header instead (see the mac header below). */}
-            <Show when={!windowChrome.isMac()}>
+            <Show when={!windowChrome.isMac() && !useTitlebarPanelControls()}>
               <div class="shob-agent-corner-controls pointer-events-none absolute right-3 top-2 z-40 flex items-center justify-end">
                 <div class="shob-agent-corner-toolbar pointer-events-auto">
                   <AgentHeaderPanelControls projectPath={activeProjectPath()} />
                 </div>
               </div>
+            </Show>
+            <Show when={!windowChrome.isMac() && useTitlebarPanelControls() && titlebarRightEl()}>
+              {(el) => (
+                <Portal mount={el()}>
+                  <div class="shob-titlebar-panel-controls flex min-w-0 items-center">
+                    <AgentHeaderPanelControls projectPath={activeProjectPath()} />
+                  </div>
+                </Portal>
+              )}
             </Show>
             <div
               class="pointer-events-none absolute bottom-6 left-1/2 z-[60] -translate-x-1/2 transition-all duration-200 ease-out"
