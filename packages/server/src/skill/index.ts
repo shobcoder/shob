@@ -164,6 +164,16 @@ export namespace Skill {
       yield* scan(state, bus, dir, SHOB_SKILL_PATTERN)
     }
 
+    const devRoots = [
+      path.resolve(process.cwd(), "../../skills"),
+      path.resolve(__dirname, "../../../../skills"),
+    ]
+    for (const devRoot of devRoots) {
+      if (yield* fsys.isDir(devRoot).pipe(Effect.catch(() => Effect.succeed(false)))) {
+        yield* scan(state, bus, devRoot, SKILL_PATTERN)
+      }
+    }
+
     const cfg = yield* config.get()
     for (const item of cfg.skills?.paths ?? []) {
       const expanded = item.startsWith("~/") ? path.join(os.homedir(), item.slice(2)) : item

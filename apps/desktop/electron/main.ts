@@ -707,7 +707,12 @@ function parseSkillFrontMatter(markdown: string) {
 function builtInSkillRootCandidates() {
   const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
   const packagedRoot = resourcesPath ? path.join(resourcesPath, "skills") : null;
-  const devRoots = [path.join(process.cwd(), "skills"), path.resolve(__dirname, "..", "skills")];
+  const devRoots = [
+    path.join(process.cwd(), "skills"), 
+    path.resolve(__dirname, "..", "skills"),
+    path.resolve(process.cwd(), "../../skills"),
+    path.resolve(__dirname, "../../..", "skills")
+  ];
   return app.isPackaged ? [packagedRoot, ...devRoots].filter(Boolean) as string[] : [...devRoots, packagedRoot].filter(Boolean) as string[];
 }
 
