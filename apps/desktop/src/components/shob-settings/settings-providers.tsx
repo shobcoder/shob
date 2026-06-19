@@ -70,6 +70,9 @@ const ProviderMark: Component<{ id: string; label: string }> = (props) => (
 const ConnectedRow: Component<{
   item: ProviderItem
   connectedLabel: string
+  canEdit: boolean
+  onEdit: () => void
+  editLabel: string
   canDisconnect: boolean
   onDisconnect: () => void
   disconnectHint: string
@@ -82,17 +85,32 @@ const ConnectedRow: Component<{
       <ReadyPill label={props.connectedLabel} />
     </span>
     <Show
-      when={props.canDisconnect}
+      when={props.canEdit || props.canDisconnect}
       fallback={<span class="max-w-[150px] justify-self-end text-right text-[12px] font-medium leading-4 text-muted-foreground">{props.disconnectHint}</span>}
     >
-      <Button
-        size="small"
-        variant="ghost"
-        class="justify-self-end rounded-lg border border-border/70 bg-background/45 px-3 text-foreground hover:bg-muted"
-        onClick={props.onDisconnect}
-      >
-        {props.disconnectLabel}
-      </Button>
+      <span class="flex justify-self-end gap-1.5">
+        <Show when={props.canEdit}>
+          <Button
+            size="small"
+            variant="ghost"
+            icon="edit"
+            aria-label={props.editLabel}
+            title={props.editLabel}
+            class="size-8 rounded-lg border border-border/70 bg-background/45 p-0 text-foreground hover:bg-muted"
+            onClick={props.onEdit}
+          />
+        </Show>
+        <Show when={props.canDisconnect}>
+          <Button
+            size="small"
+            variant="ghost"
+            class="rounded-lg border border-border/70 bg-background/45 px-3 text-foreground hover:bg-muted"
+            onClick={props.onDisconnect}
+          >
+            {props.disconnectLabel}
+          </Button>
+        </Show>
+      </span>
     </Show>
   </div>
 )
@@ -258,12 +276,15 @@ export const SettingsProviders: Component = () => {
               </div>
             }
           >
-            <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3.5">
+            <div class="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
               <For each={connected()}>
                 {(item) => (
                   <ConnectedRow
                     item={item}
                     connectedLabel="Connected"
+                    canEdit={source(item) === "api"}
+                    onEdit={() => dialog.show(() => <DialogConnectProvider provider={item.id} />)}
+                    editLabel={`${language.t("common.edit")} ${providerName(item)}`}
                     canDisconnect={canDisconnect(item)}
                     onDisconnect={() => void disconnect(item.id, item.name)}
                     disconnectHint={language.t("settings.providers.connected.environmentDescription")}
