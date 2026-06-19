@@ -22,7 +22,7 @@ function run(target) {
     forwarders[signal] = () => {
       try {
         child.kill(signal)
-      } catch {}
+      } catch { }
     }
     process.on(signal, forwarders[signal])
   }
@@ -44,7 +44,7 @@ const binary = process.platform === "win32" ? "shob.exe" : "shob"
 const bundled = path.join(scriptDir, "..", "dist", "bin", binary)
 
 if (!fs.existsSync(bundled)) {
-  console.error("Shob CLI binary was not found. Run `bun run build` in apps/shop-code before publishing.")
+  console.error("Shob CLI binary was not found. Run `bun run build` in apps/shob-code before publishing.")
   process.exit(1)
 }
 
