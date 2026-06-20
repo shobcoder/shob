@@ -79,6 +79,10 @@ export async function KiloAuthPlugin(_input: PluginInput): Promise<Hooks> {
             }
           },
         },
+        {
+          label: "Kilo token",
+          type: "api",
+        },
       ],
     },
   }

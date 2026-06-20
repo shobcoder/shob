@@ -49,7 +49,6 @@ export function DialogConnectProvider(props: { provider: string }) {
       return item
     },
   )
-  const kilo = createMemo(() => props.provider === "kilo")
   const fallback = createMemo<ProviderAuthMethod[]>(() => [
     {
       type: "api" as const,
@@ -59,19 +58,17 @@ export function DialogConnectProvider(props: { provider: string }) {
   const [auth, { refetch }] = createResource(
     () => props.provider,
     async () => {
-      if (!kilo()) {
-        const cached = globalSync.data.provider_auth[props.provider]
-        if (cached) return cached
-      }
+      const cached = globalSync.data.provider_auth[props.provider]
+      if (cached) return cached
       const res = await globalSDK.client.provider.auth()
-      if (!alive.value) return kilo() ? [] : fallback()
+      if (!alive.value) return fallback()
       globalSync.set("provider_auth", res.data ?? {})
-      return res.data?.[props.provider] ?? (kilo() ? [] : fallback())
+      return res.data?.[props.provider] ?? fallback()
     },
   )
-  const loading = createMemo(() => auth.loading && (!kilo() ? !globalSync.data.provider_auth[props.provider] : true))
+  const loading = createMemo(() => auth.loading && !globalSync.data.provider_auth[props.provider])
   const methods = createMemo(() =>
-    auth.latest ?? (!kilo() ? globalSync.data.provider_auth[props.provider] : undefined) ?? (kilo() ? [] : fallback()),
+    auth.latest ?? globalSync.data.provider_auth[props.provider] ?? fallback(),
   )
   const [store, setStore] = createStore({
     methodIndex: undefined as undefined | number,

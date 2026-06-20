@@ -3,12 +3,20 @@ import { Switch } from "@shob-ai/ui/switch"
 import { Icon } from "@shob-ai/ui/icon"
 import { IconButton } from "@shob-ai/ui/icon-button"
 import { TextField } from "@shob-ai/ui/text-field"
+import { showToast } from "@shob-ai/ui/toast"
 import { type Component, For, Show, createEffect, createMemo, createSignal } from "solid-js"
 import { useLanguage } from "@/context/language"
+import { useGlobalSync } from "@/context/global-sync"
 import { useModels } from "@/context/models"
 import { popularProviders, useProviders } from "@/hooks/use-providers"
 
-type ModelItem = ReturnType<ReturnType<typeof useModels>["list"]>[number]
+type BaseModelItem = ReturnType<ReturnType<typeof useModels>["list"]>[number]
+type ModelItem = BaseModelItem | {
+  id: string
+  name: string
+  provider: ProviderItem
+  hiddenOnly: true
+}
 type ProviderItem = ReturnType<ReturnType<typeof useProviders>["connected"]>[number]
 
 const providerName = (item: { id: string; name: string }) => (item.id === "xai" ? "xAI (Grok)" : item.name)
@@ -42,6 +50,9 @@ const ModelRow: Component<{ item: ModelItem; onToggle: (checked: boolean) => voi
   <div class="flex items-center justify-between gap-4 py-2.5 border-b border-border-weak-base last:border-0">
     <div class="min-w-0">
       <span class="text-13-regular text-text-strong truncate block">{props.item.name}</span>
+      <Show when={props.item.id !== props.item.name}>
+        <span class="text-12-regular text-text-weak truncate block">{props.item.id}</span>
+      </Show>
     </div>
     <div class="flex-shrink-0">
       <Switch checked={props.visible} onChange={props.onToggle} hideLabel>
@@ -60,7 +71,9 @@ const ProviderRow: Component<{ item: ProviderItem; onSelect: () => void; openLab
     <ProviderIcon id={props.item.id} class="size-5 shrink-0 icon-strong-base" />
     <span class="min-w-0">
       <span class="block truncate text-14-medium text-text-strong">{providerName(props.item)}</span>
-      <span class="block truncate text-12-regular text-text-weak">{props.item.id}</span>
+      <span class="block truncate text-12-regular text-text-weak">
+        {props.item.id} · {Object.keys(props.item.models).length}
+      </span>
     </span>
     <span class="flex shrink-0 items-center gap-2 text-12-medium text-text-weak group-hover:text-text-strong">
       <span class="hidden sm:inline">{props.openLabel}</span>
@@ -71,15 +84,30 @@ const ProviderRow: Component<{ item: ProviderItem; onSelect: () => void; openLab
 
 export const SettingsModels: Component = () => {
   const language = useLanguage()
+  const globalSync = useGlobalSync()
   const models = useModels()
   const providers = useProviders()
   const [filter, setFilter] = createSignal("")
   const [selectedProviderID, setSelectedProviderID] = createSignal<string>()
 
   const query = createMemo(() => filter().trim().toLowerCase())
+  const hiddenModels = createMemo(() => globalSync.data.config.hidden_models ?? {})
 
   const providerList = createMemo(() => {
-    const items = providers.connected().slice()
+    const byID = new Map<string, ProviderItem>()
+    for (const provider of providers.connected()) byID.set(provider.id, provider)
+    for (const [providerID, hidden] of Object.entries(hiddenModels())) {
+      if (hidden.length === 0 || byID.has(providerID)) continue
+      byID.set(providerID, {
+        id: providerID,
+        name: providerID,
+        source: "custom",
+        env: [],
+        options: {},
+        models: Object.fromEntries(hidden.map((modelID) => [modelID, { id: modelID, name: modelID }])),
+      } as ProviderItem)
+    }
+    const items = Array.from(byID.values())
     items.sort((a, b) => {
       const rank = providerRank(a.id) - providerRank(b.id)
       if (rank !== 0) return rank
@@ -102,10 +130,21 @@ export const SettingsModels: Component = () => {
   const selectedProviderModels = createMemo(() => {
     const provider = selectedProvider()
     if (!provider) return []
-    return models
+    const visible = models
       .list()
       .filter((model) => model.provider.id === provider.id)
       .sort((a, b) => a.name.localeCompare(b.name))
+    const byID = new Map<string, ModelItem>(visible.map((model) => [model.id, model]))
+    for (const hiddenID of hiddenModels()[provider.id] ?? []) {
+      if (byID.has(hiddenID)) continue
+      byID.set(hiddenID, {
+        id: hiddenID,
+        name: hiddenID,
+        provider,
+        hiddenOnly: true,
+      })
+    }
+    return Array.from(byID.values()).sort((a, b) => a.name.localeCompare(b.name))
   })
 
   const filteredModels = createMemo(() => {
@@ -115,10 +154,41 @@ export const SettingsModels: Component = () => {
     )
   })
 
-  const isVisible = (item: ModelItem) => models.visible({ providerID: item.provider.id, modelID: item.id })
+  const isVisible = (item: ModelItem) => !(hiddenModels()[item.provider.id] ?? []).includes(item.id)
+
+  const saveHiddenModels = async (next: Record<string, string[]>, before: Record<string, string[]>) => {
+    globalSync.set("config", "hidden_models", next)
+    await globalSync
+      .updateConfig({ hidden_models: next })
+      .catch((err: unknown) => {
+        globalSync.set("config", "hidden_models", before)
+        const message = err instanceof Error ? err.message : String(err)
+        showToast({ title: language.t("common.requestFailed"), description: message })
+      })
+  }
 
   const handleToggle = (item: ModelItem, checked: boolean) => {
+    const before = hiddenModels()
+    const current = before[item.provider.id] ?? []
+    const nextHidden = checked ? current.filter((id) => id !== item.id) : current.includes(item.id) ? current : [...current, item.id]
+    const next = { ...before, [item.provider.id]: nextHidden }
+    void saveHiddenModels(next, before)
     models.setVisibility({ providerID: item.provider.id, modelID: item.id }, checked)
+  }
+
+  const providerVisible = (provider: ProviderItem) => {
+    const all = selectedProviderModels().filter((model) => model.provider.id === provider.id)
+    return all.length > 0 && all.every(isVisible)
+  }
+
+  const handleProviderToggle = (provider: ProviderItem, checked: boolean) => {
+    const all = selectedProviderModels().filter((model) => model.provider.id === provider.id)
+    const before = hiddenModels()
+    const next = { ...before, [provider.id]: checked ? [] : all.map((model) => model.id) }
+    void saveHiddenModels(next, before)
+    for (const model of all) {
+      models.setVisibility({ providerID: provider.id, modelID: model.id }, checked)
+    }
   }
 
   const clearFilter = () => setFilter("")
@@ -203,6 +273,15 @@ export const SettingsModels: Component = () => {
                 />
                 <ProviderIcon id={provider().id} class="size-5 shrink-0 icon-strong-base" />
                 <span class="min-w-0 truncate text-14-medium text-text-strong">{providerName(provider())}</span>
+                <span class="ml-auto">
+                  <Switch
+                    checked={providerVisible(provider())}
+                    onChange={(checked) => handleProviderToggle(provider(), checked)}
+                    hideLabel
+                  >
+                    {providerName(provider())}
+                  </Switch>
+                </span>
               </div>
 
               <div class="rounded-xl border border-border-weak-base bg-surface-panel p-5">

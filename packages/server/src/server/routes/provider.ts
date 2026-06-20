@@ -128,7 +128,10 @@ export const ProviderRoutes = lazy(() =>
 
         const connected = await Provider.list()
         const providers = Object.assign(
-          mapValues(filteredProviders, (x) => Provider.fromModelsDevProvider(x)),
+          Provider.applyHiddenModels(
+            mapValues(filteredProviders, (x) => Provider.fromModelsDevProvider(x)),
+            config.hidden_models,
+          ),
           connected,
         )
         return c.json({

@@ -1125,6 +1125,24 @@ export namespace Provider {
     }
   }
 
+  export function applyHiddenModels<T extends Record<string, Info>>(
+    providers: T,
+    hiddenModels?: Record<string, string[]>,
+  ): T {
+    if (!hiddenModels) return providers
+    for (const [providerID, hidden] of Object.entries(hiddenModels)) {
+      if (hidden.length === 0) continue
+      const provider = providers[providerID]
+      if (!provider) continue
+      const hiddenSet = new Set(hidden)
+      for (const modelID of Object.keys(provider.models)) {
+        if (hiddenSet.has(modelID)) delete provider.models[modelID]
+      }
+      if (Object.keys(provider.models).length === 0) delete providers[providerID]
+    }
+    return providers
+  }
+
   const layer: Layer.Layer<Service, never, Config.Service | Auth.Service | Plugin.Service> = Layer.effect(
     Service,
     Effect.gen(function* () {
@@ -1590,6 +1608,8 @@ export namespace Provider {
 
             log.info("found", { providerID })
           }
+
+          applyHiddenModels(providers, cfg.hidden_models)
 
           return {
             models: languages,
