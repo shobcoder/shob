@@ -39,6 +39,12 @@ const PROVIDER_ID = /^[a-z0-9][a-z0-9-_]*$/
 const OPENAI_COMPATIBLE = "@ai-sdk/openai-compatible"
 const ANTHROPIC_COMPATIBLE = "@ai-sdk/anthropic"
 
+export const SHOB_OPENAI_COMPATIBLE_PRESET = {
+  providerID: "shob",
+  name: "Shob AI Gateway",
+  baseURL: "https://workspace.olova.dev/v1",
+} as const
+
 export const OPENCLAUDE_OPENAI_COMPATIBLE_PRESET = {
   providerID: "openclaude",
   name: "OpenClaude Gateway",
@@ -384,6 +390,11 @@ export function DialogOpenAICompatible(props: Props = {}) {
         </div>
 
         <form onSubmit={save} class="px-2.5 pb-6 flex flex-col gap-6">
+          <Show when={props.iconID === "shob"}>
+            <p class="text-14-regular text-text-base">
+              Enter your Shob AI Gateway API key to connect your account and use Shob models in Shob.
+            </p>
+          </Show>
           <Show when={!apiKeyOnly()}>
             <p class="text-14-regular text-text-base">
               {compatible() === "anthropic"
@@ -435,7 +446,7 @@ export function DialogOpenAICompatible(props: Props = {}) {
               autofocus={apiKeyOnly()}
               label={language.t("provider.custom.field.apiKey.label")}
               placeholder={language.t("provider.custom.field.apiKey.placeholder")}
-              description={language.t("provider.custom.field.apiKey.description")}
+              description={props.iconID === "shob" ? undefined : language.t("provider.custom.field.apiKey.description")}
               value={form.apiKey}
               onChange={(v) => setField("apiKey", v)}
               validationState={form.err.apiKey ? "invalid" : undefined}

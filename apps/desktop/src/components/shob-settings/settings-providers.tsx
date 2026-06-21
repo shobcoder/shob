@@ -13,7 +13,7 @@ import { DialogCustomProvider } from "./dialog-custom-provider"
 import {
   CUSTOM_ANTHROPIC_COMPATIBLE_PRESET,
   DialogOpenAICompatible,
-  OPENCLAUDE_OPENAI_COMPATIBLE_PRESET,
+  SHOB_OPENAI_COMPATIBLE_PRESET,
 } from "./dialog-openai-compatible"
 import { iconNames } from "../../../../../packages/ui/src/components/provider-icons/types"
 
@@ -39,7 +39,7 @@ const Section: Component<{ title: string; children: JSX.Element; action?: JSX.El
 const providerName = (item: { id: string; name: string }) => (item.id === "xai" ? "xAI (Grok)" : item.name)
 
 const hasProviderIcon = (id: string) =>
-  id === "antigravity" || id === "openclaude" || iconNames.includes(id as (typeof iconNames)[number])
+  id === "antigravity" || id === "shob" || id === "openclaude" || iconNames.includes(id as (typeof iconNames)[number])
 
 const initials = (value: string) => {
   const parts = value.split(/[^a-z0-9]+/i).filter(Boolean)
@@ -298,6 +298,24 @@ export const SettingsProviders: Component = () => {
 
         <Section title={language.t("settings.providers.section.popular")}>
           <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-3.5">
+            <div data-component="shob-compatible-section">
+              <SimpleTopActionCard
+                iconId="shob"
+                title={SHOB_OPENAI_COMPATIBLE_PRESET.name}
+                tag={language.t("dialog.provider.tag.recommended")}
+                connectLabel={language.t("common.connect")}
+                onConnect={() =>
+                  dialog.show(() => (
+                    <DialogOpenAICompatible
+                      defaults={SHOB_OPENAI_COMPATIBLE_PRESET}
+                      iconID="shob"
+                      apiKeyOnly
+                    />
+                  ))
+                }
+              />
+            </div>
+
             <For each={popular()}>
               {(item) => (
                 <PopularRow
@@ -309,24 +327,6 @@ export const SettingsProviders: Component = () => {
                 />
               )}
             </For>
-
-            <div data-component="openclaude-compatible-section">
-              <SimpleTopActionCard
-                iconId="openclaude"
-                title={OPENCLAUDE_OPENAI_COMPATIBLE_PRESET.name}
-                tag={language.t("settings.providers.tag.custom")}
-                connectLabel={language.t("common.connect")}
-                onConnect={() =>
-                  dialog.show(() => (
-                    <DialogOpenAICompatible
-                      defaults={OPENCLAUDE_OPENAI_COMPATIBLE_PRESET}
-                      iconID="openclaude"
-                      apiKeyOnly
-                    />
-                  ))
-                }
-              />
-            </div>
 
             <div data-component="openai-compatible-section">
               <SimpleTopActionCard
