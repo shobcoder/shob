@@ -31,18 +31,18 @@ const SETTINGS_SECTIONS = [
     keywords: ["provider", "api", "account", "connect", "key"],
   },
   {
-    id: "plugins",
-    label: "Plugins",
-    description: "Install skills and workflows",
-    icon: Blocks,
-    keywords: ["plugin", "plugins", "skill", "skills", "store", "marketplace"],
-  },
-  {
     id: "models",
     label: "Models",
     description: "Visible models and provider catalogs",
     icon: Box,
     keywords: ["model", "ai", "visibility", "provider"],
+  },
+  {
+    id: "plugins",
+    label: "Plugins",
+    description: "Install skills and workflows",
+    icon: Blocks,
+    keywords: ["plugin", "plugins", "skill", "skills", "store", "marketplace"],
   },
   {
     id: "about",
