@@ -3,7 +3,8 @@
   "private": true,
   "description": "Desktop app for running and organizing multiple CLI agent sessions in one workspace.",
   "author": "shobcoder",
-  "version": "0.0.75",
+  "homepage": "https://github.com/shobcoder/shob",
+  "version": "0.0.76",
   "type": "module",
   "main": "electron-dist/main.js",
   "scripts": {

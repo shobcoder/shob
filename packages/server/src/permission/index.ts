@@ -137,6 +137,21 @@ export namespace Permission {
 
   export class Service extends Context.Service<Service, Interface>()("@shob/Permission") {}
 
+  const DEFAULT_RULESET: Ruleset = [
+    { permission: "bash", pattern: "ls *", action: "allow" },
+    { permission: "bash", pattern: "cat *", action: "allow" },
+    { permission: "bash", pattern: "pwd *", action: "allow" },
+    { permission: "bash", pattern: "echo *", action: "allow" },
+    { permission: "bash", pattern: "git status *", action: "allow" },
+    { permission: "bash", pattern: "git diff *", action: "allow" },
+    { permission: "bash", pattern: "git log *", action: "allow" },
+    { permission: "bash", pattern: "git show *", action: "allow" },
+    { permission: "bash", pattern: "git branch *", action: "allow" },
+    { permission: "bash", pattern: "grep *", action: "allow" },
+    { permission: "bash", pattern: "which *", action: "allow" },
+    { permission: "bash", pattern: "type *", action: "allow" },
+  ]
+
   export const layer = Layer.effect(
     Service,
     Effect.gen(function* () {
@@ -170,7 +185,7 @@ export namespace Permission {
         let needsAsk = false
 
         for (const pattern of request.patterns) {
-          const rule = evaluate(request.permission, pattern, ruleset, approved)
+          const rule = evaluate(request.permission, pattern, DEFAULT_RULESET, ruleset, approved)
           log.info("evaluated", { permission: request.permission, pattern, action: rule })
           if (rule.action === "deny") {
             return yield* new DeniedError({
