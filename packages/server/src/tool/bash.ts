@@ -223,7 +223,7 @@ function preview(text: string) {
 }
 
 const parse = Effect.fn("BashTool.parse")(function* (command: string, ps: boolean) {
-  const tree = yield* Effect.promise(() => parser().then((p) => (ps ? p.ps : p.bash).parse(command)))
+  const tree = yield* Effect.promise(() => grammar(ps).then((p) => p.parse(command)))
   if (!tree) throw new Error("Failed to parse command")
   return tree.rootNode
 })
@@ -327,7 +327,7 @@ function stopCommand(pid: number | undefined) {
   return `kill -TERM -${pid} || kill ${pid}`
 }
 
-const parser = lazy(async () => {
+const runtime = lazy(async () => {
   const { Parser } = await import("web-tree-sitter")
   const { default: treeWasm } = await import("web-tree-sitter/tree-sitter.wasm" as string, {
     with: { type: "wasm" },
@@ -338,21 +338,35 @@ const parser = lazy(async () => {
       return treePath
     },
   })
+  return Parser
+})
+
+// Load each grammar independently and lazily so a given platform only ever pays
+// for the shell it actually uses (Linux/macOS never load the PowerShell grammar,
+// Windows loads only the grammar for the shell it selected).
+const bashParser = lazy(async () => {
+  const Parser = await runtime()
   const { default: bashWasm } = await import("tree-sitter-bash/tree-sitter-bash.wasm" as string, {
     with: { type: "wasm" },
   })
+  const language = await Language.load(resolveWasm(bashWasm))
+  const parser = new Parser()
+  parser.setLanguage(language)
+  return parser
+})
+
+const psParser = lazy(async () => {
+  const Parser = await runtime()
   const { default: psWasm } = await import("tree-sitter-powershell/tree-sitter-powershell.wasm" as string, {
     with: { type: "wasm" },
   })
-  const bashPath = resolveWasm(bashWasm)
-  const psPath = resolveWasm(psWasm)
-  const [bashLanguage, psLanguage] = await Promise.all([Language.load(bashPath), Language.load(psPath)])
-  const bash = new Parser()
-  bash.setLanguage(bashLanguage)
-  const ps = new Parser()
-  ps.setLanguage(psLanguage)
-  return { bash, ps }
+  const language = await Language.load(resolveWasm(psWasm))
+  const parser = new Parser()
+  parser.setLanguage(language)
+  return parser
 })
+
+const grammar = (ps: boolean) => (ps ? psParser() : bashParser())
 
 // TODO: we may wanna rename this tool so it works better on other shells
 export const BashTool = Tool.define(
@@ -669,6 +683,9 @@ export const BashTool = Tool.define(
     return async () => {
       const shell = Shell.acceptable()
       const name = Shell.name(shell)
+      // Warm the tree-sitter grammar for the selected shell so the first command
+      // doesn't pay the WASM cold-start during permission scanning.
+      void grammar(PS.has(name)).catch(() => {})
       const chain =
         name === "powershell"
           ? "If the commands depend on each other and must run sequentially, avoid '&&' in this shell because Windows PowerShell 5.1 does not support it. Use PowerShell conditionals such as `cmd1; if ($?) { cmd2 }` when later commands must depend on earlier success."
