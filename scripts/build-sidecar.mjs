@@ -18,11 +18,35 @@ const OUT_ENTRY = path.join(OUTDIR, "node.js")
 //   1. left external in the Bun build (kept as a bare `import`), AND
 //   2. copied into dist-server/node_modules/<pkg> so the bare import resolves, AND
 //   3. allow-listed by the post-build verifier below.
-// Anything NOT in this list MUST end up fully bundled. jsonc-parser is pure JS,
-// so it is deliberately absent here and is inlined into the bundle — the old
-// "mark external + copy node_modules" approach silently broke packaging when the
-// copied folder didn't ship, crashing with "Cannot find package 'jsonc-parser'".
+// Anything NOT in this list MUST end up fully bundled.
 const EXTERNAL_PACKAGES = []
+
+// Packages we force-resolve to their ESM build (the `module` field) instead of
+// the default `main`. With target:"node" Bun prefers `main`, but some pure-JS
+// packages ship a UMD `main` that does dynamic `require("./impl/...")` internally
+// — Bun leaves those as runtime requires that don't exist next to node.js, so the
+// packaged app crashes with e.g. "Cannot find module './impl/format'". The ESM
+// build uses static imports, so it inlines cleanly with nothing left to ship.
+// jsonc-parser is the known case (its umd/main.js is a UMD wrapper).
+const PREFER_ESM_PACKAGES = ["jsonc-parser"]
+
+// Resolve PREFER_ESM_PACKAGES bare imports to the file named by their `module`
+// field so Bun bundles the static-import ESM variant rather than the UMD `main`.
+const preferEsmPlugin = {
+  name: "prefer-esm",
+  async setup(build) {
+    for (const pkg of PREFER_ESM_PACKAGES) {
+      const pkgDir = path.join(rootDir, "node_modules", pkg)
+      const meta = JSON.parse(await fs.readFile(path.join(pkgDir, "package.json"), "utf8"))
+      if (!meta.module) {
+        fail(`"${pkg}" is in PREFER_ESM_PACKAGES but has no "module" field in package.json`)
+      }
+      const esmEntry = path.join(pkgDir, meta.module)
+      const filter = new RegExp(`^${pkg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`)
+      build.onResolve({ filter }, () => ({ path: esmEntry }))
+    }
+  },
+}
 
 const log = (msg) => console.log(`[sidecar] ${msg}`)
 const fail = (msg, detail) => {
@@ -131,6 +155,28 @@ function verifyNoUnshippedImports(code) {
   }
 }
 
+// Catch the "./impl/format" class of bug: a fully-bundled file should contain NO
+// runtime require()/require2()/__require() of a *relative* path — every relative
+// dependency must be inlined. A leftover one (typically from a UMD module Bun
+// couldn't statically follow) means the packaged app crashes with "Cannot find
+// module './...'". If this fires, add the offending package to PREFER_ESM_PACKAGES
+// (if it ships an ESM build) or to EXTERNAL_PACKAGES.
+function verifyNoUnbundledRequires(code) {
+  const re = /\b(?:require\d*|__require)\s*\(\s*["'](\.\.?\/[^"']+)["']\s*\)/g
+  const offenders = new Set()
+  let m
+  while ((m = re.exec(code))) offenders.add(m[1])
+
+  if (offenders.size > 0) {
+    fail(
+      "bundle has runtime require() of relative paths that weren't inlined:",
+      [...offenders].map((s) => `    • ${s}`).join("\n") +
+        "\n\n  This usually comes from a UMD package. Add it to PREFER_ESM_PACKAGES" +
+        "\n  (if it ships a \"module\"/ESM build) or to EXTERNAL_PACKAGES.",
+    )
+  }
+}
+
 // Verify every asset Bun emitted next to node.js (e.g. the tree-sitter .wasm
 // grammars) is present and non-empty, so a truncated or dropped asset is caught
 // at build time rather than crashing the packaged app.
@@ -178,6 +224,7 @@ async function main() {
     format: "esm",
     sourcemap: "none",
     external: EXTERNAL_PACKAGES,
+    plugins: [preferEsmPlugin],
     define: {
       SHOB_MIGRATIONS: JSON.stringify(migrations),
     },
@@ -196,6 +243,7 @@ async function main() {
 
   const code = await fs.readFile(OUT_ENTRY, "utf8")
   verifyNoUnshippedImports(code)
+  verifyNoUnbundledRequires(code)
   const assetCount = await verifyAssets()
 
   const kb = (out.size / 1024).toFixed(0)
