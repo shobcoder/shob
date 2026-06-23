@@ -35,7 +35,7 @@ import { SessionRetry } from "@shob-ai/ui/session-retry"
 import { showToast } from "@shob-ai/ui/toast"
 import { useSDK } from "@/context/sdk"
 import { formatServerError } from "@/utils/server-errors"
-import { Check, ChevronDown, Copy, MoreHorizontal, Pencil, Pin, RefreshCw, TriangleAlert, X } from "lucide-solid"
+import { Check, ChevronDown, Copy, MoreHorizontal, Pencil, Pin, RefreshCw, Search, TriangleAlert, X } from "lucide-solid"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,6 +57,7 @@ import {
   type AgentTimelineRow,
 } from "@/components/agent-timeline-rows"
 import { SessionContextUsage } from "@/components/session-context-usage"
+import { ChatSearch } from "@/components/ChatSearch"
 
 interface AgentViewProps {
   sessionId: string
@@ -736,6 +737,7 @@ function AgentViewInner(props: AgentViewProps) {
   const syncShobSessions = useStore((s) => s.syncShobSessions)
   const language = useLanguage()
   const [showJump, setShowJump] = createSignal(false)
+  const [chatSearchOpen, setChatSearchOpen] = createSignal(false)
   const [sessionMenuOpen, setSessionMenuOpen] = createSignal(false)
   const [renameOpen, setRenameOpen] = createSignal(false)
   const [renameValue, setRenameValue] = createSignal("")
@@ -829,6 +831,16 @@ function AgentViewInner(props: AgentViewProps) {
   onMount(() => {
     setTitlebarLeftEl(document.getElementById("shob-titlebar-left"))
     setTitlebarRightEl(document.getElementById("shob-titlebar-right"))
+  })
+  onMount(() => {
+    const handleSearchShortcut = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+        e.preventDefault()
+        setChatSearchOpen(true)
+      }
+    }
+    window.addEventListener("keydown", handleSearchShortcut)
+    onCleanup(() => window.removeEventListener("keydown", handleSearchShortcut))
   })
   onMount(() => {
     if (windowChrome.isMac()) return
@@ -1668,6 +1680,13 @@ function AgentViewInner(props: AgentViewProps) {
             <Copy size={14} />
             Copy as Markdown
           </DropdownMenuItem>
+          <DropdownMenuItem
+            class="gap-2 rounded-md px-2 py-1.5 text-[13px] text-text-base focus:bg-surface-raised-base-hover"
+            onClick={(e: MouseEvent) => runSessionMenuAction(e, () => setChatSearchOpen(true))}
+          >
+            <Search size={14} />
+            Search in chat
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       <Show when={activeSessionId()}>
@@ -1814,6 +1833,14 @@ function AgentViewInner(props: AgentViewProps) {
                   <AgentHeaderPanelControls projectPath={activeProjectPath()} />
                 </div>
               </div>
+            </Show>
+            <Show when={chatSearchOpen()}>
+              <ChatSearch
+                messages={messages}
+                getParts={getParts}
+                scrollContainer={() => scrollRef}
+                onClose={() => setChatSearchOpen(false)}
+              />
             </Show>
             <Show when={!windowChrome.isMac() && useTitlebarPanelControls() && titlebarRightEl()}>
               {(el) => (

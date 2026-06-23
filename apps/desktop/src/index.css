@@ -4329,4 +4329,17 @@ html[data-color-scheme="dark"] .agent-terminal-composer-region {
   transition: none !important;
 }
 
+/* ═══════════════════════════════════════════════════
+   CHAT SEARCH HIGHLIGHT
+   ═══════════════════════════════════════════════════ */
+@keyframes chat-search-flash {
+  0% { background-color: color-mix(in srgb, var(--ring) 28%, transparent); }
+  100% { background-color: transparent; }
+}
+
+.chat-search-highlight {
+  animation: chat-search-flash 1.5s ease-out forwards;
+  border-radius: 6px;
+}
+
 
