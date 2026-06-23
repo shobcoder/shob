@@ -166,9 +166,27 @@ function createSchema(db: DatabaseSync) {
       updated_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS work_terminals (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      shell TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      time_created INTEGER NOT NULL,
+      time_updated INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS terminal_layouts (
+      project_id TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+      active_terminal_id TEXT,
+      panel_height INTEGER NOT NULL DEFAULT 280,
+      panel_opened INTEGER NOT NULL DEFAULT 0
+    );
+
     CREATE INDEX IF NOT EXISTS projects_sort_idx ON projects(sort_order, time_updated);
     CREATE INDEX IF NOT EXISTS sessions_project_sort_idx ON sessions(project_id, sort_order, created_at);
     CREATE INDEX IF NOT EXISTS sessions_project_activity_idx ON sessions(project_id, last_active_at);
+    CREATE INDEX IF NOT EXISTS work_terminals_project_sort_idx ON work_terminals(project_id, sort_order, time_created);
   `);
 }
 
@@ -490,4 +508,90 @@ export function closeSessionDatabase() {
   if (!client) return;
   client.close();
   client = null;
+}
+
+export function loadWorkTerminals(projectId: string) {
+  const rows = db()
+    .prepare("SELECT * FROM work_terminals WHERE project_id = ? ORDER BY sort_order ASC, time_created ASC")
+    .all(projectId) as any[];
+  return rows.map((row) => ({
+    id: row.id,
+    projectId: row.project_id,
+    title: row.title,
+    shell: row.shell,
+    sortOrder: row.sort_order,
+    timeCreated: row.time_created,
+    timeUpdated: row.time_updated,
+  }));
+}
+
+export function saveWorkTerminal(terminal: any) {
+  const timestamp = Date.now();
+  db().prepare(`
+    INSERT INTO work_terminals (id, project_id, title, shell, sort_order, time_created, time_updated)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      title = excluded.title,
+      shell = excluded.shell,
+      sort_order = excluded.sort_order,
+      time_updated = excluded.time_updated
+  `).run(
+    terminal.id,
+    terminal.projectId,
+    terminal.title,
+    terminal.shell,
+    terminal.sortOrder ?? 0,
+    terminal.timeCreated ?? timestamp,
+    timestamp
+  );
+}
+
+export function deleteWorkTerminal(id: string) {
+  db().prepare("DELETE FROM work_terminals WHERE id = ?").run(id);
+}
+
+export function reorderWorkTerminals(terminalIds: string[]) {
+  const database = db();
+  withTransaction(database, () => {
+    const update = database.prepare("UPDATE work_terminals SET sort_order = ? WHERE id = ?");
+    terminalIds.forEach((id, index) => {
+      update.run(index, id);
+    });
+  });
+}
+
+export function loadTerminalLayout(projectId: string) {
+  const row = db()
+    .prepare("SELECT * FROM terminal_layouts WHERE project_id = ?")
+    .get(projectId) as any;
+  if (row) {
+    return {
+      projectId: row.project_id,
+      activeTerminalId: row.active_terminal_id,
+      panelHeight: row.panel_height,
+      panelOpened: Boolean(row.panel_opened),
+    };
+  }
+  return {
+    projectId,
+    activeTerminalId: null,
+    panelHeight: 280,
+    panelOpened: false,
+  };
+}
+
+export function saveTerminalLayout(layout: any) {
+  db().prepare(`
+    INSERT INTO terminal_layouts (project_id, active_terminal_id, panel_height, panel_opened)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(project_id) DO UPDATE SET
+      active_terminal_id = excluded.active_terminal_id,
+      panel_height = excluded.panel_height,
+      panel_opened = excluded.panel_opened
+  `).run(
+    layout.projectId,
+    layout.activeTerminalId,
+    layout.panelHeight,
+    layout.panelOpened ? 1 : 0
+  );
 }

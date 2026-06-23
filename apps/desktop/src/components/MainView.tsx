@@ -219,6 +219,25 @@ function ShobReviewContent(props: {
   )
 }
 
+function WorkspaceContent(props: { currentProject: () => any; children: any }) {
+  const layout = useLayout()
+  return (
+    <div class="flex h-full min-h-0 max-h-full flex-1 flex-col overflow-hidden">
+      <div
+        class="min-h-0 min-w-0 flex-1 overflow-hidden bg-background"
+        style={{
+          display: layout.terminal.maximized() ? 'none' : 'block'
+        }}
+      >
+        {props.children}
+      </div>
+      <Show when={props.currentProject()}>
+        <BottomTerminalPanel />
+      </Show>
+    </div>
+  )
+}
+
 export function MainView() {
   const appStore = useStore()
   const globalSDK = useGlobalSDK()
@@ -804,101 +823,95 @@ export function MainView() {
       <div class="flex h-full min-h-0 max-h-full min-w-0 flex-1 flex-col overflow-hidden bg-background">
         {activePage() === 'workspace' ? (
           <LayoutProvider>
-            <div class="flex h-full min-h-0 max-h-full flex-1 flex-col overflow-hidden">
-              <div class="min-h-0 min-w-0 flex-1 overflow-hidden bg-background">
-                <div ref={workspaceSplitRef} class="shob-workspace-split flex h-full w-full min-h-0 min-w-0">
-                  <div
-                    class="shob-workspace-agent min-h-0 min-w-0 overflow-hidden"
-                    classList={{
-                      "flex-1": !sidePanelOpen() || !sidePanelMainOpen(),
-                      "shrink-0": sidePanelOpen() && sidePanelMainOpen(),
-                    }}
-                    style={{
-                      display: projectSessions().length > 0 ? 'flex' : 'none',
-                      width: sessionPanelStyleWidth(),
-                    }}
-                  >
-                    <TerminalPanel onNewSession={handleCreateSession} reviewDiffs={reviewDiffs} />
-                  </div>
-
-                  {projectSessions().length === 0 && (
-                    <div class="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-                      <MacSidebarRevealRow />
-                      <div class="min-h-0 flex-1 overflow-hidden">
-                        <WelcomeScreen
-                          projects={projects()}
-                          currentProject={currentProject()}
-                          onOpenFolder={handleOpenFolder}
-                          onCreateSession={handleCreateSession}
-                          onSelectProject={appStore.setCurrentProject}
-                          onToggleFileTree={handleToggleFileTree}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <Show when={sidePanelMounted()}>
-                    <div
-                      class="shob-workspace-side-panel relative h-full min-h-0 max-h-full shrink-0 overflow-hidden"
-                      classList={{
-                        "flex-1": sidePanelOpen() && sidePanelMainOpen(),
-                        "border-l": sidePanelOpen(),
-                        "border-border/60": sidePanelOpen(),
-                        "pointer-events-none": !sidePanelOpen(),
-                        "transition-[width]": !reviewResizeActive() && !reviewSnap(),
-                        "duration-[240ms]": !reviewResizeActive() && !reviewSnap(),
-                        "ease-[cubic-bezier(0.22,1,0.36,1)]": !reviewResizeActive() && !reviewSnap(),
-                        "will-change-[width]": !reviewResizeActive() && !reviewSnap(),
-                        "motion-reduce:transition-none": !reviewResizeActive() && !reviewSnap(),
-                      }}
-                      style={{ width: sidePanelStyleWidth() }}
-                    >
-                      <Show when={sidePanelOpen() && sidePanelMainOpen()}>
-                        <ResizeHandle
-                          edge="start"
-                          onResize={resizeReviewPanel}
-                          onResizeStart={beginReviewResize}
-                          onResizeEnd={endReviewResize}
-                        />
-                      </Show>
-                      <Suspense fallback={null}>
-                        <SDKProvider directory={projectPath}>
-                          <SyncProvider>
-                            <fileCtx.FileProvider>
-                              <ShobReviewContent
-                                projectPath={projectPath}
-                                reviewDiffs={reviewDiffs}
-                                activeFilePath={activeFilePath}
-                                onSelectFile={handleFileSelect}
-                                gitDiffLoading={gitDiffLoading}
-                                sidePanelVisible={sidePanelOpen}
-                                isReviewVisible={isReviewVisible}
-                                isFileTreeVisible={isFileTreeVisible}
-                                contextSessionId={contextTabSessionId}
-                                onContextClose={() => setContextTabSessionId(null)}
-                                activeTabId={activeTabId}
-                                onSelectTab={setActiveTabId}
-                                fileTabs={reviewFiles}
-                                onCloseFile={handleCloseReviewFile}
-                                terminalTabs={terminalTabs}
-                                onCloseTerminal={handleCloseTerminalTab}
-                                browserTabOpen={browserTabOpen}
-                                onCloseBrowser={handleCloseBrowserTab}
-                                panelResizing={reviewResizeActive}
-                              />
-                            </fileCtx.FileProvider>
-                          </SyncProvider>
-                        </SDKProvider>
-                      </Suspense>
-                    </div>
-                  </Show>
+            <WorkspaceContent currentProject={currentProject}>
+              <div ref={workspaceSplitRef} class="shob-workspace-split flex h-full w-full min-h-0 min-w-0">
+                <div
+                  class="shob-workspace-agent min-h-0 min-w-0 overflow-hidden"
+                  classList={{
+                    "flex-1": !sidePanelOpen() || !sidePanelMainOpen(),
+                    "shrink-0": sidePanelOpen() && sidePanelMainOpen(),
+                  }}
+                  style={{
+                    display: projectSessions().length > 0 ? 'flex' : 'none',
+                    width: sessionPanelStyleWidth(),
+                  }}
+                >
+                  <TerminalPanel onNewSession={handleCreateSession} reviewDiffs={reviewDiffs} />
                 </div>
-              </div>
 
-              <Show when={projectSessions().length > 0}>
-                <BottomTerminalPanel />
-              </Show>
-            </div>
+                {projectSessions().length === 0 && (
+                  <div class="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                    <MacSidebarRevealRow />
+                    <div class="min-h-0 flex-1 overflow-hidden">
+                      <WelcomeScreen
+                        projects={projects()}
+                        currentProject={currentProject()}
+                        onOpenFolder={handleOpenFolder}
+                        onCreateSession={handleCreateSession}
+                        onSelectProject={appStore.setCurrentProject}
+                        onToggleFileTree={handleToggleFileTree}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <Show when={sidePanelMounted()}>
+                  <div
+                    class="shob-workspace-side-panel relative h-full min-h-0 max-h-full shrink-0 overflow-hidden"
+                    classList={{
+                      "flex-1": sidePanelOpen() && sidePanelMainOpen(),
+                      "border-l": sidePanelOpen(),
+                      "border-border/60": sidePanelOpen(),
+                      "pointer-events-none": !sidePanelOpen(),
+                      "transition-[width]": !reviewResizeActive() && !reviewSnap(),
+                      "duration-[240ms]": !reviewResizeActive() && !reviewSnap(),
+                      "ease-[cubic-bezier(0.22,1,0.36,1)]": !reviewResizeActive() && !reviewSnap(),
+                      "will-change-[width]": !reviewResizeActive() && !reviewSnap(),
+                      "motion-reduce:transition-none": !reviewResizeActive() && !reviewSnap(),
+                    }}
+                    style={{ width: sidePanelStyleWidth() }}
+                  >
+                    <Show when={sidePanelOpen() && sidePanelMainOpen()}>
+                      <ResizeHandle
+                        edge="start"
+                        onResize={resizeReviewPanel}
+                        onResizeStart={beginReviewResize}
+                        onResizeEnd={endReviewResize}
+                      />
+                    </Show>
+                    <Suspense fallback={null}>
+                      <SDKProvider directory={projectPath}>
+                        <SyncProvider>
+                          <fileCtx.FileProvider>
+                            <ShobReviewContent
+                              projectPath={projectPath}
+                              reviewDiffs={reviewDiffs}
+                              activeFilePath={activeFilePath}
+                              onSelectFile={handleFileSelect}
+                              gitDiffLoading={gitDiffLoading}
+                              sidePanelVisible={sidePanelOpen}
+                              isReviewVisible={isReviewVisible}
+                              isFileTreeVisible={isFileTreeVisible}
+                              contextSessionId={contextTabSessionId}
+                              onContextClose={() => setContextTabSessionId(null)}
+                              activeTabId={activeTabId}
+                              onSelectTab={setActiveTabId}
+                              fileTabs={reviewFiles}
+                              onCloseFile={handleCloseReviewFile}
+                              terminalTabs={terminalTabs}
+                              onCloseTerminal={handleCloseTerminalTab}
+                              browserTabOpen={browserTabOpen}
+                              onCloseBrowser={handleCloseBrowserTab}
+                              panelResizing={reviewResizeActive}
+                            />
+                          </fileCtx.FileProvider>
+                        </SyncProvider>
+                      </SDKProvider>
+                    </Suspense>
+                  </div>
+                </Show>
+              </div>
+            </WorkspaceContent>
           </LayoutProvider>
         ) : activePage() === 'settings' ? (
           <Suspense fallback={<div class="flex h-full w-full items-center justify-center text-sm text-text-weak">Loading settings...</div>}>

@@ -44,6 +44,13 @@ const allowedCommands = new Set([
   "check_for_updates",
   "install_update",
   "download_update",
+  "list_work_terminals",
+  "create_work_terminal",
+  "update_work_terminal",
+  "reorder_work_terminals",
+  "delete_work_terminal",
+  "get_terminal_layout",
+  "save_terminal_layout",
 ]);
 
 const eventSubscriptions = new Map<string, Set<(data: any) => void>>();

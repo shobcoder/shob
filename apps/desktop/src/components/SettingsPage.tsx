@@ -53,7 +53,6 @@ const SETTINGS_SECTIONS = [
   },
 ] as const
 
-const getShellLabel = (shell: string) => shell.split(/[\\/]/).pop() || shell
 
 const COLOR_SCHEME_OPTIONS = [
   { id: "system", label: "System" },
@@ -94,9 +93,6 @@ function SettingsRow(props: {
 
 export function SettingsPage(props: { onGoBack?: () => void }) {
   const chrome = useWindowChrome()
-  const preferredShell = useStore((s) => s.preferredShell)
-  const availableShells = useStore((s) => s.availableShells)
-  const setPreferredShell = useStore((s) => s.setPreferredShell)
   const themeId = useStore((s) => s.themeId)
   const colorScheme = useStore((s) => s.colorScheme)
   const setThemeId = useStore((s) => s.setThemeId)
@@ -118,8 +114,6 @@ export function SettingsPage(props: { onGoBack?: () => void }) {
   const activeSection = createMemo(() => SETTINGS_SECTIONS.find((item) => item.id === section()) ?? SETTINGS_SECTIONS[0])
 
   const committedTheme = createMemo(() => getThemeById(themeId()))
-
-  const selectedShell = createMemo(() => preferredShell() ?? availableShells()[0] ?? null)
 
   let previewThemeTimeoutId: number | null = null
   let pendingThemePreviewId: string | null = null
@@ -314,40 +308,7 @@ export function SettingsPage(props: { onGoBack?: () => void }) {
                   </Combobox>
                 </SettingsRow>
 
-                <SettingsRow title="Integrated terminal shell" description="Default shell for terminals">
-                  <Show
-                    when={availableShells().length > 0}
-                    fallback={
-                      <div class="flex h-8 w-full items-center rounded-lg bg-muted/70 px-2.5 text-[13px] font-medium text-muted-foreground">
-                        Not detected
-                      </div>
-                    }
-                  >
-                    <Select
-                      options={availableShells()}
-                      value={selectedShell()}
-                      onChange={(shell: string | null) => {
-                        if (shell) setPreferredShell(shell)
-                      }}
-                      itemComponent={(props: { item: { rawValue: string } }) => (
-                        <SelectItem
-                          item={props.item}
-                          class="min-h-8 cursor-default px-2 py-1.5 pr-8 text-[13px] font-medium text-foreground data-highlighted:bg-accent data-highlighted:text-accent-foreground data-selected:bg-secondary/80 data-selected:text-foreground"
-                        >
-                          <span class="min-w-0 truncate">{getShellLabel(props.item.rawValue)}</span>
-                        </SelectItem>
-                      )}
-                    >
-                      <SelectTrigger
-                        class="h-8 w-full border-transparent bg-muted/70 px-2.5 text-[13px] font-medium text-foreground hover:bg-muted"
-                        aria-label="Select terminal shell"
-                      >
-                        <SelectValue>{() => selectedShell() ? getShellLabel(selectedShell()!) : "Not detected"}</SelectValue>
-                      </SelectTrigger>
-                      <SelectContent class="max-h-56 w-[var(--kb-select-trigger-width)] rounded-lg border border-border/70 bg-popover p-1 text-popover-foreground shadow-2xl" />
-                    </Select>
-                  </Show>
-                </SettingsRow>
+
               </div>
 
               <div class="text-[13px] font-medium leading-5 text-muted-foreground/75">Sounds</div>

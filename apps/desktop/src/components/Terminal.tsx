@@ -1,4 +1,4 @@
-import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js"
+import { createEffect, createSignal, onCleanup, onMount, Show, createMemo, For } from "solid-js"
 import { Terminal as XTerm } from "@xterm/xterm"
 import { FitAddon } from "@xterm/addon-fit"
 import { ClipboardAddon } from "@xterm/addon-clipboard"
@@ -34,11 +34,13 @@ type TerminalOs = TerminalHostInfo["os"]
 
 interface IPty {
   reused: boolean
+  shell?: string
   write(data: string): void
   resize(cols: number, rows: number): void
   dispose(): void
   kill(): void
   onData(callback: (chunk: string) => void): void
+  onExit(callback: () => void): void
 }
 
 const launchedPendingCommandKeys = new Set<string>()
@@ -99,6 +101,7 @@ function decodePtyChunk(chunk: unknown, decoder: TextDecoder): string {
 async function spawnNativePty(options: {
   sessionId: string
   shell: string
+  fallbackShells?: string[]
   cwd?: string
   rows: number
   cols: number
@@ -108,6 +111,7 @@ async function spawnNativePty(options: {
   const terminal = nativeApi.terminal()
   const id = options.sessionId
   const dataCallbacks = new Set<(chunk: string) => void>()
+  const exitCallbacks = new Set<() => void>()
   const pendingChunks: string[] = []
   let disposed = false
 
@@ -121,6 +125,9 @@ async function spawnNativePty(options: {
     for (const callback of dataCallbacks) callback(data)
   })
   const offExit = terminal.onExit(id, () => {
+    for (const callback of exitCallbacks) {
+      try { callback() } catch (e) { console.error(e) }
+    }
     dataCallbacks.clear()
     pendingChunks.length = 0
     offData()
@@ -133,12 +140,14 @@ async function spawnNativePty(options: {
     offData()
     offExit()
     dataCallbacks.clear()
+    exitCallbacks.clear()
     pendingChunks.length = 0
   }
 
   const spawned = await terminal.spawn({
     id: options.sessionId,
     shell: options.shell,
+    fallbackShells: options.fallbackShells,
     cwd: options.cwd,
     rows: options.rows,
     cols: options.cols,
@@ -154,6 +163,7 @@ async function spawnNativePty(options: {
 
   return {
     reused: Boolean(spawned.reused),
+    shell: spawned.shell,
     write: (data) => {
       void terminal.write(id, data)
     },
@@ -173,6 +183,9 @@ async function spawnNativePty(options: {
       }
 
       dataCallbacks.add(callback)
+    },
+    onExit: (callback) => {
+      exitCallbacks.add(callback)
     },
   }
 }
@@ -323,6 +336,7 @@ export function Terminal(props: TerminalProps) {
   let serializeAddonRef: SerializeAddon | null = null
   let ptyRef: IPty | null = null
   let ptyKilledRef = false
+  let initPtyRef: (() => Promise<void>) | null = null
   let searchInputRef: HTMLInputElement | undefined
   const [showSearch, setShowSearch] = createSignal(false)
   const [searchQuery, setSearchQuery] = createSignal("")
@@ -349,6 +363,10 @@ export function Terminal(props: TerminalProps) {
   let startupDurationMsRef: number | null = null
   let hasInitializedSessionStateRef = false
 
+  const appStore = useStore()
+  const [terminalStatus, setTerminalStatus] = createSignal<"launching" | "running" | "exited" | "failed">("launching")
+  const [launchError, setLaunchError] = createSignal<string | null>(null)
+
   const sessionProject = useStore((state) => {
     for (const project of state.projects) {
       if (project.sessions.some((s) => s.id === sessionId)) return project
@@ -362,8 +380,40 @@ export function Terminal(props: TerminalProps) {
     }
     return null
   })
-  const session = () => props.session ?? sessionFromStore()
+  const workTerminalFromStore = useStore((state) => {
+    for (const pid of Object.keys(state.workTerminals)) {
+      const match = state.workTerminals[pid]?.find((t) => t.id === sessionId)
+      if (match) return match
+    }
+    return null
+  })
+  const session = createMemo(() => {
+    const s = props.session ?? sessionFromStore()
+    if (s) return s
+
+    const wt = workTerminalFromStore()
+    if (wt) {
+      return {
+        id: wt.id,
+        name: wt.title,
+        shell: wt.shell,
+        pendingLaunchCommand: null,
+        cliTool: null,
+        createdAt: wt.timeCreated,
+        lastActiveAt: wt.timeUpdated,
+        commandCount: 0,
+        startupDurationMs: null,
+        isWorkTerminal: true,
+        projectId: wt.projectId,
+      }
+    }
+    return null
+  })
   const sessionProjectId = () => {
+    const s = session()
+    if (s && (s as any).isWorkTerminal) {
+      return (s as any).projectId
+    }
     if (props.session) {
       for (const project of (store as any).projects) {
         if (project.sessions.some((s: Session) => s.id === sessionId)) return project.id
@@ -373,6 +423,11 @@ export function Terminal(props: TerminalProps) {
     return sessionProject()?.id ?? null
   }
   const sessionProjectPath = () => {
+    const s = session()
+    if (s && (s as any).isWorkTerminal) {
+      const p = store.projects.find((item) => item.id === (s as any).projectId)
+      return p?.path ?? null
+    }
     if (props.session) {
       for (const project of (store as any).projects) {
         if (project.sessions.some((s: Session) => s.id === sessionId)) return project.path
@@ -646,6 +701,17 @@ export function Terminal(props: TerminalProps) {
           }
           if (event.type !== "keydown") return true
 
+          // Let tab management shortcuts bubble to panel container
+          if (
+            (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "t") ||
+            (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "w") ||
+            (event.ctrlKey && event.key === "PageUp") ||
+            (event.ctrlKey && event.key === "PageDown") ||
+            (event.ctrlKey && event.shiftKey && event.key === "`")
+          ) {
+            return false
+          }
+
           if (event.key === "f" && (hostInfo.os === "macos" ? event.metaKey : event.ctrlKey) && !event.shiftKey && !event.altKey) {
             event.preventDefault()
             event.stopPropagation()
@@ -707,12 +773,15 @@ export function Terminal(props: TerminalProps) {
 
       if (cancelled) return
 
-      const bootSessionForPty = getBootSession()
+      const bootSessionForPty = getBootSession() as any
       if (!bootSessionForPty) return
 
       const resolvedShell = resolveShell(bootSessionForPty.shell, availableShells())
 
       spawnInFlightRef = true
+      setLaunchError(null)
+      setTerminalStatus("launching")
+      
       try {
         const existingPty = ptyRef
         if (existingPty && !ptyKilledRef) {
@@ -734,14 +803,21 @@ export function Terminal(props: TerminalProps) {
         }
 
         spawnStartedAtRef = Date.now()
+        
+        term.clear()
+        
         const restoredOutput = await api.loadSessionOutput(sessionId).catch(() => "")
         if (restoredOutput) {
           queueTerminalWrite(restoredOutput)
         }
 
+        const isNewTerminal = !restoredOutput
+        const fallbackShells = isNewTerminal ? availableShells().slice(1) : undefined
+
         const pty = await spawnNativePty({
           sessionId,
           shell: resolvedShell,
+          fallbackShells,
           cwd: getBootProjectPath() || undefined,
           rows: spawnRows,
           cols: spawnCols,
@@ -753,9 +829,19 @@ export function Terminal(props: TerminalProps) {
           },
         })
 
+        if (pty.shell && pty.shell !== resolvedShell) {
+          if (bootSessionForPty.isWorkTerminal) {
+            void appStore.updateWorkTerminal(sessionId, {
+              shell: pty.shell,
+              title: getShellBasename(pty.shell)
+            })
+          }
+        }
+
         ptyRef = pty
         ptyKilledRef = false
         lastPtySizeRef = { rows: spawnRows, cols: spawnCols }
+        setTerminalStatus("running")
 
         fitTerminal()
         fitTimeouts.push(
@@ -797,6 +883,10 @@ export function Terminal(props: TerminalProps) {
           queueTerminalWrite(data)
         })
 
+        pty.onExit(() => {
+          setTerminalStatus("exited")
+        })
+
         const bootSession = getBootSession()
         if (bootSession && bootSession.pendingLaunchCommand && !hasFlushedPendingLaunchRef) {
           const pendingLaunchKey = `${sessionId}:${bootSession.pendingLaunchCommand}`
@@ -820,11 +910,13 @@ export function Terminal(props: TerminalProps) {
         }
       } catch (err) {
         console.error("[Terminal] initPty error:", err)
-        term?.writeln(`\x1b[31mError: ${err}\x1b[0m`)
+        setTerminalStatus("failed")
+        setLaunchError(String(err))
       } finally {
         spawnInFlightRef = false
       }
     }
+    initPtyRef = initPty
 
     const handlePointerDown = (event: PointerEvent) => {
       if (!isActive()) return
@@ -922,7 +1014,22 @@ export function Terminal(props: TerminalProps) {
     const commitBufferedInput = (rawInput: string) => {
       const currentSession = session()
       const currentProjectId = sessionProjectId()
-      if (!currentProjectId || !currentSession) return
+      if (!currentSession) return
+
+      if ((currentSession as any).isWorkTerminal) {
+        const submittedText = normalizeInputForSessionTitle(rawInput).trim()
+        if (!submittedText) return
+        const normalizedText = toSessionTitle(submittedText)
+        if (!normalizedText) return
+
+        if (!hasNamedFromPromptRef) {
+          hasNamedFromPromptRef = true
+          void appStore.updateWorkTerminal(sessionId, { title: normalizedText })
+        }
+        return
+      }
+
+      if (!currentProjectId) return
 
       const submittedText = normalizeInputForSessionTitle(rawInput).trim()
       if (!submittedText) return
@@ -1217,6 +1324,28 @@ export function Terminal(props: TerminalProps) {
     }
   }
 
+  const handleRetry = () => {
+    void initPtyRef?.()
+  }
+
+  const handleChooseShell = async (chosenShell: string) => {
+    const currentSession = session()
+    if (!currentSession) return
+
+    if ((currentSession as any).isWorkTerminal) {
+      await appStore.updateWorkTerminal(sessionId, {
+        shell: chosenShell,
+        title: getShellBasename(chosenShell),
+      })
+    } else {
+      const currentProjectId = sessionProjectId()
+      if (currentProjectId) {
+        await appStore.updateSession(currentProjectId, sessionId, { shell: chosenShell })
+      }
+    }
+    void initPtyRef?.()
+  }
+
   return (
     <div
       class="terminal-container absolute inset-0 h-full w-full min-h-0 min-w-0 overflow-hidden bg-background"
@@ -1308,7 +1437,7 @@ export function Terminal(props: TerminalProps) {
         </div>
       </Show>
 
-      <Show when={!xtermRef}>
+      <Show when={!xtermRef && terminalStatus() !== "failed"}>
         <div class="absolute inset-0 flex items-center justify-center text-12-regular text-text-weak pointer-events-none">
           Starting terminal...
         </div>
@@ -1319,8 +1448,46 @@ export function Terminal(props: TerminalProps) {
         class="terminal-wrapper h-full w-full min-h-0 min-w-0 overflow-hidden"
         style={{
           "background-color": "var(--term-bg)",
+          display: terminalStatus() === "failed" ? "none" : "block",
         }}
       />
+
+      <Show when={terminalStatus() === "failed"}>
+        <div class="absolute inset-0 flex flex-col items-center justify-center bg-background p-6 text-center select-text">
+          <div class="max-w-md w-full bg-background-stronger border border-border rounded-xl p-6 shadow-2xl flex flex-col items-center gap-4">
+            <div class="h-10 w-10 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
+              <X class="h-6 w-6" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <h3 class="text-14-semibold text-foreground">Failed to launch terminal shell</h3>
+              <p class="text-12-regular text-muted-foreground break-all">
+                {launchError() || "An unexpected error occurred while starting the shell process."}
+              </p>
+            </div>
+            <div class="flex items-center gap-2 mt-2 w-full">
+              <button
+                onClick={handleRetry}
+                class="flex-1 h-9 px-4 rounded-md text-13-medium bg-primary text-primary-foreground hover:bg-primary/95 transition-colors cursor-pointer"
+              >
+                Retry
+              </button>
+              <div class="relative flex-1">
+                <select
+                  onChange={(e) => handleChooseShell(e.currentTarget.value)}
+                  class="w-full h-9 px-3 rounded-md border border-input bg-background hover:bg-accent text-13-medium outline-none cursor-pointer"
+                >
+                  <option value="" disabled selected>Choose Shell</option>
+                  <For each={availableShells()}>
+                    {(sh) => (
+                      <option value={sh}>{getShellBasename(sh)}</option>
+                    )}
+                  </For>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Show>
     </div>
   )
 }

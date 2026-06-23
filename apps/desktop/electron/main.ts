@@ -22,7 +22,14 @@ import {
   reorderProjects as reorderPersistedProjects,
   saveProject as savePersistedProject,
   saveSessionOutput as savePersistedSessionOutput,
+  loadWorkTerminals,
+  saveWorkTerminal,
+  deleteWorkTerminal,
+  reorderWorkTerminals,
+  loadTerminalLayout,
+  saveTerminalLayout,
 } from "./session-db.js";
+import { detectShells } from "./shell-detector.js";
 import { startServer, type ServerInstance } from "./server.js";
 import { applyMacDockIcon, applyWindowIcon, applyWindowsAppIdentity, resolveAppIconPath } from "./icon.js";
 import { createBrowserControl } from "./browser-control.js";
@@ -338,32 +345,7 @@ function resolveCommand(command: string): string | null {
   return null;
 }
 
-let detectShellsCache: string[] | null = null;
-
-function detectShells() {
-  if (detectShellsCache) return detectShellsCache;
-
-  const shells: string[] = [];
-  if (process.platform === "win32") {
-    for (const command of ["pwsh.exe", "powershell.exe", "cmd.exe"]) {
-      shells.push(resolveCommand(command) || command);
-    }
-    for (const gitShell of [
-      "C:\\Program Files\\Git\\bin\\bash.exe",
-      "C:\\Program Files\\Git\\bin\\sh.exe",
-    ]) {
-      if (fsSync.existsSync(gitShell)) shells.push(gitShell);
-    }
-  } else {
-    for (const command of ["bash", "zsh", "fish", "sh"]) {
-      const resolved = resolveCommand(command);
-      if (resolved) shells.push(resolved);
-    }
-  }
-
-  detectShellsCache = [...new Set(shells)];
-  return detectShellsCache;
-}
+// detectShells is imported from shell-detector.js
 
 async function detectWindowsBuildNumber() {
   if (process.platform !== "win32") return null;
@@ -1384,6 +1366,54 @@ const handlers: Record<string, (payload?: any) => Promise<any> | any> = {
     return `data:${getImageMimeType(imagePath)};base64,${bytes.toString("base64")}`;
   },
   get_available_shells: async () => detectShells(),
+  list_work_terminals: async ({ projectId }) => loadWorkTerminals(projectId),
+  create_work_terminal: async ({ projectId, shell, title, sortOrder }) => {
+    const id = crypto.randomUUID();
+    const term = {
+      id,
+      projectId,
+      title: title || "Terminal",
+      shell,
+      sortOrder: sortOrder || 0,
+      timeCreated: Date.now(),
+      timeUpdated: Date.now(),
+    };
+    saveWorkTerminal(term);
+    return term;
+  },
+  update_work_terminal: async ({ id, updates }) => {
+    const db = initSessionDatabase();
+    const sets: string[] = [];
+    const params: any[] = [];
+    if (updates.title !== undefined) {
+      sets.push("title = ?");
+      params.push(updates.title);
+    }
+    if (updates.shell !== undefined) {
+      sets.push("shell = ?");
+      params.push(updates.shell);
+    }
+    if (updates.sortOrder !== undefined) {
+      sets.push("sort_order = ?");
+      params.push(updates.sortOrder);
+    }
+    if (sets.length > 0) {
+      sets.push("time_updated = ?");
+      params.push(Date.now());
+      params.push(id);
+      db.prepare(`UPDATE work_terminals SET ${sets.join(", ")} WHERE id = ?`).run(...params);
+    }
+  },
+  reorder_work_terminals: async ({ terminalIds }) => {
+    reorderWorkTerminals(terminalIds);
+  },
+  delete_work_terminal: async ({ id }) => {
+    deleteWorkTerminal(id);
+  },
+  get_terminal_layout: async ({ projectId }) => loadTerminalLayout(projectId),
+  save_terminal_layout: async ({ projectId, layout }) => {
+    saveTerminalLayout({ projectId, ...layout });
+  },
   list_skill_store: async () => listSkillStore(),
   install_skill: async ({ skillId }) => installSkill(String(skillId || "")),
   uninstall_skill: async ({ skillId }) => uninstallSkill(String(skillId || "")),
@@ -1538,24 +1568,48 @@ function registerIpc() {
           buffer: getPtyReplayFromCursor(existing, options.cursor),
           bufferCursor: existing.bufferCursor,
           cursor: existing.cursor,
+          shell: options.shell,
         };
       }
 
       finishPty(id, existing);
     }
 
-    const proc = pty.spawn(options.shell, options.args || [], {
-      name: "xterm-256color",
-      cwd: options.cwd || os.homedir(),
-      cols: Math.max(2, Number(options.cols) || 80),
-      rows: Math.max(2, Number(options.rows) || 24),
-      env: {
-        ...process.env,
-        ...(options.env || {}),
-        SHOB_SESSION_ID: id,
-        SHOB_TERMINAL_SESSION: id,
-      },
-    });
+    let proc;
+    let launchedShell = options.shell;
+    const spawnPty = (shellPath: string) => {
+      return pty.spawn(shellPath, options.args || [], {
+        name: "xterm-256color",
+        cwd: options.cwd || os.homedir(),
+        cols: Math.max(2, Number(options.cols) || 80),
+        rows: Math.max(2, Number(options.rows) || 24),
+        env: {
+          ...process.env,
+          ...(options.env || {}),
+          SHOB_SESSION_ID: id,
+          SHOB_TERMINAL_SESSION: id,
+        },
+      });
+    };
+
+    try {
+      proc = spawnPty(options.shell);
+    } catch (err) {
+      if (options.fallbackShells && Array.isArray(options.fallbackShells)) {
+        for (const fallback of options.fallbackShells) {
+          try {
+            proc = spawnPty(fallback);
+            launchedShell = fallback;
+            break;
+          } catch (e) {
+            // Try next fallback
+          }
+        }
+      }
+      if (!proc) {
+        throw err;
+      }
+    }
 
     const runtime: PtyRuntime = {
       proc,
@@ -1573,7 +1627,7 @@ function registerIpc() {
       finishPty(id, runtime);
     });
 
-    return { id, reused: false, buffer: "", bufferCursor: 0, cursor: 0 };
+    return { id, reused: false, buffer: "", bufferCursor: 0, cursor: 0, shell: launchedShell };
   });
 
   ipcMain.handle("shob:terminal-write", (_event, id, data) => {

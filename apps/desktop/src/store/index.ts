@@ -15,6 +15,7 @@ import {
 import { CLI_CATALOG, DEFAULT_CLI_ID, type CliProbeResult } from '../config/check';
 import type { Project, Session, CliTool } from '../types';
 import { toLocalShobSession } from '@/utils/shob-session';
+import type { WorkTerminal, TerminalLayout } from '../electron';
 
 const SESSION_ACTIVITY_PERSIST_THROTTLE_MS = 15_000;
 let launchSessionQueue: Promise<unknown> = Promise.resolve();
@@ -115,6 +116,8 @@ interface AppState {
   themeId: string;
   colorScheme: ThemeScheme;
   isLoading: boolean;
+  workTerminals: Record<string, WorkTerminal[]>;
+  terminalLayouts: Record<string, TerminalLayout>;
 }
 
 interface AppActions {
@@ -146,6 +149,13 @@ interface AppActions {
   setThemeId: (themeId: string) => void;
   setColorScheme: (scheme: ThemeScheme) => void;
   installCliTool: (cliId: string, installCommand?: string | null) => Promise<Session>;
+  loadWorkTerminals: (projectId: string) => Promise<void>;
+  createWorkTerminal: (projectId: string, shell: string, title?: string) => Promise<WorkTerminal>;
+  updateWorkTerminal: (id: string, updates: Partial<WorkTerminal>) => Promise<void>;
+  reorderWorkTerminals: (projectId: string, terminalIds: string[]) => Promise<void>;
+  deleteWorkTerminal: (id: string) => Promise<void>;
+  loadTerminalLayout: (projectId: string) => Promise<TerminalLayout>;
+  saveTerminalLayout: (projectId: string, layout: Partial<TerminalLayout>) => Promise<void>;
 }
 
 const [store, setStore] = createStore<AppState>({
@@ -153,13 +163,15 @@ const [store, setStore] = createStore<AppState>({
   currentProjectId: getStoredValue(STORAGE_KEYS.currentProjectId),
   activeSessionId: getStoredValue(STORAGE_KEYS.activeSessionId),
   preferredCliId: getStoredValue(STORAGE_KEYS.preferredCliId),
-  preferredShell: getStoredValue(STORAGE_KEYS.preferredShell),
+  preferredShell: null,
   cliLaunchMode: getStoredValue(STORAGE_KEYS.cliLaunchMode) === 'replace-current' ? 'replace-current' : 'new-tab',
   cliTools: buildCatalogCliTools(),
   availableShells: [],
   themeId: getStoredValue(STORAGE_KEYS.themeId) ?? 'oc-2',
   colorScheme: (getStoredValue(STORAGE_KEYS.colorScheme) as ThemeScheme) ?? 'system',
   isLoading: true,
+  workTerminals: {},
+  terminalLayouts: {},
 });
 
 const pendingSaves = new Map<string, NodeJS.Timeout>();
@@ -744,8 +756,7 @@ export const actions: AppActions = {
   loadAvailableShells: async () => {
     try {
       const availableShells = await api.getAvailableShells();
-      const storedPreferredShell = getStoredValue(STORAGE_KEYS.preferredShell);
-      const preferredShell = availableShells.find((shell) => shell === storedPreferredShell) ?? availableShells[0] ?? null;
+      const preferredShell = availableShells[0] ?? null;
 
       setStoredValue(STORAGE_KEYS.preferredShell, preferredShell);
       setStore({ availableShells, preferredShell });
@@ -872,6 +883,102 @@ export const actions: AppActions = {
     });
 
     return session;
+  },
+
+  loadWorkTerminals: async (projectId: string) => {
+    try {
+      const terminals = await api.listWorkTerminals(projectId);
+      setStore('workTerminals', projectId, terminals);
+    } catch (error) {
+      console.error('Failed to load work terminals:', error);
+    }
+  },
+
+  createWorkTerminal: async (projectId: string, shell: string, title?: string) => {
+    const current = store.workTerminals[projectId] || [];
+    const sortOrder = current.length;
+    const term = await api.createWorkTerminal(projectId, shell, title, sortOrder);
+    setStore('workTerminals', projectId, (prev) => [...(prev || []), term]);
+    return term;
+  },
+
+  updateWorkTerminal: async (id: string, updates: Partial<WorkTerminal>) => {
+    let projectId: string | null = null;
+    for (const pid of Object.keys(store.workTerminals)) {
+      if (store.workTerminals[pid]?.some((t) => t.id === id)) {
+        projectId = pid;
+        break;
+      }
+    }
+    if (!projectId) return;
+
+    await api.updateWorkTerminal(id, updates);
+
+    setStore('workTerminals', projectId, (prev) =>
+      (prev || []).map((t) => (t.id === id ? { ...t, ...updates } : t))
+    );
+  },
+
+  reorderWorkTerminals: async (projectId: string, terminalIds: string[]) => {
+    const previous = store.workTerminals[projectId] || [];
+    const terminalById = new Map(previous.map((t) => [t.id, t]));
+    const nextTerms = terminalIds.map((id) => terminalById.get(id)).filter(Boolean) as WorkTerminal[];
+
+    setStore('workTerminals', projectId, nextTerms);
+
+    try {
+      await api.reorderWorkTerminals(terminalIds);
+    } catch (error) {
+      setStore('workTerminals', projectId, previous);
+      throw error;
+    }
+  },
+
+  deleteWorkTerminal: async (id: string) => {
+    let projectId: string | null = null;
+    for (const pid of Object.keys(store.workTerminals)) {
+      if (store.workTerminals[pid]?.some((t) => t.id === id)) {
+        projectId = pid;
+        break;
+      }
+    }
+    if (!projectId) return;
+
+    await api.deleteWorkTerminal(id);
+
+    setStore('workTerminals', projectId, (prev) =>
+      (prev || []).filter((t) => t.id !== id)
+    );
+  },
+
+  loadTerminalLayout: async (projectId: string) => {
+    try {
+      const layout = await api.getTerminalLayout(projectId);
+      setStore('terminalLayouts', projectId, layout);
+      return layout;
+    } catch (error) {
+      console.error('Failed to load terminal layout:', error);
+      const defaultLayout = {
+        projectId,
+        activeTerminalId: null,
+        panelHeight: 280,
+        panelOpened: false,
+      };
+      setStore('terminalLayouts', projectId, defaultLayout);
+      return defaultLayout;
+    }
+  },
+
+  saveTerminalLayout: async (projectId: string, updates: Partial<TerminalLayout>) => {
+    const current = store.terminalLayouts[projectId] || {
+      projectId,
+      activeTerminalId: null,
+      panelHeight: 280,
+      panelOpened: false,
+    };
+    const nextLayout = { ...current, ...updates };
+    setStore('terminalLayouts', projectId, nextLayout);
+    await api.saveTerminalLayout(projectId, nextLayout);
   },
 };
 

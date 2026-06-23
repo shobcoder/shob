@@ -77,6 +77,7 @@ export interface ElectronOpenWithApp {
 export interface ElectronTerminalSpawnOptions {
   id?: string
   shell: string
+  fallbackShells?: string[]
   args?: string[]
   cwd?: string
   rows: number
@@ -91,6 +92,7 @@ export interface ElectronTerminalSpawnResult {
   buffer?: string
   bufferCursor?: number
   cursor?: number
+  shell?: string
 }
 
 export type ElectronBrowserAction =
@@ -351,4 +353,28 @@ export interface NativeCommandMap {
   list_open_with_apps: { args?: undefined; result: { apps: ElectronOpenWithApp[] } }
   show_open_dialog: { args: ElectronOpenDialogOptions; result: string | string[] | null }
   open_external: { args: { url: string }; result: void }
+  list_work_terminals: { args: { projectId: string }; result: WorkTerminal[] }
+  create_work_terminal: { args: { projectId: string; shell: string; title?: string; sortOrder?: number }; result: WorkTerminal }
+  update_work_terminal: { args: { id: string; updates: Partial<WorkTerminal> }; result: void }
+  reorder_work_terminals: { args: { terminalIds: string[] }; result: void }
+  delete_work_terminal: { args: { id: string }; result: void }
+  get_terminal_layout: { args: { projectId: string }; result: TerminalLayout }
+  save_terminal_layout: { args: { projectId: string; layout: Partial<TerminalLayout> }; result: void }
+}
+
+export interface WorkTerminal {
+  id: string
+  projectId: string
+  title: string
+  shell: string
+  sortOrder: number
+  timeCreated: number
+  timeUpdated: number
+}
+
+export interface TerminalLayout {
+  projectId: string
+  activeTerminalId: string | null
+  panelHeight: number
+  panelOpened: boolean
 }

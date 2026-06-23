@@ -14,6 +14,8 @@ import { same } from "@/utils/same"
 import { createScrollPersistence, type SessionScroll } from "./layout-scroll"
 import { createPathHelpers } from "./file/path"
 import { removePersistedSessionStateForKeys } from "@/utils/session-persisted-state"
+import { useStore } from "../store"
+import { on } from "solid-js"
 
 const AVATAR_COLOR_KEYS = ["pink", "mint", "orange", "purple", "cyan", "lime"] as const
 const DEFAULT_SIDEBAR_WIDTH = 367
@@ -141,6 +143,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
     const globalSync = useGlobalSync()
     const server = useServer()
     const platform = usePlatform()
+    const appStore = useStore()
 
     const isRecord = (value: unknown): value is Record<string, unknown> =>
       typeof value === "object" && value !== null && !Array.isArray(value)
@@ -241,6 +244,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         terminal: {
           height: DEFAULT_TERMINAL_HEIGHT,
           opened: false,
+          maximized: false,
         },
         review: {
           diffStyle: "unified" as ReviewDiffStyle,
@@ -344,6 +348,40 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
       usage.pruned = true
       prune(active)
     })
+
+    createEffect(on(() => appStore.currentProjectId, async (projectId) => {
+      if (!projectId) return
+
+      // Load work terminals and layout
+      await appStore.loadWorkTerminals(projectId)
+      const layoutState = await appStore.loadTerminalLayout(projectId)
+
+      // Ensure at least one terminal exists
+      const currentTerms = appStore.workTerminals[projectId] || []
+      let activeId = layoutState.activeTerminalId
+
+      if (currentTerms.length === 0) {
+        const isWindows = window.shob?.platform === "windows"
+        const defaultShell = appStore.availableShells[0] || (isWindows ? "powershell.exe" : "/bin/sh")
+        const newTerm = await appStore.createWorkTerminal(projectId, defaultShell)
+        activeId = newTerm.id
+      } else if (!activeId || !currentTerms.some(t => t.id === activeId)) {
+        activeId = currentTerms[0].id
+      }
+
+      // Restore bottom panel state on workspace load (but always start closed)
+      batch(() => {
+        setStore("terminal", "height", layoutState.panelHeight)
+        setStore("terminal", "opened", false)
+        setStore("terminal", "maximized", false) // reset maximized on switch
+      })
+
+      await appStore.saveTerminalLayout(projectId, {
+        activeTerminalId: activeId,
+        panelOpened: false,
+        panelHeight: layoutState.panelHeight
+      })
+    }))
 
     onMount(() => {
       const flush = () => batch(() => scroll.flushAll())
@@ -618,18 +656,48 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
       terminal: {
         height: createMemo(() => store.terminal.height),
         opened: createMemo(() => store.terminal?.opened ?? false),
+        maximized: createMemo(() => store.terminal?.maximized ?? false),
         resize(height: number) {
           setStore("terminal", "height", height)
+          const pid = appStore.currentProjectId
+          if (pid) {
+            void appStore.saveTerminalLayout(pid, { panelHeight: height })
+          }
         },
         open() {
           setStore("terminal", "opened", true)
+          const pid = appStore.currentProjectId
+          if (pid) {
+            void appStore.saveTerminalLayout(pid, { panelOpened: true })
+          }
         },
         close() {
           setStore("terminal", "opened", false)
+          setStore("terminal", "maximized", false)
+          const pid = appStore.currentProjectId
+          if (pid) {
+            void appStore.saveTerminalLayout(pid, { panelOpened: false })
+          }
         },
         toggle() {
           const current = store.terminal?.opened ?? false
           setStore("terminal", "opened", !current)
+          if (current) {
+            setStore("terminal", "maximized", false)
+          }
+          const pid = appStore.currentProjectId
+          if (pid) {
+            void appStore.saveTerminalLayout(pid, { panelOpened: !current })
+          }
+        },
+        toggleMaximize() {
+          setStore("terminal", "maximized", (x) => !x)
+        },
+        maximize() {
+          setStore("terminal", "maximized", true)
+        },
+        restore() {
+          setStore("terminal", "maximized", false)
         },
       },
       review: {
