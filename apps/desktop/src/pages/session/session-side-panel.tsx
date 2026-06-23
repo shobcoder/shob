@@ -59,13 +59,36 @@ export function SessionSidePanel(props: SidePanelProps) {
   let fileTreeResizeFrame: number | undefined
   let pendingFileTreeWidth: number | undefined
 
+  const getActiveDirectory = () => {
+    const root = props.projectPath().replace(/\\/g, '/');
+    let currentPath = props.activeDiff;
+    if (props.activeTabId() && props.activeTabId().startsWith("file:")) {
+      currentPath = props.activeTabId().substring(5);
+    }
+    if (!currentPath) return root;
+
+    // If currentPath is already an absolute path, just get its dirname
+    if (currentPath.includes(':') || currentPath.startsWith('/')) {
+      const parts = currentPath.replace(/\\/g, '/').split('/');
+      parts.pop();
+      return parts.join('/') || root;
+    }
+
+    const normalized = currentPath.replace(/\\/g, '/');
+    const parts = normalized.split('/');
+    parts.pop(); // Remove the file name
+    const dir = parts.join('/');
+
+    return dir ? `${root}/${dir}` : root;
+  }
+
   const openAddTabDialog = () => {
     dialog.show(() => (
       <DialogAddTab
         projectPath={props.projectPath}
         onOpenFile={(path) => props.openFile(path)}
         onOpenTerminal={() => {
-          window.dispatchEvent(new CustomEvent("shob-open-terminal-tab"))
+          window.dispatchEvent(new CustomEvent("shob-open-terminal-tab", { detail: { cwd: getActiveDirectory() } }))
         }}
         onOpenBrowser={() => {
           window.dispatchEvent(new CustomEvent("shob-open-browser-tab"))
@@ -341,6 +364,7 @@ export function SessionSidePanel(props: SidePanelProps) {
                         <Terminal
                           sessionId={tab.session.id}
                           session={tab.session}
+                          cwd={(tab as any).cwd}
                           isActiveOverride={() => isActive(`terminal:${tab.id}`)}
                         />
                       </div>

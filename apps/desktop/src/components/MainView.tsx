@@ -254,7 +254,7 @@ export function MainView() {
   const [isSidePanelHidden, setIsSidePanelHidden] = createSignal(false)
   const [contextTabSessionId, setContextTabSessionId] = createSignal<string | null>(null)
   const [activeTabId, setActiveTabId] = createSignal<string>("review")
-  const [terminalTabs, setTerminalTabs] = createSignal<Array<{ id: string; session: Session }>>([])
+  const [terminalTabs, setTerminalTabs] = createSignal<Array<{ id: string; session: Session; cwd?: string }>>([])
   const [browserTabOpen, setBrowserTabOpen] = createSignal(false)
   const [activePage, setActivePage] = createSignal<'workspace' | 'settings' | 'home'>('workspace')
   const [previousPage, setPreviousPage] = createSignal<'workspace' | 'home'>('workspace')
@@ -595,8 +595,10 @@ export function MainView() {
   }
 
   createEffect(() => {
-    const handleOpenTerminalTab = async () => {
+    const handleOpenTerminalTab = async (e: Event) => {
       try {
+        const detail = (e as CustomEvent).detail
+        const cwd = detail?.cwd
         const project = currentProject()
         if (!project) {
           console.warn("[shob-open-terminal-tab] no current project")
@@ -614,7 +616,7 @@ export function MainView() {
           ''
         const session = await appStore.addIsolatedSession(projectId, shell)
         const id = `terminal-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
-        setTerminalTabs((tabs) => [...tabs, { id, session }])
+        setTerminalTabs((tabs) => [...tabs, { id, session, cwd }])
         setActiveTabId(`terminal:${id}`)
         setIsSidePanelHidden(false)
         setIsReviewVisible(true)

@@ -17,6 +17,7 @@ import "@xterm/xterm/css/xterm.css"
 interface TerminalProps {
   sessionId: string
   session?: Session | null
+  cwd?: string
   isActiveOverride?: () => boolean
 }
 
@@ -818,7 +819,7 @@ export function Terminal(props: TerminalProps) {
           sessionId,
           shell: resolvedShell,
           fallbackShells,
-          cwd: getBootProjectPath() || undefined,
+          cwd: props.cwd || getBootProjectPath() || undefined,
           rows: spawnRows,
           cols: spawnCols,
           cursor: restoredOutput.length,
