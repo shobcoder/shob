@@ -8,6 +8,7 @@ import { tmpdir } from "../fixture/fixture"
 const TestEvent = {
   Ping: BusEvent.define("test.ping", z.object({ value: z.number() })),
   Pong: BusEvent.define("test.pong", z.object({ message: z.string() })),
+  SessionPing: BusEvent.define("test.session.ping", z.object({ sessionID: z.string(), value: z.number() })),
 }
 
 function withInstance(directory: string, fn: () => Promise<void>) {
@@ -214,6 +215,85 @@ describe("Bus", () => {
 
       expect(received).toContain("test.ping")
       expect(received).toContain(Bus.InstanceDisposed.type)
+    })
+  })
+
+  describe("subscribeSession", () => {
+    test("receives events for the subscribed sessionID only", async () => {
+      await using tmp = await tmpdir()
+      const received: number[] = []
+
+      await withInstance(tmp.path, async () => {
+        Bus.subscribeSession("session-abc", (evt) => {
+          received.push((evt.properties as any).value)
+        })
+        await Bun.sleep(10)
+        await Bus.publish(TestEvent.SessionPing, { sessionID: "session-abc", value: 1 })
+        await Bus.publish(TestEvent.SessionPing, { sessionID: "session-other", value: 2 })
+        await Bus.publish(TestEvent.SessionPing, { sessionID: "session-abc", value: 3 })
+        await Bun.sleep(10)
+      })
+
+      expect(received).toEqual([1, 3])
+    })
+
+    test("does not receive events for other sessions", async () => {
+      await using tmp = await tmpdir()
+      const received: number[] = []
+
+      await withInstance(tmp.path, async () => {
+        Bus.subscribeSession("session-abc", (evt) => {
+          received.push((evt.properties as any).value)
+        })
+        await Bun.sleep(10)
+        await Bus.publish(TestEvent.SessionPing, { sessionID: "session-other", value: 1 })
+        await Bus.publish(TestEvent.SessionPing, { sessionID: "session-another", value: 2 })
+        await Bun.sleep(10)
+      })
+
+      expect(received).toEqual([])
+    })
+
+    test("unsubscribe stops delivery", async () => {
+      await using tmp = await tmpdir()
+      const received: number[] = []
+
+      await withInstance(tmp.path, async () => {
+        const unsub = Bus.subscribeSession("session-abc", (evt) => {
+          received.push((evt.properties as any).value)
+        })
+        await Bun.sleep(10)
+        await Bus.publish(TestEvent.SessionPing, { sessionID: "session-abc", value: 1 })
+        await Bun.sleep(10)
+        unsub()
+        await Bun.sleep(10)
+        await Bus.publish(TestEvent.SessionPing, { sessionID: "session-abc", value: 2 })
+        await Bun.sleep(10)
+      })
+
+      expect(received).toEqual([1])
+    })
+
+    test("different sessions have independent subscriptions", async () => {
+      await using tmp = await tmpdir()
+      const receivedA: number[] = []
+      const receivedB: number[] = []
+
+      await withInstance(tmp.path, async () => {
+        Bus.subscribeSession("session-a", (evt) => {
+          receivedA.push((evt.properties as any).value)
+        })
+        Bus.subscribeSession("session-b", (evt) => {
+          receivedB.push((evt.properties as any).value)
+        })
+        await Bun.sleep(10)
+        await Bus.publish(TestEvent.SessionPing, { sessionID: "session-a", value: 1 })
+        await Bus.publish(TestEvent.SessionPing, { sessionID: "session-b", value: 2 })
+        await Bun.sleep(10)
+      })
+
+      expect(receivedA).toEqual([1])
+      expect(receivedB).toEqual([2])
     })
   })
 })

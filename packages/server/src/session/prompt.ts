@@ -1340,12 +1340,24 @@ NOTE: At any point in time through this workflow you should feel free to ask the
           let structured: unknown | undefined
           let step = 0
           const session = yield* sessions.get(sessionID)
+          let cachedMsgs: MessageV2.WithParts[] | undefined
+          let cacheDirty = true
+          let cachedSkills: string | undefined
+          let cachedSkillsResolved = false
+          let cachedEnv: string[] | undefined
+          let cachedEnvResolved = false
+          let cachedInstructions: string[] | undefined
+          let cachedInstructionsResolved = false
 
           while (true) {
             yield* status.set(sessionID, { type: "busy" })
             yield* slog.info("loop", { step })
 
-            let msgs = yield* MessageV2.filterCompactedEffect(sessionID)
+            if (cacheDirty || !cachedMsgs) {
+              cachedMsgs = yield* MessageV2.filterCompactedEffect(sessionID)
+              cacheDirty = false
+            }
+            let msgs = cachedMsgs
 
             let lastUser: MessageV2.User | undefined
             let lastAssistant: MessageV2.Assistant | undefined
@@ -1397,6 +1409,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
 
             if (task?.type === "subtask") {
               yield* handleSubtask({ task, model, lastUser, sessionID, session, msgs })
+              cacheDirty = true
               continue
             }
 
@@ -1408,6 +1421,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                 auto: task.auto,
                 overflow: task.overflow,
               })
+              cacheDirty = true
               if (result === "stop") break
               continue
             }
@@ -1418,6 +1432,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
               (yield* compaction.isOverflow({ tokens: lastFinished.tokens, model }))
             ) {
               yield* compaction.create({ sessionID, agent: lastUser.agent, model: lastUser.model, auto: true })
+              cacheDirty = true
               continue
             }
 
@@ -1431,6 +1446,10 @@ NOTE: At any point in time through this workflow you should feel free to ask the
             }
             const maxSteps = agent.steps ?? Infinity
             const isLastStep = step >= maxSteps
+            msgs = msgs.map((m) =>
+              m.info.role === "user" ? { ...m, parts: [...m.parts] } : m,
+            )
+            cachedMsgs = msgs
             msgs = yield* insertReminders({ messages: msgs, agent, session })
             msgs = yield* insertMemoryContext({ messages: msgs, session })
 
@@ -1484,6 +1503,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
               if (step > 1 && lastFinished) {
                 for (const m of msgs) {
                   if (m.info.role !== "user" || m.info.id <= lastFinished.id) continue
+                  m.parts = [...m.parts]
                   for (const p of m.parts) {
                     if (p.type !== "text" || p.ignored || p.synthetic) continue
                     if (!p.text.trim()) continue
@@ -1501,13 +1521,20 @@ NOTE: At any point in time through this workflow you should feel free to ask the
 
               yield* plugin.trigger("experimental.chat.messages.transform", {}, { messages: msgs })
 
-              const [skills, env, instructions, modelMsgs] = yield* Effect.all([
-                Effect.promise(() => SystemPrompt.skills(agent)),
-                Effect.promise(() => SystemPrompt.environment(model)),
-                instruction.system().pipe(Effect.orDie),
-                MessageV2.toModelMessagesEffect(msgs, model),
-              ])
-              const system = [...env, ...(skills ? [skills] : []), ...instructions]
+              if (!cachedSkillsResolved) {
+                cachedSkills = yield* Effect.promise(() => SystemPrompt.skills(agent))
+                cachedSkillsResolved = true
+              }
+              if (!cachedEnvResolved) {
+                cachedEnv = yield* Effect.promise(() => SystemPrompt.environment(model))
+                cachedEnvResolved = true
+              }
+              if (!cachedInstructionsResolved) {
+                cachedInstructions = yield* instruction.system().pipe(Effect.orDie)
+                cachedInstructionsResolved = true
+              }
+              const modelMsgs = yield* MessageV2.toModelMessagesEffect(msgs, model)
+              const system = [...cachedEnv!, ...(cachedSkills ? [cachedSkills] : []), ...cachedInstructions!]
               const format = lastUser.format ?? { type: "text" as const }
               if (format.type === "json_schema") system.push(STRUCTURED_OUTPUT_SYSTEM_PROMPT)
               const result = yield* handle.process({
@@ -1554,6 +1581,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
               }
               return "continue" as const
             }).pipe(Effect.ensuring(instruction.clear(handle.message.id)))
+            cacheDirty = true
             if (outcome === "break") break
             continue
           }

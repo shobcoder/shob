@@ -81,6 +81,8 @@ export namespace SessionSummary {
       const storage = yield* Storage.Service
       const bus = yield* Bus.Service
 
+      const inFlight = new Map<string, { active: boolean; pending: boolean }>()
+
       const computeDiff = Effect.fn("SessionSummary.computeDiff")(function* (input: {
         messages: MessageV2.WithParts[]
       }) {
@@ -103,7 +105,7 @@ export namespace SessionSummary {
         return []
       })
 
-      const summarize = Effect.fn("SessionSummary.summarize")(function* (input: {
+      const summarizeInner = Effect.fn("SessionSummary.summarize")(function* (input: {
         sessionID: SessionID
         messageID: MessageID
       }) {
@@ -130,6 +132,29 @@ export namespace SessionSummary {
         const msgDiffs = yield* computeDiff({ messages })
         target.info.summary = { ...target.info.summary, diffs: msgDiffs }
         yield* sessions.updateMessage(target.info)
+      })
+
+      const summarize = Effect.fn("SessionSummary.summarize")(function* (input: {
+        sessionID: SessionID
+        messageID: MessageID
+      }) {
+        const key = `${input.sessionID}:${input.messageID}`
+        const entry = inFlight.get(key)
+        if (entry?.active) {
+          entry.pending = true
+          return
+        }
+        inFlight.set(key, { active: true, pending: false })
+        try {
+          yield* summarizeInner(input)
+          const e = inFlight.get(key)
+          if (e?.pending) {
+            e.pending = false
+            yield* summarizeInner(input)
+          }
+        } finally {
+          inFlight.delete(key)
+        }
       })
 
       const diff = Effect.fn("SessionSummary.diff")(function* (input: { sessionID: SessionID; messageID?: MessageID }) {

@@ -14,7 +14,6 @@ import { fn } from "@/util/fn"
 import { Agent } from "@/agent/agent"
 import { Plugin } from "@/plugin"
 import { Config } from "@/config/config"
-import { NotFoundError } from "@/storage/db"
 import { ModelID, ProviderID } from "@/provider/schema"
 import { Cause, Effect, Layer, Context } from "effect"
 import { makeRuntime } from "@/effect/run-service"
@@ -129,27 +128,26 @@ Use concise bullets.`
         if (cfg.compaction?.prune === false) return
         log.info("pruning")
 
-        const msgs = yield* session
-          .messages({ sessionID: input.sessionID })
-          .pipe(Effect.catchIf(NotFoundError.isInstance, () => Effect.succeed(undefined)))
-        if (!msgs) return
-
         let total = 0
         let pruned = 0
         const toPrune: MessageV2.ToolPart[] = []
         let turns = 0
+        let done = false
 
-        loop: for (let msgIndex = msgs.length - 1; msgIndex >= 0; msgIndex--) {
-          const msg = msgs[msgIndex]
+        for (const msg of MessageV2.stream(input.sessionID)) {
+          if (done) break
           if (msg.info.role === "user") turns++
           if (turns < 2) continue
-          if (msg.info.role === "assistant" && msg.info.summary) break loop
+          if (msg.info.role === "assistant" && msg.info.summary) break
           for (let partIndex = msg.parts.length - 1; partIndex >= 0; partIndex--) {
             const part = msg.parts[partIndex]
             if (part.type === "tool")
               if (part.state.status === "completed") {
                 if (PRUNE_PROTECTED_TOOLS.includes(part.tool)) continue
-                if (part.state.time.compacted) break loop
+                if (part.state.time.compacted) {
+                  done = true
+                  break
+                }
                 const estimate = Token.estimate(part.state.output)
                 total += estimate
                 if (total > PRUNE_PROTECT) {

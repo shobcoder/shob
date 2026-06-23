@@ -26,6 +26,7 @@ export namespace Bus {
   type State = {
     wildcard: PubSub.PubSub<Payload>
     typed: Map<string, PubSub.PubSub<Payload>>
+    session: Map<string, PubSub.PubSub<Payload>>
   }
 
   export interface Interface {
@@ -40,6 +41,10 @@ export namespace Bus {
       callback: (event: Payload<D>) => unknown,
     ) => Effect.Effect<() => void>
     readonly subscribeAllCallback: (callback: (event: any) => unknown) => Effect.Effect<() => void>
+    readonly subscribeSessionCallback: (
+      sessionID: string,
+      callback: (event: Payload) => unknown,
+    ) => Effect.Effect<() => void>
   }
 
   export class Service extends Context.Service<Service, Interface>()("@shob/Bus") {}
@@ -51,6 +56,7 @@ export namespace Bus {
         Effect.fn("Bus.state")(function* (ctx) {
           const wildcard = yield* PubSub.unbounded<Payload>()
           const typed = new Map<string, PubSub.PubSub<Payload>>()
+          const session = new Map<string, PubSub.PubSub<Payload>>()
 
           yield* Effect.addFinalizer(() =>
             Effect.gen(function* () {
@@ -63,10 +69,13 @@ export namespace Bus {
               for (const ps of typed.values()) {
                 yield* PubSub.shutdown(ps)
               }
+              for (const ps of session.values()) {
+                yield* PubSub.shutdown(ps)
+              }
             }),
           )
 
-          return { wildcard, typed }
+          return { wildcard, typed, session }
         }),
       )
 
@@ -81,6 +90,17 @@ export namespace Bus {
         })
       }
 
+      function getOrCreateSession(state: State, sessionID: string) {
+        return Effect.gen(function* () {
+          let ps = state.session.get(sessionID)
+          if (!ps) {
+            ps = yield* PubSub.unbounded<Payload>()
+            state.session.set(sessionID, ps)
+          }
+          return ps
+        })
+      }
+
       function publish<D extends BusEvent.Definition>(def: D, properties: z.output<D["properties"]>) {
         return Effect.gen(function* () {
           const s = yield* InstanceState.get(state)
@@ -91,6 +111,12 @@ export namespace Bus {
           const ps = s.typed.get(def.type)
           if (ps) yield* PubSub.publish(ps, payload)
           yield* PubSub.publish(s.wildcard, payload)
+
+          const props = properties as Record<string, unknown>
+          if (typeof props.sessionID === "string") {
+            const sessionPs = yield* getOrCreateSession(s, props.sessionID)
+            yield* PubSub.publish(sessionPs, payload)
+          }
 
           const dir = yield* InstanceState.directory
           const context = yield* InstanceState.context
@@ -167,7 +193,22 @@ export namespace Bus {
         return yield* on(s.wildcard, "*", callback)
       })
 
-      return Service.of({ publish, subscribe, subscribeAll, subscribeCallback, subscribeAllCallback })
+      const subscribeSessionCallback = Effect.fn("Bus.subscribeSessionCallback")(
+        function* (sessionID: string, callback: (event: Payload) => unknown) {
+          const s = yield* InstanceState.get(state)
+          const ps = yield* getOrCreateSession(s, sessionID)
+          return yield* on(ps, `session:${sessionID}`, callback)
+        },
+      )
+
+      return Service.of({
+        publish,
+        subscribe,
+        subscribeAll,
+        subscribeCallback,
+        subscribeAllCallback,
+        subscribeSessionCallback,
+      })
     }),
   )
 
@@ -190,5 +231,9 @@ export namespace Bus {
 
   export function subscribeAll(callback: (event: any) => unknown) {
     return runSync((svc) => svc.subscribeAllCallback(callback))
+  }
+
+  export function subscribeSession(sessionID: string, callback: (event: Payload) => unknown) {
+    return runSync((svc) => svc.subscribeSessionCallback(sessionID, callback))
   }
 }

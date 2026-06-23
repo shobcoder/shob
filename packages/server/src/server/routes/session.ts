@@ -63,19 +63,16 @@ async function streamAIResponse(
   let isActive = true
   
   // Subscribe to session events for real-time streaming
-  const unsubscribe = Bus.subscribe("*", (event) => {
+  const unsubscribe = Bus.subscribeSession(sessionID, (event) => {
     if (!isActive) return
     
-    const properties = event.properties as Record<string, unknown>
-    if (properties.sessionID === sessionID) {
-      try {
-        // Forward session events to stream immediately
-        controller.write(JSON.stringify({ type: "event", data: properties }) + "\n")
-        controller.flush()
-      } catch {
-        // Stream closed by client
-        isActive = false
-      }
+    try {
+      // Forward session events to stream immediately
+      controller.write(JSON.stringify({ type: "event", data: event.properties }) + "\n")
+      controller.flush()
+    } catch {
+      // Stream closed by client
+      isActive = false
     }
   })
 
