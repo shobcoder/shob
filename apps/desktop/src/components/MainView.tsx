@@ -1,11 +1,11 @@
-import { createEffect, createMemo, createResource, createSignal, on, onCleanup, Show, Suspense } from 'solid-js'
+import { createEffect, createMemo, createResource, createSignal, on, onCleanup, Show, Suspense, lazy } from 'solid-js'
 import { nativeApi } from '../services/native'
 import { Sidebar } from './Sidebar'
 
 import { TerminalPanel } from './TerminalPanel'
 import { BottomTerminalPanel } from './BottomTerminalPanel'
-import { WelcomeScreen } from './WelcomeScreen'
-import { SettingsPage } from './SettingsPage'
+const WelcomeScreen = lazy(() => import('./WelcomeScreen').then(m => ({ default: m.WelcomeScreen })))
+const SettingsPage = lazy(() => import('./SettingsPage').then(m => ({ default: m.SettingsPage })))
 import { MacSidebarRevealRow } from './mac-chrome'
 import { useStore } from '../store'
 import { createFileContext } from '@/context/file'
@@ -901,15 +901,18 @@ export function MainView() {
             </div>
           </LayoutProvider>
         ) : activePage() === 'settings' ? (
-          <SettingsPage onGoBack={() => setActivePage(previousPage())} />
+          <Suspense fallback={<div class="flex h-full w-full items-center justify-center text-sm text-text-weak">Loading settings...</div>}>
+            <SettingsPage onGoBack={() => setActivePage(previousPage())} />
+          </Suspense>
         ) : (
           <div class="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             <MacSidebarRevealRow />
             <div class="min-h-0 flex-1 overflow-hidden">
-              <WelcomeScreen
-                projects={projects()}
-                currentProject={currentProject()}
-                onOpenFolder={handleOpenFolder}
+              <Suspense fallback={<div class="flex h-full w-full items-center justify-center text-sm text-text-weak">Loading...</div>}>
+                <WelcomeScreen
+                  projects={projects()}
+                  currentProject={currentProject()}
+                  onOpenFolder={handleOpenFolder}
                 onCreateSession={() => {
                   setActivePage('workspace')
                   void handleCreateSession()
@@ -922,7 +925,8 @@ export function MainView() {
                   setActivePage('workspace')
                   handleToggleFileTree()
                 }}
-              />
+                />
+              </Suspense>
             </div>
           </div>
         )}

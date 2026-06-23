@@ -308,10 +308,14 @@ function splitPathEntries() {
     .filter(Boolean);
 }
 
-function resolveCommand(command: string) {
+const resolveCommandCache = new Map<string, string | null>();
+
+function resolveCommand(command: string): string | null {
+  if (resolveCommandCache.has(command)) return resolveCommandCache.get(command) ?? null;
+
   const direct = path.resolve(command);
-  if (path.isAbsolute(command) && fsSync.existsSync(command)) return command;
-  if (fsSync.existsSync(direct) && path.isAbsolute(command)) return direct;
+  if (path.isAbsolute(command) && fsSync.existsSync(command)) { resolveCommandCache.set(command, command); return command; }
+  if (fsSync.existsSync(direct) && path.isAbsolute(command)) { resolveCommandCache.set(command, direct); return direct; }
 
   const pathExts = process.platform === "win32"
     ? (process.env.PATHEXT || ".COM;.EXE;.BAT;.CMD").split(";").filter(Boolean)
@@ -326,15 +330,21 @@ function resolveCommand(command: string) {
 
     for (const candidate of candidates) {
       if (fsSync.existsSync(candidate) && fsSync.statSync(candidate).isFile()) {
+        resolveCommandCache.set(command, candidate);
         return candidate;
       }
     }
   }
 
+  resolveCommandCache.set(command, null);
   return null;
 }
 
+let detectShellsCache: string[] | null = null;
+
 function detectShells() {
+  if (detectShellsCache) return detectShellsCache;
+
   const shells: string[] = [];
   if (process.platform === "win32") {
     for (const command of ["pwsh.exe", "powershell.exe", "cmd.exe"]) {
@@ -353,7 +363,8 @@ function detectShells() {
     }
   }
 
-  return [...new Set(shells)];
+  detectShellsCache = [...new Set(shells)];
+  return detectShellsCache;
 }
 
 async function detectWindowsBuildNumber() {
@@ -734,7 +745,11 @@ function iconKeyForBuiltInSkill(skillId: string) {
   return "sparkles";
 }
 
+let builtInSkillCatalogCache: SkillStoreCatalogItem[] | null = null;
+
 async function readBuiltInSkillCatalog() {
+  if (builtInSkillCatalogCache) return builtInSkillCatalogCache;
+
   const root = await resolveBuiltInSkillRoot();
   if (!root) return [];
 
@@ -764,9 +779,10 @@ async function readBuiltInSkillCatalog() {
       }),
   );
 
-  return items
+  builtInSkillCatalogCache = items
     .filter((item): item is SkillStoreCatalogItem => item !== null)
     .sort((a, b) => a.displayName.localeCompare(b.displayName));
+  return builtInSkillCatalogCache;
 }
 
 async function resolveSkillStoreItem(skillId: string) {
