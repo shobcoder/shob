@@ -41,12 +41,11 @@ export type Metrics = {
 }
 
 const COMPACTION_BUFFER = 20_000
-const OUTPUT_TOKEN_MAX = 32_000
 
 const tokenTotal = (msg: AssistantMessage) => {
   return (
     msg.tokens.total ||
-    msg.tokens.input + msg.tokens.output + msg.tokens.cache.read + msg.tokens.cache.write
+    msg.tokens.input + msg.tokens.output + msg.tokens.reasoning + msg.tokens.cache.read + msg.tokens.cache.write
   )
 }
 
@@ -54,9 +53,9 @@ const autoCompactLimit = (model: Model | undefined) => {
   const context = model?.limit.context
   if (!context) return null
 
-  const output = Math.min(model.limit.output || OUTPUT_TOKEN_MAX, OUTPUT_TOKEN_MAX)
-  const reserved = Math.min(COMPACTION_BUFFER, output)
-  const usable = model.limit.input ? model.limit.input - reserved : context - output
+  const output = model.limit.output ?? 0
+  const reserved = Math.min(COMPACTION_BUFFER, output || COMPACTION_BUFFER)
+  const usable = model.limit.input ? model.limit.input - reserved : context - (output || reserved)
   return Math.max(0, Math.min(context, usable))
 }
 

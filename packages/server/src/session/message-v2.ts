@@ -29,12 +29,6 @@ export namespace MessageV2 {
     return mime.startsWith("image/") || mime === "application/pdf"
   }
 
-  function truncateToolOutput(text: string, maxChars?: number) {
-    if (!maxChars || text.length <= maxChars) return text
-    const omitted = text.length - maxChars
-    return `${text.slice(0, maxChars)}\n[Tool output truncated for compaction: omitted ${omitted} chars]`
-  }
-
   export const OutputLengthError = NamedError.create("MessageOutputLengthError", z.object({}))
   export const AbortedError = NamedError.create("MessageAbortedError", z.object({ message: z.string() }))
   export const StructuredOutputError = NamedError.create(
@@ -215,7 +209,6 @@ export namespace MessageV2 {
     type: z.literal("compaction"),
     auto: z.boolean(),
     overflow: z.boolean().optional(),
-    tail_start_id: MessageID.zod.optional(),
   }).meta({
     ref: "CompactionPart",
   })
@@ -590,7 +583,7 @@ export namespace MessageV2 {
   export const toModelMessagesEffect = Effect.fnUntraced(function* (
     input: WithParts[],
     model: Provider.Model,
-    options?: { stripMedia?: boolean; toolOutputMaxChars?: number },
+    options?: { stripMedia?: boolean },
   ) {
     const result: UIMessage[] = []
     const toolNames = new Set<string>()
@@ -658,8 +651,9 @@ export namespace MessageV2 {
           role: "user",
           parts: [],
         }
+        result.push(userMessage)
         for (const part of msg.parts) {
-          if (part.type === "text" && !part.ignored && part.text !== "")
+          if (part.type === "text" && !part.ignored)
             userMessage.parts.push({
               type: "text",
               text: part.text,
@@ -694,7 +688,6 @@ export namespace MessageV2 {
             })
           }
         }
-        if (userMessage.parts.length > 0) result.push(userMessage)
       }
 
       if (msg.info.role === "assistant") {
@@ -729,9 +722,7 @@ export namespace MessageV2 {
           if (part.type === "tool") {
             toolNames.add(part.tool)
             if (part.state.status === "completed") {
-              const outputText = part.state.time.compacted
-                ? "[Old tool result content cleared]"
-                : truncateToolOutput(part.state.output, options?.toolOutputMaxChars)
+              const outputText = part.state.time.compacted ? "[Old tool result content cleared]" : part.state.output
               const attachments = part.state.time.compacted || options?.stripMedia ? [] : (part.state.attachments ?? [])
 
               // For providers that don't support media in tool results, extract media files
@@ -847,7 +838,7 @@ export namespace MessageV2 {
   export function toModelMessages(
     input: WithParts[],
     model: Provider.Model,
-    options?: { stripMedia?: boolean; toolOutputMaxChars?: number },
+    options?: { stripMedia?: boolean },
   ): Promise<ModelMessage[]> {
     return Effect.runPromise(toModelMessagesEffect(input, model, options).pipe(Effect.provide(EffectLogger.layer)))
   }
@@ -936,80 +927,24 @@ export namespace MessageV2 {
   export function filterCompacted(msgs: Iterable<MessageV2.WithParts>) {
     const result = [] as MessageV2.WithParts[]
     const completed = new Set<string>()
-    let retain: MessageID | undefined
     for (const msg of msgs) {
       result.push(msg)
-      if (retain) {
-        if (msg.info.id === retain) break
-        continue
-      }
-      if (msg.info.role === "user" && completed.has(msg.info.id)) {
-        const part = msg.parts.find((item): item is MessageV2.CompactionPart => item.type === "compaction")
-        if (!part) continue
-        if (!part.tail_start_id) break
-        retain = part.tail_start_id
-        if (msg.info.id === retain) break
-        continue
-      }
+      if (
+        msg.info.role === "user" &&
+        completed.has(msg.info.id) &&
+        msg.parts.some((part) => part.type === "compaction")
+      )
+        break
       if (msg.info.role === "assistant" && msg.info.summary && msg.info.finish && !msg.info.error)
         completed.add(msg.info.parentID)
     }
     result.reverse()
-    const compactionIndex = result.findLastIndex(
-      (msg) =>
-        msg.info.role === "user" &&
-        msg.parts.some(
-          (item): item is MessageV2.CompactionPart => item.type === "compaction" && item.tail_start_id !== undefined,
-        ),
-    )
-    const compaction = result[compactionIndex]
-    const part = compaction?.parts.find(
-      (item): item is MessageV2.CompactionPart => item.type === "compaction" && item.tail_start_id !== undefined,
-    )
-    const summaryIndex = compaction
-      ? result.findIndex(
-          (msg, index) =>
-            index > compactionIndex &&
-            msg.info.role === "assistant" &&
-            msg.info.summary &&
-            msg.info.parentID === compaction.info.id,
-        )
-      : -1
-    const tailIndex = part?.tail_start_id ? result.findIndex((msg) => msg.info.id === part.tail_start_id) : -1
-    if (tailIndex >= 0 && tailIndex < compactionIndex && summaryIndex > compactionIndex) {
-      return [
-        ...result.slice(compactionIndex, summaryIndex + 1),
-        ...result.slice(tailIndex, compactionIndex),
-        ...result.slice(summaryIndex + 1),
-      ]
-    }
     return result
   }
 
   export const filterCompactedEffect = Effect.fnUntraced(function* (sessionID: SessionID) {
     return filterCompacted(stream(sessionID))
   })
-
-  // filterCompacted can reorder messages for model consumption
-  // ([compaction-user, summary, ...retained tail..., continue-user]), so array
-  // position is not chronological. Derive each binding by max id.
-  export function latest(msgs: WithParts[]) {
-    let user: User | undefined
-    let assistant: Assistant | undefined
-    let finished: Assistant | undefined
-    for (const msg of msgs) {
-      const info = msg.info
-      if (info.role === "user" && (!user || info.id > user.id)) user = info
-      if (info.role === "assistant" && (!assistant || info.id > assistant.id)) assistant = info
-      if (info.role === "assistant" && info.finish && (!finished || info.id > finished.id)) finished = info
-    }
-    const tasks = msgs.flatMap((m) =>
-      finished && m.info.id <= finished.id
-        ? []
-        : m.parts.filter((p): p is CompactionPart | SubtaskPart => p.type === "compaction" || p.type === "subtask"),
-    )
-    return { user, assistant, finished, tasks }
-  }
 
   export function fromError(
     e: unknown,

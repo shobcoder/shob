@@ -16,7 +16,7 @@
     },
     "apps/desktop": {
       "name": "shob-desktop",
-      "version": "0.0.74",
+      "version": "0.0.78",
       "dependencies": {
         "@lydell/node-pty": "^1.2.0-beta.12",
         "@shob-ai/sdk": "file:../../packages/sdk/js",
@@ -96,9 +96,9 @@
         "@parcel/watcher-win32-x64": "2.5.1",
       },
     },
-    "apps/shop-code": {
-      "name": "shop-code",
-      "version": "0.0.74",
+    "apps/shob-code": {
+      "name": "shob-code",
+      "version": "0.0.2",
       "bin": {
         "shob": "./bin/shob.cjs",
       },
@@ -156,7 +156,7 @@
       },
     },
     "packages/server": {
-      "name": "shob",
+      "name": "@shob-ai/server",
       "version": "1.4.3",
       "bin": {
         "shob": "./bin/shob",
@@ -1071,7 +1071,7 @@
 
     "@shob-ai/sdk": ["@shob-ai/sdk@workspace:packages/sdk/js"],
 
-    "@shob-ai/server": ["shob@workspace:packages/server"],
+    "@shob-ai/server": ["@shob-ai/server@workspace:packages/server"],
 
     "@shob-ai/ui": ["@shob-ai/ui@workspace:packages/ui"],
 
@@ -2897,11 +2897,9 @@
 
     "shiki": ["shiki@3.20.0", "", { "dependencies": { "@shikijs/core": "3.20.0", "@shikijs/engine-javascript": "3.20.0", "@shikijs/engine-oniguruma": "3.20.0", "@shikijs/langs": "3.20.0", "@shikijs/themes": "3.20.0", "@shikijs/types": "3.20.0", "@shikijs/vscode-textmate": "^10.0.2", "@types/hast": "^3.0.4" } }, "sha512-kgCOlsnyWb+p0WU+01RjkCH+eBVsjL1jOwUYWv0YDWkM2/A46+LDKVs5yZCUXjJG6bj4ndFoAg5iLIIue6dulg=="],
 
-    "shob": ["shob@workspace:packages/server"],
+    "shob-code": ["shob-code@workspace:apps/shob-code"],
 
     "shob-desktop": ["shob-desktop@workspace:apps/desktop"],
-
-    "shop-code": ["shop-code@workspace:apps/shop-code"],
 
     "side-channel": ["side-channel@1.1.0", "", { "dependencies": { "es-errors": "^1.3.0", "object-inspect": "^1.13.3", "side-channel-list": "^1.0.0", "side-channel-map": "^1.0.1", "side-channel-weakmap": "^1.0.2" } }, "sha512-ZX99e6tRweoUXqR+VBrslhda51Nh5MTQwou5tnUDgbtyM0dBgmhEDtWGP/xbKn6hqfPRHujUNwz5fy/wbbhnpw=="],
 
@@ -3669,12 +3667,6 @@
 
     "shiki/@shikijs/types": ["@shikijs/types@3.20.0", "", { "dependencies": { "@shikijs/vscode-textmate": "^10.0.2", "@types/hast": "^3.0.4" } }, "sha512-lhYAATn10nkZcBQ0BlzSbJA3wcmL5MXUUF8d2Zzon6saZDlToKaiRX60n2+ZaHJCmXEcZRWNzn+k9vplr8Jhsw=="],
 
-    "shob/@shob-ai/plugin": ["@shob-ai/plugin@file:packages/plugin", { "dependencies": { "@shob-ai/sdk": "file:../sdk/js", "effect": "4.0.0-beta.65", "zod": "4.4.3" }, "devDependencies": { "@opentui/core": "0.2.14", "@opentui/keymap": "0.2.14", "@opentui/solid": "0.2.14", "@tsconfig/node22": "22.0.2", "@types/node": "24.12.0", "@typescript/native-preview": "7.0.0-dev.20251207.1", "typescript": "5.9.3" }, "peerDependencies": { "@opentui/core": ">=0.2.14", "@opentui/keymap": ">=0.2.14", "@opentui/solid": ">=0.2.14" }, "optionalPeers": ["@opentui/core", "@opentui/keymap", "@opentui/solid"] }],
-
-    "shob/@shob-ai/sdk": ["@shob-ai/sdk@file:packages/sdk/js", { "dependencies": { "cross-spawn": "catalog:" }, "devDependencies": { "@hey-api/openapi-ts": "0.90.10", "@tsconfig/node22": "catalog:", "@types/cross-spawn": "catalog:", "@types/node": "catalog:", "@typescript/native-preview": "catalog:", "typescript": "catalog:" } }],
-
-    "shob/@shob-ai/util": ["@shob-ai/util@file:packages/util", { "dependencies": { "zod": "4.4.3" }, "devDependencies": { "@types/bun": "1.3.14", "typescript": "5.9.3" } }],
-
     "shob-desktop/@shob-ai/sdk": ["@shob-ai/sdk@file:packages/sdk/js", { "dependencies": { "cross-spawn": "catalog:" }, "devDependencies": { "@hey-api/openapi-ts": "0.90.10", "@tsconfig/node22": "catalog:", "@types/cross-spawn": "catalog:", "@types/node": "catalog:", "@typescript/native-preview": "catalog:", "typescript": "catalog:" } }],
 
     "shob-desktop/@shob-ai/ui": ["@shob-ai/ui@file:packages/ui", { "dependencies": { "@kobalte/core": "0.13.11", "@pierre/diffs": "1.2.2", "@shikijs/transformers": "3.9.2", "@shob-ai/sdk": "file:../sdk/js", "@shob-ai/util": "file:../util", "@solid-primitives/bounds": "0.1.3", "@solid-primitives/event-listener": "2.4.5", "@solid-primitives/media": "2.3.3", "@solid-primitives/resize-observer": "2.1.3", "@solidjs/meta": "0.29.4", "@solidjs/router": "0.15.4", "diff": "9.0.0", "dompurify": "3.4.8", "fuzzysort": "3.1.0", "katex": "0.16.27", "luxon": "3.7.2", "marked": "18.0.5", "marked-katex-extension": "5.1.10", "marked-shiki": "1.2.1", "morphdom": "2.7.8", "motion": "12.34.5", "motion-dom": "12.34.3", "motion-utils": "12.29.2", "remeda": "2.34.1", "remend": "1.3.0", "shiki": "3.20.0", "solid-js": "1.9.13", "solid-list": "0.3.0", "strip-ansi": "7.1.2", "virtua": "0.49.1" }, "devDependencies": { "@tailwindcss/vite": "4.2.2", "@tsconfig/node22": "22.0.2", "@types/bun": "1.3.14", "@types/katex": "0.16.7", "@types/luxon": "3.7.1", "@typescript/native-preview": "7.0.0-dev.20251207.1", "tailwindcss": "4.2.2", "typescript": "5.9.3", "vite": "8.0.2", "vite-plugin-icons-spritesheet": "3.0.1", "vite-plugin-solid": "2.11.12" } }],
@@ -4000,8 +3992,6 @@
     "shob-desktop/@tailwindcss/vite/@tailwindcss/oxide": ["@tailwindcss/oxide@4.3.1", "", { "optionalDependencies": { "@tailwindcss/oxide-android-arm64": "4.3.1", "@tailwindcss/oxide-darwin-arm64": "4.3.1", "@tailwindcss/oxide-darwin-x64": "4.3.1", "@tailwindcss/oxide-freebsd-x64": "4.3.1", "@tailwindcss/oxide-linux-arm-gnueabihf": "4.3.1", "@tailwindcss/oxide-linux-arm64-gnu": "4.3.1", "@tailwindcss/oxide-linux-arm64-musl": "4.3.1", "@tailwindcss/oxide-linux-x64-gnu": "4.3.1", "@tailwindcss/oxide-linux-x64-musl": "4.3.1", "@tailwindcss/oxide-wasm32-wasi": "4.3.1", "@tailwindcss/oxide-win32-arm64-msvc": "4.3.1", "@tailwindcss/oxide-win32-x64-msvc": "4.3.1" } }, "sha512-yVPyo8RNkabVr3O2EhHEE0Rewu7YKzc1DhIqfL46LKveFrmu9XbDazNOJY7/GRuvw1h6u3utWnR29H/p5JPlgA=="],
 
     "shob-desktop/chokidar/readdirp": ["readdirp@5.0.0", "", {}, "sha512-9u/XQ1pvrQtYyMpZe7DXKv2p5CNvyVwzUB6uhLAnQwHMSgKMBR62lc7AHljaeteeHXn11XTAaLLUVZYVZyuRBQ=="],
-
-    "shob/@shob-ai/plugin/@shob-ai/sdk": ["@shob-ai/sdk@file:packages\\sdk\\js", {}],
 
     "tedious/bl/buffer": ["buffer@6.0.3", "", { "dependencies": { "base64-js": "^1.3.1", "ieee754": "^1.2.1" } }, "sha512-FTiCpNxtwiZZHEZbcbTIcZjERVICn9yq/pDFkTl95/AxzD1naBctN7YO68riM/gLSDY7sdrMby8hofADYuuqOA=="],
 

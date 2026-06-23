@@ -37,7 +37,7 @@ import { ToolRegistry } from "@/tool/registry"
 import { MCP } from "../../mcp"
 import { Permission as PermService } from "@/permission"
 import { mergeDeep, pipe } from "remeda"
-import { streamText, type ModelMessage, type Tool, smoothStream } from "ai"
+import { streamText, type ModelMessage, type Tool } from "ai"
 import { Auth } from "../../auth"
 import { Instance } from "@/project/instance"
 import { Flag } from "@/flag/flag"
@@ -153,7 +153,6 @@ async function streamTokensIncremental(
   )
 
   // Stream tokens as they arrive - this is the key optimization
-  // Using smoothStream() to fix Azure OpenAI chunking issues
   const result = streamText({
     model: wrapLanguageModel({
       model: language,
@@ -172,8 +171,6 @@ async function streamTokensIncremental(
     }),
     messages,
     tools: input.tools ?? {},
-    // 🚀 KEY FIX: smoothStream() fixes Azure OpenAI slow/chunky streaming
-    experimental_transform: smoothStream(),
     temperature: input.model.capabilities.temperature
       ? input.agent.temperature ?? ProviderTransform.temperature(input.model)
       : undefined,

@@ -5,7 +5,7 @@ import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
 import type { JSONSchema7, LanguageModelV3ToolCall } from "@ai-sdk/provider"
 import { asSchema, safeValidateTypes } from "@ai-sdk/provider-utils"
-import { smoothStream, streamText, wrapLanguageModel, type ModelMessage, type Tool, tool, jsonSchema } from "ai"
+import { streamText, wrapLanguageModel, type ModelMessage, type Tool, tool, jsonSchema } from "ai"
 import { mergeDeep, pipe } from "remeda"
 import { GitLabWorkflowLanguageModel } from "gitlab-ai-provider"
 import z from "zod"
@@ -340,7 +340,6 @@ export namespace LLM {
       activeTools: Object.keys(tools).filter((x) => x !== "invalid"),
       tools,
       toolChoice: input.toolChoice,
-      experimental_transform: smoothStream(),
       maxOutputTokens: params.maxOutputTokens,
       abortSignal: input.abort,
       headers: {

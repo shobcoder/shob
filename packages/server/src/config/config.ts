@@ -1102,19 +1102,23 @@ export namespace Config {
       compaction: z
         .object({
           auto: z.boolean().optional().describe("Enable automatic compaction when context is full (default: true)"),
-          prune: z.boolean().optional().describe("Enable pruning of old tool outputs"),
-          tail_turns: z
-            .number()
-            .int()
-            .min(0)
+          prune: z.boolean().optional().describe("Enable pruning of old tool outputs (default: true)"),
+          profile: z
+            .string()
             .optional()
-            .describe("Number of recent conversation turns to preserve alongside the compaction summary."),
-          preserve_recent_tokens: z
-            .number()
-            .int()
-            .min(0)
+            .describe("Compaction profile to use. Built-ins: default, comprehensive, technical, minimal."),
+          profiles: z
+            .record(
+              z.string(),
+              z
+                .object({
+                  prompt: z.string().optional().describe("Custom compaction prompt for this profile."),
+                  context: z.array(z.string()).optional().describe("Extra context appended to the compaction prompt."),
+                })
+                .strict(),
+            )
             .optional()
-            .describe("Token budget for recent turns preserved alongside the compaction summary."),
+            .describe("Custom compaction profiles keyed by profile name."),
           reserved: z
             .number()
             .int()
