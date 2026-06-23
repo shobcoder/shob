@@ -162,6 +162,16 @@ const [store, setStore] = createStore<AppState>({
   isLoading: true,
 });
 
+const pendingSaves = new Map<string, NodeJS.Timeout>();
+function debouncedSaveProject(project: Project) {
+  const existing = pendingSaves.get(project.id);
+  if (existing) clearTimeout(existing);
+  pendingSaves.set(project.id, setTimeout(() => {
+    pendingSaves.delete(project.id);
+    api.saveProject(project).catch(() => undefined);
+  }, 2000));
+}
+
 export const actions: AppActions = {
   loadProjects: async () => {
     try {
@@ -684,7 +694,7 @@ export const actions: AppActions = {
       ),
     };
 
-    await api.saveProject(updatedProject);
+    debouncedSaveProject(updatedProject);
     setStore('projects', (prev) =>
       prev.map((item) => (item.id === projectId ? updatedProject : item)),
     );

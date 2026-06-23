@@ -55,12 +55,10 @@ const ptySessions = new Map<string, PtyRuntime>();
 let downloadedUpdateVersion: string | null = null;
 let availableUpdateVersion: string | null = null;
 let updateDownloadInFlight = false;
-// macOS ships an unsigned build, so Squirrel.Mac cannot apply an in-place update:
-// the download just wastes bandwidth and "Restart & install" silently fails. Until
-// the build is signed + notarized, point macOS users to the Releases page instead.
+
 const RELEASES_URL = "https://github.com/shobcoder/shob/releases/latest";
 const autoUpdateSupported = process.platform !== "darwin";
-const PTY_REPLAY_BUFFER_LIMIT = 2 * 1024 * 1024;
+const PTY_REPLAY_BUFFER_LIMIT = 128 * 1024; // 128KB buffer per session
 const PTY_OUTPUT_FLUSH_DELAY_MS = 500;
 const TITLEBAR_HEIGHT = 40;
 
@@ -451,14 +449,17 @@ async function setProjectWatch(watchPath: string | null) {
       flushTimer = null;
       const paths = [...pendingPaths];
       pendingPaths.clear();
-      if (paths.length) emitProjectFsEvent(watchPath, paths);
+      if (paths.length) {
+        // Cap to 500 files to prevent IPC overflow and UI freezes
+        const payload = paths.length > 500 ? paths.slice(0, 500) : paths;
+        emitProjectFsEvent(watchPath, payload);
+      }
     }, 120);
   };
 
   projectWatcher = chokidar.watch(watchPath, {
     ignoreInitial: true,
     persistent: true,
-    awaitWriteFinish: { stabilityThreshold: 80, pollInterval: 25 },
     ignored: /(^|[\\/])(node_modules|dist|target|\.next|\.turbo|\.cache|coverage)([\\/]|$)/,
   });
 
@@ -473,7 +474,9 @@ async function setProjectWatch(watchPath: string | null) {
 
 function trimPtyReplayBuffer(session: PtyRuntime) {
   if (session.buffer.length <= PTY_REPLAY_BUFFER_LIMIT) return;
-  const excess = session.buffer.length - PTY_REPLAY_BUFFER_LIMIT;
+  // Use hysteresis: trim back to 80% of limit to avoid slicing on every byte
+  const targetLength = Math.floor(PTY_REPLAY_BUFFER_LIMIT * 0.8);
+  const excess = session.buffer.length - targetLength;
   session.buffer = session.buffer.slice(excess);
   session.bufferCursor += excess;
 }
@@ -519,13 +522,13 @@ function queuePtyOutput(id: string, data: string) {
   item.chunks.push(data);
   if (item.scheduled) return;
   item.scheduled = true;
-  setImmediate(() => {
+  setTimeout(() => {
     item.scheduled = false;
     if (!mainWindow || mainWindow.isDestroyed() || item.chunks.length === 0) return;
     const payload = item.chunks.join("");
     item.chunks.length = 0;
     mainWindow.webContents.send("shob:terminal-data", { id, data: payload });
-  });
+  }, 16);
 }
 
 function getPtyReplayFromCursor(session: PtyRuntime, cursor: unknown) {
@@ -719,7 +722,7 @@ function builtInSkillRootCandidates() {
   const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
   const packagedRoot = resourcesPath ? path.join(resourcesPath, "skills") : null;
   const devRoots = [
-    path.join(process.cwd(), "skills"), 
+    path.join(process.cwd(), "skills"),
     path.resolve(__dirname, "..", "skills"),
     path.resolve(process.cwd(), "../../skills"),
     path.resolve(__dirname, "../../..", "skills")
@@ -1102,7 +1105,15 @@ async function openProjectWith(targetPath: string, target: OpenProjectTarget) {
   throw new Error("Unsupported open target");
 }
 
+const GIT_CACHE_TTL_MS = 2000;
+const gitStatusCache = new Map<string, { ts: number; data: any }>();
+const gitFileStateCache = new Map<string, { ts: number; data: any }>();
+
 async function getGitStatus(cwd: string) {
+  const now = Date.now();
+  const cached = gitStatusCache.get(cwd);
+  if (cached && now - cached.ts < GIT_CACHE_TTL_MS) return cached.data;
+
   let repoRoot = "";
   try {
     repoRoot = (await gitOutput(["rev-parse", "--show-toplevel"], cwd)).trim();
@@ -1135,7 +1146,9 @@ async function getGitStatus(cwd: string) {
     changedFiles.push({ path: relativePath, absolutePath, status, additions, deletions });
   }
 
-  return { repoRoot, changedFiles };
+  const result = { repoRoot, changedFiles };
+  gitStatusCache.set(cwd, { ts: now, data: result });
+  return result;
 }
 
 function countFileLines(filePath: string) {
@@ -1163,6 +1176,23 @@ async function readTextFileWithLimit(filePath: string, maxBytes: number) {
 
 async function getGitFileState(filePath: string) {
   const current = await readTextFileWithLimit(filePath, MAX_EDITOR_PREVIEW_BYTES);
+  const now = Date.now();
+  const cached = gitFileStateCache.get(filePath);
+  if (cached && now - cached.ts < GIT_CACHE_TTL_MS) {
+    const { repoRoot, baseContent, baseIsLarge, status, additions, deletions } = cached.data;
+    return {
+      repoRoot,
+      baseContent: baseIsLarge ? "" : baseContent,
+      currentContent: current.content,
+      hasChanges: current.content !== (baseIsLarge ? "" : baseContent),
+      isLargeFile: current.isLarge || baseIsLarge,
+      fileSizeBytes: current.size,
+      status,
+      additions,
+      deletions,
+    };
+  }
+
   const cwd = path.dirname(filePath);
   let repoRoot: string | null = null;
   try {
@@ -1214,11 +1244,16 @@ async function getGitFileState(filePath: string) {
     baseContent = "";
   }
 
+  gitFileStateCache.set(filePath, {
+    ts: now,
+    data: { repoRoot, baseContent, baseIsLarge, status, additions, deletions }
+  });
+
   return {
     repoRoot,
-    baseContent,
+    baseContent: baseIsLarge ? "" : baseContent,
     currentContent: current.content,
-    hasChanges: Boolean(status),
+    hasChanges: current.content !== (baseIsLarge ? "" : baseContent),
     isLargeFile: current.isLarge || baseIsLarge,
     fileSizeBytes: current.size,
     status,

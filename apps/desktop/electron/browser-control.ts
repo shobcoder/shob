@@ -805,8 +805,6 @@ export function createBrowserControl(options: BrowserControlOptions) {
       publish();
     });
     contents.on("did-navigate-in-page", () => {
-      if (cursorOverlay) void ensureCursorScript();
-      if (degenMode) void syncDegenMode();
       publish();
     });
     contents.on("console-message", (_event, _level, message) => {

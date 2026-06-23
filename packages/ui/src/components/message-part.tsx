@@ -2061,41 +2061,48 @@ ToolRegistry.register({
       open()
     }
 
-    const trigger = () => (
-      <div data-component="task-tool-card">
-        <div data-slot="basic-tool-tool-info-structured">
-          <div data-slot="basic-tool-tool-info-main">
-            <Show when={running()}>
-              <span data-component="task-tool-spinner">
-                <Spinner />
+    return (
+      <div class="py-1 flex items-center">
+        <Show 
+          when={clickable()} 
+          fallback={
+            <div class="flex items-center gap-1.5 border border-border-weak-base bg-surface-raised-base rounded-full px-2.5 py-1 text-[13px] font-medium w-fit">
+              <Show when={running()} fallback={<Icon name="task" size="small" class="text-icon-agent-base" />}>
+                <span class="w-[14px] h-[14px] flex items-center justify-center">
+                  <DotsSpinner class="text-[14px] leading-none text-icon-interactive-base font-mono" />
+                </span>
+              </Show>
+              <span class="text-text-interactive-base">{title()}</span>
+              <Show when={subtitle()}>
+                <span class="text-text-strong font-normal truncate max-w-[300px]">{subtitle()}</span>
+              </Show>
+            </div>
+          }
+        >
+          <a
+            href={href()}
+            onClick={navigate}
+            class="group flex items-center gap-1.5 border border-border-weak-base bg-surface-raised-base hover:bg-surface-raised-base-hover hover:border-border transition-colors rounded-full pl-2.5 pr-1.5 py-1 text-[13px] font-medium w-fit cursor-pointer"
+          >
+            <Show when={running()} fallback={<Icon name="task" size="small" class="text-icon-agent-base" />}>
+              <span class="w-[14px] h-[14px] flex items-center justify-center">
+                <DotsSpinner class="text-[14px] leading-none text-icon-interactive-base font-mono" />
               </span>
             </Show>
-            <span data-component="task-tool-title">
+            <span class="text-text-interactive-base transition-colors group-hover:text-text-interactive-base">
               {title()}
             </span>
             <Show when={subtitle()}>
-              <span data-slot="basic-tool-tool-subtitle">{subtitle()}</span>
+              <span class="text-text-strong font-normal truncate max-w-[300px]">{subtitle()}</span>
             </Show>
-          </div>
-        </div>
-        <Show when={clickable()}>
-          <div data-component="task-tool-action">
-            <Icon name="square-arrow-top-right" size="small" />
-          </div>
+            
+            <div class="flex items-center gap-1 ml-1.5 pl-2 border-l border-border-weak-base text-text-weaker group-hover:text-text-interactive-base transition-colors">
+              <span class="text-[11px] font-medium">View full exploration</span>
+              <Icon name="arrow-up-right" size="small" />
+            </div>
+          </a>
         </Show>
       </div>
-    )
-
-    return (
-      <BasicTool
-        icon="task"
-        status={props.status}
-        trigger={trigger()}
-        hideDetails
-        triggerHref={href()}
-        clickable={clickable()}
-        onTriggerClick={navigate}
-      />
     )
   },
 })
