@@ -1,11 +1,6 @@
-import { createEffect, createMemo, createSignal, onCleanup, onMount, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, on, onCleanup, onMount, Show } from "solid-js"
 import { ChevronDown, ChevronUp, X } from "lucide-solid"
 import type { Message as ChatMessage, Part } from "@shob-ai/sdk/v2/client"
-
-interface ChatSearchMatch {
-  messageId: string
-  index: number
-}
 
 interface ChatSearchProps {
   messages: () => ChatMessage[]
@@ -14,76 +9,158 @@ interface ChatSearchProps {
   onClose: () => void
 }
 
+const HIGHLIGHT_CLASS = "chat-search-word-highlight"
+const ACTIVE_HIGHLIGHT_CLASS = "chat-search-word-active"
+const MARK_ATTR = "data-search-mark"
+
+function clearHighlights(container: HTMLElement | undefined) {
+  if (!container) return
+  const marks = container.querySelectorAll(`mark[${MARK_ATTR}]`)
+  marks.forEach((mark) => {
+    const parent = mark.parentNode
+    if (!parent) return
+    parent.replaceChild(document.createTextNode(mark.textContent || ""), mark)
+    parent.normalize()
+  })
+}
+
+function highlightTextInContainer(container: HTMLElement | undefined, query: string): HTMLElement[] {
+  if (!container || !query) return []
+  const lowerQuery = query.toLowerCase()
+  const marks: HTMLElement[] = []
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      if (node.parentElement?.closest(`mark[${MARK_ATTR}], input, textarea, [contenteditable]`)) {
+        return NodeFilter.FILTER_REJECT
+      }
+      if (node.textContent && node.textContent.toLowerCase().includes(lowerQuery)) {
+        return NodeFilter.FILTER_ACCEPT
+      }
+      return NodeFilter.FILTER_REJECT
+    },
+  })
+
+  const textNodes: Text[] = []
+  let current = walker.nextNode()
+  while (current) {
+    textNodes.push(current as Text)
+    current = walker.nextNode()
+  }
+
+  for (const textNode of textNodes) {
+    const text = textNode.textContent || ""
+    const lowerText = text.toLowerCase()
+    const parent = textNode.parentNode
+    if (!parent) continue
+
+    const fragment = document.createDocumentFragment()
+    let lastIndex = 0
+    let pos = lowerText.indexOf(lowerQuery, 0)
+
+    while (pos !== -1) {
+      if (pos > lastIndex) {
+        fragment.appendChild(document.createTextNode(text.slice(lastIndex, pos)))
+      }
+      const mark = document.createElement("mark")
+      mark.setAttribute(MARK_ATTR, "")
+      mark.className = HIGHLIGHT_CLASS
+      mark.textContent = text.slice(pos, pos + query.length)
+      fragment.appendChild(mark)
+      marks.push(mark)
+      lastIndex = pos + query.length
+      pos = lowerText.indexOf(lowerQuery, lastIndex)
+    }
+
+    if (lastIndex < text.length) {
+      fragment.appendChild(document.createTextNode(text.slice(lastIndex)))
+    }
+
+    parent.replaceChild(fragment, textNode)
+  }
+
+  return marks
+}
+
+function scrollContainerToElement(scrollEl: HTMLElement | undefined, target: HTMLElement) {
+  if (!scrollEl) return
+  const containerRect = scrollEl.getBoundingClientRect()
+  const targetRect = target.getBoundingClientRect()
+  const targetMiddle = targetRect.top + targetRect.height / 2
+  const containerMiddle = containerRect.top + containerRect.height / 2
+  const offset = targetMiddle - containerMiddle
+  scrollEl.scrollBy({ top: offset, behavior: "smooth" })
+}
+
 export function ChatSearch(props: ChatSearchProps) {
   const [query, setQuery] = createSignal("")
   const [currentIndex, setCurrentIndex] = createSignal(0)
+  const [markElements, setMarkElements] = createSignal<HTMLElement[]>([])
   let inputRef: HTMLInputElement | undefined
 
-  const matches = createMemo<ChatSearchMatch[]>(() => {
-    const q = query().trim().toLowerCase()
-    if (!q) return []
-    const results: ChatSearchMatch[] = []
-    for (const message of props.messages()) {
-      const parts = props.getParts(message.id)
-      for (const part of parts) {
-        if (part.type === "text" && (part as any).text) {
-          const text = ((part as any).text as string).toLowerCase()
-          let startPos = 0
-          while (true) {
-            const idx = text.indexOf(q, startPos)
-            if (idx === -1) break
-            results.push({ messageId: message.id, index: results.length })
-            startPos = idx + 1
-          }
-        }
-      }
-    }
-    return results
-  })
+  const matchCount = createMemo(() => markElements().length)
 
-  const matchCount = createMemo(() => matches().length)
+  const applyHighlights = () => {
+    const container = props.scrollContainer()
+    clearHighlights(container)
+    const q = query().trim()
+    if (!q || !container) {
+      setMarkElements([])
+      return
+    }
+    const marks = highlightTextInContainer(container, q)
+    setMarkElements(marks)
+  }
+
+  const setActiveHighlight = (index: number) => {
+    const marks = markElements()
+    marks.forEach((m) => m.classList.remove(ACTIVE_HIGHLIGHT_CLASS))
+    if (marks[index]) {
+      marks[index].classList.add(ACTIVE_HIGHLIGHT_CLASS)
+    }
+  }
 
   const scrollToMatch = (index: number) => {
-    const match = matches()[index]
-    if (!match) return
+    const marks = markElements()
     const container = props.scrollContainer()
-    if (!container) return
-    const el = container.querySelector(`[data-message-id="${match.messageId}"]`)
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" })
-      el.classList.add("chat-search-highlight")
-      setTimeout(() => el.classList.remove("chat-search-highlight"), 1500)
+    if (marks[index] && container) {
+      setActiveHighlight(index)
+      scrollContainerToElement(container, marks[index])
     }
   }
 
   const goNext = () => {
-    if (matchCount() === 0) return
-    const next = (currentIndex() + 1) % matchCount()
+    const count = matchCount()
+    if (count === 0) return
+    const next = (currentIndex() + 1) % count
     setCurrentIndex(next)
     scrollToMatch(next)
   }
 
   const goPrev = () => {
-    if (matchCount() === 0) return
-    const next = (currentIndex() - 1 + matchCount()) % matchCount()
+    const count = matchCount()
+    if (count === 0) return
+    const next = (currentIndex() - 1 + count) % count
     setCurrentIndex(next)
     scrollToMatch(next)
   }
 
-  createEffect(() => {
-    query()
+  createEffect(on(query, () => {
     setCurrentIndex(0)
-  })
+    applyHighlights()
+  }, { defer: true }))
 
   createEffect(() => {
-    const q = query().trim()
-    if (q && matchCount() > 0) {
+    if (query().trim() && markElements().length > 0) {
       scrollToMatch(0)
     }
   })
 
   onMount(() => {
     setTimeout(() => inputRef?.focus(), 30)
+  })
+
+  onCleanup(() => {
+    clearHighlights(props.scrollContainer())
   })
 
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -102,8 +179,10 @@ export function ChatSearch(props: ChatSearchProps) {
 
   return (
     <div
-      class="absolute right-3 top-2 z-[70] flex items-center gap-1.5 rounded-xl border border-border-weak-base bg-surface-raised-base/95 px-2.5 py-1.5 shadow-xl backdrop-blur-sm"
+      class="chat-search-bar absolute right-3 top-2 z-[70] flex items-center gap-1.5 rounded-xl border border-border-weak-base bg-surface-raised-base/95 px-2.5 py-1.5 shadow-xl backdrop-blur-sm"
       onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
     >
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-text-weaker">
         <circle cx="11" cy="11" r="8" />
@@ -126,7 +205,7 @@ export function ChatSearch(props: ChatSearchProps) {
       <button
         type="button"
         class="flex size-6 items-center justify-center rounded-md text-text-weak transition-colors hover:bg-surface-raised-base-hover hover:text-text-strong disabled:opacity-40"
-        onClick={goPrev}
+        onClick={(e) => { e.stopPropagation(); goPrev() }}
         disabled={matchCount() === 0}
         title="Previous match (Shift+Enter)"
         aria-label="Previous match"
@@ -136,7 +215,7 @@ export function ChatSearch(props: ChatSearchProps) {
       <button
         type="button"
         class="flex size-6 items-center justify-center rounded-md text-text-weak transition-colors hover:bg-surface-raised-base-hover hover:text-text-strong disabled:opacity-40"
-        onClick={goNext}
+        onClick={(e) => { e.stopPropagation(); goNext() }}
         disabled={matchCount() === 0}
         title="Next match (Enter)"
         aria-label="Next match"
@@ -146,7 +225,7 @@ export function ChatSearch(props: ChatSearchProps) {
       <button
         type="button"
         class="flex size-6 items-center justify-center rounded-md text-text-weak transition-colors hover:bg-surface-raised-base-hover hover:text-text-strong"
-        onClick={props.onClose}
+        onClick={(e) => { e.stopPropagation(); props.onClose() }}
         title="Close (Escape)"
         aria-label="Close search"
       >
