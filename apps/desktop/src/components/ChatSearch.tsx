@@ -1,5 +1,5 @@
 import { createEffect, createMemo, createSignal, on, onCleanup, onMount, Show } from "solid-js"
-import { ChevronDown, ChevronUp, X } from "lucide-solid"
+import { ArrowDown, ArrowUp, X } from "lucide-solid"
 import type { Message as ChatMessage, Part } from "@shob-ai/sdk/v2/client"
 
 interface ChatSearchProps {
@@ -204,23 +204,23 @@ export function ChatSearch(props: ChatSearchProps) {
       </Show>
       <button
         type="button"
-        class="flex size-6 items-center justify-center rounded-md text-text-weak transition-colors hover:bg-surface-raised-base-hover hover:text-text-strong disabled:opacity-40"
+        class="flex size-6 items-center justify-center rounded-sm text-text-weak hover:bg-surface-raised-base-hover hover:text-text-strong disabled:opacity-40"
         onClick={(e) => { e.stopPropagation(); goPrev() }}
         disabled={matchCount() === 0}
         title="Previous match (Shift+Enter)"
         aria-label="Previous match"
       >
-        <ChevronUp size={14} />
+        <ArrowUp class="h-3.5 w-3.5" />
       </button>
       <button
         type="button"
-        class="flex size-6 items-center justify-center rounded-md text-text-weak transition-colors hover:bg-surface-raised-base-hover hover:text-text-strong disabled:opacity-40"
+        class="flex size-6 items-center justify-center rounded-sm text-text-weak hover:bg-surface-raised-base-hover hover:text-text-strong disabled:opacity-40"
         onClick={(e) => { e.stopPropagation(); goNext() }}
         disabled={matchCount() === 0}
         title="Next match (Enter)"
         aria-label="Next match"
       >
-        <ChevronDown size={14} />
+        <ArrowDown class="h-3.5 w-3.5" />
       </button>
       <button
         type="button"

@@ -4332,28 +4332,19 @@ html[data-color-scheme="dark"] .agent-terminal-composer-region {
 /* ═══════════════════════════════════════════════════
    CHAT SEARCH HIGHLIGHT
    ═══════════════════════════════════════════════════ */
-.chat-search-bar {
-  position: sticky;
-  top: 8px;
-  float: right;
-  margin-bottom: -44px;
-  z-index: 70;
-  pointer-events: auto;
-}
-
 mark.chat-search-word-highlight {
-  background-color: rgba(234, 179, 8, 0.3);
+  background-color: color-mix(in srgb, var(--ring) 25%, transparent);
   color: inherit;
   border-radius: 2px;
   padding: 1px 0;
 }
 
 mark.chat-search-word-active {
-  background-color: rgba(234, 179, 8, 0.65);
-  color: #000;
+  background-color: color-mix(in srgb, var(--ring) 55%, transparent);
+  color: var(--text-strong);
   border-radius: 2px;
   padding: 1px 0;
-  box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.35);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring) 30%, transparent);
 }
 
 
