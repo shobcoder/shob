@@ -4,7 +4,7 @@
 
 <table>
   <tr>
-   <img width="1536" height="1024" alt="shob" src="https://github.com/user-attachments/assets/d4cfd382-7ea0-4b13-9ffb-4d341bab4684" />
+   <img width="500" height="200" alt="shob" src="https://github.com/user-attachments/assets/096e64c8-e948-486c-b02a-302aefd48031" />
   </tr>
 </table>
 
