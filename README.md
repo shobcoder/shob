@@ -4,9 +4,7 @@
 
 <table>
   <tr>
-    <td><img width="760" alt="Shob Logo" src="https://github.com/user-attachments/assets/ac64b8c9-52cb-4d80-8a69-b2a6bbcd2790" /></td>
-    <td><img width="760" alt="Shob Interface" src="https://github.com/user-attachments/assets/d4e6f8f4-fc9b-4a9b-b34c-b263693ef029" /></td>
-
+   <img width="1536" height="1024" alt="shob" src="https://github.com/user-attachments/assets/d4cfd382-7ea0-4b13-9ffb-4d341bab4684" />
   </tr>
 </table>
 
