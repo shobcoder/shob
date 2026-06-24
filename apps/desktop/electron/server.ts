@@ -161,6 +161,7 @@ async function startPackagedServer(
       ...platformDataEnv(),
       NODE_PATH: nodePath,
       SHOB_DISABLE_EMBEDDED_WEB_UI: "true",
+      SHOB_RESOURCES_PATH: process.resourcesPath,
     },
     serviceName: SIDECAR_SERVICE_NAME,
     stdio: "pipe",

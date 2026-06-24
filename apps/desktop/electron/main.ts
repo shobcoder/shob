@@ -701,7 +701,7 @@ function parseSkillFrontMatter(markdown: string) {
 }
 
 function builtInSkillRootCandidates() {
-  const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
+  const resourcesPath = process.resourcesPath || (app.isPackaged ? path.join(process.cwd(), "resources") : null);
   const packagedRoot = resourcesPath ? path.join(resourcesPath, "skills") : null;
   const devRoots = [
     path.join(process.cwd(), "skills"),
@@ -713,14 +713,20 @@ function builtInSkillRootCandidates() {
 }
 
 async function resolveBuiltInSkillRoot() {
-  for (const candidate of builtInSkillRootCandidates()) {
+  const candidates = builtInSkillRootCandidates();
+  console.log("[shob] Looking for built-in skills in:", candidates);
+  for (const candidate of candidates) {
     try {
       const stats = await fs.stat(candidate);
-      if (stats.isDirectory()) return candidate;
+      if (stats.isDirectory()) {
+        console.log("[shob] Found built-in skills directory:", candidate);
+        return candidate;
+      }
     } catch {
       // Try next candidate.
     }
   }
+  console.warn("[shob] No built-in skills directory found");
   return null;
 }
 
@@ -1650,6 +1656,28 @@ function registerIpc() {
 async function createWindow() {
   await ensureDataDirs();
   const appIconPath = resolveAppIconPath();
+  
+  // Configure session to allow external API requests
+  const { session } = await import("electron");
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    // Only modify CSP for HTML documents (main app), not for API responses
+    const isHtmlDoc = details.resourceType === 'mainFrame' || details.resourceType === 'subFrame';
+    
+    if (isHtmlDoc) {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [
+            "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; connect-src 'self' ws://localhost:* http://localhost:* http://127.0.0.1:*"
+          ]
+        }
+      });
+    } else {
+      // For non-HTML resources (including API calls), pass through unchanged
+      callback({ responseHeaders: details.responseHeaders });
+    }
+  });
+  
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 820,

@@ -242,6 +242,99 @@ export const InstanceRoutes = (upgrade: UpgradeWebSocket, app: Hono = new Hono()
       },
     )
     .get(
+      "/skill/search",
+      describeRoute({
+        summary: "Search skills.sh",
+        description: "Proxy to search skills on skills.sh marketplace",
+        operationId: "app.skills.search",
+        responses: {
+          200: {
+            description: "Skills search results",
+          },
+        },
+      }),
+      validator(
+        "query",
+        z.object({
+          q: z.string(),
+          limit: z.string().optional(),
+        }),
+      ),
+      async (c) => {
+        const { q, limit = "100" } = c.req.valid("query")
+        try {
+          const url = `https://www.skills.sh/api/search?q=${encodeURIComponent(q)}&limit=${limit}`
+          log.info(`[skills.sh] Proxying search request: ${url}`)
+          
+          const response = await fetch(url, {
+            headers: {
+              'Accept': 'application/json',
+              'User-Agent': 'Shob/1.0',
+            },
+          })
+          
+          if (!response.ok) {
+            log.warn(`[skills.sh] Search failed: ${response.status} ${response.statusText}`)
+            return c.json({ skills: [], error: `${response.status} ${response.statusText}` }, 200)
+          }
+          
+          const data = await response.json()
+          log.info(`[skills.sh] Search successful: ${data.skills?.length || 0} skills found`)
+          return c.json(data)
+        } catch (error) {
+          log.error('[skills.sh] Search error:', error)
+          // Return 200 with empty skills array instead of 500 to avoid frontend fetch errors
+          return c.json({ skills: [], error: String(error) }, 200)
+        }
+      },
+    )
+    .get(
+      "/skill/details",
+      describeRoute({
+        summary: "Get skill details from skills.sh",
+        description: "Proxy to fetch skill details page HTML from skills.sh",
+        operationId: "app.skills.details",
+        responses: {
+          200: {
+            description: "Skill details HTML",
+          },
+        },
+      }),
+      validator(
+        "query",
+        z.object({
+          url: z.string(),
+        }),
+      ),
+      async (c) => {
+        const { url } = c.req.valid("query")
+        try {
+          log.info(`[skills.sh] Proxying details request: ${url}`)
+          
+          const response = await fetch(url, {
+            headers: {
+              'Accept': 'text/html',
+              'User-Agent': 'Shob/1.0',
+            },
+          })
+          
+          if (!response.ok) {
+            log.warn(`[skills.sh] Details fetch failed: ${response.status} ${response.statusText}`)
+            return c.text(`Failed to fetch: ${response.status} ${response.statusText}`, 500)
+          }
+          
+          const html = await response.text()
+          log.info(`[skills.sh] Details fetched successfully: ${url}`)
+          return c.text(html, 200, {
+            'Content-Type': 'text/html',
+          })
+        } catch (error) {
+          log.error('[skills.sh] Details fetch error:', error)
+          return c.text(`Error: ${String(error)}`, 500)
+        }
+      },
+    )
+    .get(
       "/lsp",
       describeRoute({
         summary: "Get LSP status",

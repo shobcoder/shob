@@ -55,6 +55,7 @@ import { useDialog } from "@shob-ai/ui/context"
 import { api } from "@/services/api"
 import { useGlobalSDK } from "@/context/global-sdk"
 import { useGlobalSync } from "@/context/global-sync"
+import { useServer } from "@/context/server"
 import type { ElectronSkillStoreItem } from "../electron"
 
 type ServerSkill = {
@@ -274,33 +275,62 @@ const markdownStyles = `
 `.replace(/\s+/g, ' ')
 
 function SkillDetails(props: { url: string, item: SkillStoreViewItem }) {
+  const server = useServer()
   const [copied, setCopied] = createSignal(false)
   
-  const [skillInfo] = createResource(props.url, async (url) => {
-    const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`)
-    if (!res.ok) throw new Error("Failed to load skill details")
-    const html = await res.text()
-    
-    const parser = new DOMParser()
-    const doc = parser.parseFromString(html, "text/html")
-    
-    const proseElements = Array.from(doc.querySelectorAll('.prose'))
-    const readmeHtml = proseElements.map(el => el.innerHTML).join('<hr class="my-8 border-white/10" />') || "No description provided."
+  const [skillInfo] = createResource(
+    () => {
+      const ready = server.ready()
+      const conn = server.current
+      // Only trigger fetch when we have all required data
+      return ready && conn?.http?.url ? { url: props.url, conn } : null
+    },
+    async (params) => {
+      if (!params) {
+        throw new Error("Server not ready")
+      }
 
-    const parts = props.item.name ? props.item.name.split("/") : []
-    const owner = parts[0] || "unknown"
-    const repo = parts[1] || "unknown"
-    const skillName = parts[2] || "unknown"
-    const installCommand = `npx skills add https://github.com/${owner}/${repo} --skill ${skillName}`
+      const { url, conn } = params
 
-    return {
-      owner,
-      repo,
-      skillName,
-      installCommand,
-      readmeHtml
+      try {
+        // Use the server proxy instead of corsproxy.io
+        const baseUrl = conn.http.url.replace(/\/$/, '')
+        const proxyUrl = `${baseUrl}/skill/details?url=${encodeURIComponent(url)}`
+        console.log('[skills.sh] Fetching skill details via server proxy:', proxyUrl)
+        
+        const res = await fetch(proxyUrl)
+        if (!res.ok) {
+          const errorText = await res.text().catch(() => res.statusText)
+          throw new Error(`Failed to load skill details: ${errorText}`)
+        }
+        
+        const html = await res.text()
+        
+        const parser = new DOMParser()
+        const doc = parser.parseFromString(html, "text/html")
+        
+        const proseElements = Array.from(doc.querySelectorAll('.prose'))
+        const readmeHtml = proseElements.map(el => el.innerHTML).join('<hr class="my-8 border-white/10" />') || "No description provided."
+
+        const parts = props.item.name ? props.item.name.split("/") : []
+        const owner = parts[0] || "unknown"
+        const repo = parts[1] || "unknown"
+        const skillName = parts[2] || "unknown"
+        const installCommand = `npx skills add https://github.com/${owner}/${repo} --skill ${skillName}`
+
+        return {
+          owner,
+          repo,
+          skillName,
+          installCommand,
+          readmeHtml
+        }
+      } catch (error) {
+        console.error('[skills.sh] Error fetching skill details:', error)
+        throw error
+      }
     }
-  })
+  )
 
   const handleCopy = () => {
     if (!skillInfo()) return
@@ -452,6 +482,7 @@ function SkillStoreRow(props: {
 export function SettingsPlugins() {
   const globalSDK = useGlobalSDK()
   const globalSync = useGlobalSync()
+  const server = useServer()
   const [installingId, setInstallingId] = createSignal<string | null>(null)
   const [uninstallingId, setUninstallingId] = createSignal<string | null>(null)
   const [inputValue, setInputValue] = createSignal("")
@@ -474,17 +505,41 @@ export function SettingsPlugins() {
   const [skillsPage, setSkillsPage] = createSignal(1)
 
   const [skillsShData] = createResource(
-    () => ({ mode: isSkillsShMode(), q: query() }),
-    async ({ mode, q }) => {
-      if (!mode || !q.trim()) return []
+    () => {
+      const mode = isSkillsShMode()
+      const q = query()
+      const ready = server.ready()
+      const conn = server.current
+      // Only trigger fetch when we have all required data
+      return mode && q.trim() && ready && conn?.http?.url ? { mode, q, conn } : null
+    },
+    async (params) => {
+      if (!params) return []
+      
+      const { q, conn } = params
+      
       try {
-        const targetUrl = `https://www.skills.sh/api/search?q=${encodeURIComponent(q.trim())}&limit=100`
-        const url = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`
+        // Use the full server URL to make the API call
+        const baseUrl = conn.http.url.replace(/\/$/, '') // Remove trailing slash
+        const url = `${baseUrl}/skill/search?q=${encodeURIComponent(q.trim())}&limit=100`
+        console.log('[skills.sh] Fetching via server proxy:', url)
         const res = await fetch(url)
+        console.log('[skills.sh] Response status:', res.status, res.statusText)
+        if (!res.ok) {
+          const errorText = await res.text().catch(() => res.statusText)
+          throw new Error(`HTTP ${res.status}: ${errorText}`)
+        }
         const data = await res.json()
+        console.log('[skills.sh] Data received:', data.skills?.length || 0, 'skills')
         return data.skills || []
       } catch (e) {
-        console.error(e)
+        console.error('[skills.sh] Fetch error:', e)
+        showToast({
+          title: "Skills.sh search failed",
+          description: e instanceof Error ? e.message : String(e),
+          variant: "error",
+          duration: 4000,
+        })
         return []
       }
     }
@@ -511,17 +566,42 @@ export function SettingsPlugins() {
     }))
   })
 
-  const [storeData, { refetch }] = createResource(async () => {
-    const [catalog, skillsResult] = await Promise.all([
-      api.listSkillStore().catch(() => [] as ElectronSkillStoreItem[]),
-      globalSDK.client.app.skills().then((result) => result.data ?? ([] as ServerSkill[])).catch(() => [] as ServerSkill[]),
-    ])
+  const [storeData, { refetch }] = createResource(
+    () => {
+      const ready = server.ready()
+      const conn = server.current
+      // Only trigger fetch when server is ready AND connection exists
+      return ready && conn ? true : null
+    },
+    async (shouldFetch) => {
+      if (!shouldFetch) {
+        console.log('[skills] Waiting for server connection...')
+        return { catalog: [], skills: [] }
+      }
 
-    return {
-      catalog,
-      skills: skillsResult as ServerSkill[],
+      try {
+        const [catalog, skillsResult] = await Promise.all([
+          api.listSkillStore().catch((err) => {
+            console.error('[skills] Failed to list skill store:', err)
+            return [] as ElectronSkillStoreItem[]
+          }),
+          globalSDK.client.app.skills().then((result) => result.data ?? ([] as ServerSkill[])).catch((err) => {
+            console.error('[skills] Failed to fetch skills from server:', err)
+            return [] as ServerSkill[]
+          }),
+        ])
+
+        console.log('[skills] Store data loaded:', { catalogCount: catalog.length, skillsCount: skillsResult.length })
+        return {
+          catalog,
+          skills: skillsResult as ServerSkill[],
+        }
+      } catch (error) {
+        console.error('[skills] Error loading store data:', error)
+        return { catalog: [], skills: [] }
+      }
     }
-  })
+  )
 
   const items = createMemo<SkillStoreViewItem[]>(() => {
     const data = storeData()

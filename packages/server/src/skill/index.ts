@@ -164,14 +164,41 @@ export namespace Skill {
       yield* scan(state, bus, dir, SHOB_SKILL_PATTERN)
     }
 
-    const devRoots = [
+    const devRoots: string[] = []
+    
+    // For packaged apps, prioritize SHOB_RESOURCES_PATH
+    if (process.env.SHOB_RESOURCES_PATH) {
+      const resourcesSkillsPath = path.join(process.env.SHOB_RESOURCES_PATH, "skills")
+      log.info("checking packaged skills path", { 
+        resourcesPath: process.env.SHOB_RESOURCES_PATH,
+        skillsPath: resourcesSkillsPath 
+      })
+      
+      const exists = yield* fsys.isDir(resourcesSkillsPath).pipe(Effect.catch(() => Effect.succeed(false)))
+      if (exists) {
+        devRoots.push(resourcesSkillsPath)
+        log.info("found packaged skills directory", { path: resourcesSkillsPath })
+      } else {
+        log.warn("packaged skills directory not found", { path: resourcesSkillsPath })
+      }
+    }
+    
+    // Add development paths
+    devRoots.push(
       path.resolve(process.cwd(), "../../skills"),
       path.resolve(__dirname, "../../../../skills"),
       path.resolve(__dirname, "../skills"),
-    ]
+    )
+    
+    log.info("scanning skill root candidates", { roots: devRoots })
+    
     for (const devRoot of devRoots) {
-      if (yield* fsys.isDir(devRoot).pipe(Effect.catch(() => Effect.succeed(false)))) {
+      const exists = yield* fsys.isDir(devRoot).pipe(Effect.catch(() => Effect.succeed(false)))
+      if (exists) {
+        log.info("scanning skills from", { path: devRoot })
         yield* scan(state, bus, devRoot, SKILL_PATTERN)
+      } else {
+        log.debug("skill root does not exist", { path: devRoot })
       }
     }
 
@@ -195,7 +222,7 @@ export namespace Skill {
       }
     }
 
-    log.info("init", { count: Object.keys(state.skills).length })
+    log.info("skills loaded", { count: Object.keys(state.skills).length, names: Object.keys(state.skills) })
   })
 
   export class Service extends Context.Service<Service, Interface>()("@shob/Skill") {}

@@ -66,6 +66,7 @@ process.on("uncaughtException", (error) => {
 
 async function start(command: StartCommand) {
   try {
+    // Note: SHOB_RESOURCES_PATH is already in process.env from server.ts
     Object.assign(process.env, {
       SHOB_SERVER_USERNAME: "shob",
       SHOB_SERVER_PASSWORD: command.password,

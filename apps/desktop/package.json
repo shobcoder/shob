@@ -41,8 +41,12 @@
           "!**/*.map"
         ]
       },
-      "electron/icons/**",
-      "../../skills/**"
+      {
+        "from": "../../skills",
+        "to": "skills",
+        "filter": ["**/*"]
+      },
+      "electron/icons/**"
     ],
     "directories": {
       "buildResources": "electron/icons",
