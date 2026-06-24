@@ -2111,11 +2111,13 @@ ToolRegistry.register({
   name: "bash",
   render(props) {
     const i18n = useI18n()
+    const data = useData()
     const pending = () => props.status === "pending" || props.status === "running"
     const sawPending = pending()
     const cmd = createMemo(() => props.input.command ?? props.metadata.command ?? "")
+    const output = createMemo(() => stripAnsi(props.output || props.metadata.output || ""))
     const text = createMemo(() => {
-      const out = stripAnsi(props.output || props.metadata.output || "")
+      const out = output()
       return `$ ${cmd()}${out ? "\n\n" + out : ""}`
     })
     const statusKind = createMemo(() => (pending() ? "running" : props.status === "error" ? "error" : "completed"))
@@ -2134,6 +2136,8 @@ ToolRegistry.register({
       setTimeout(() => setCopied(false), 2000)
     }
 
+    const directory = createMemo(() => data.directory || "")
+
     return (
       <BasicTool
         {...props}
@@ -2143,7 +2147,24 @@ ToolRegistry.register({
         }}
       >
         <div data-component="bash-output">
-          <div data-slot="bash-title">Shell</div>
+          <div data-slot="bash-header">
+            <div data-slot="bash-header-left">
+              <Icon name="console" size="small" />
+              <span data-slot="bash-header-title">Command</span>
+              <span data-slot="bash-header-path">{directory()}</span>
+            </div>
+            <div data-slot="bash-header-right">
+              <IconButton
+                icon="arrow-up-right"
+                size="small"
+                variant="ghost"
+                aria-label="Open in terminal"
+              />
+            </div>
+          </div>
+          <div data-slot="bash-input-section">
+            <pre data-slot="bash-input-pre"><code>{cmd()}</code></pre>
+          </div>
           <div data-slot="bash-copy">
             <Tooltip
               value={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copy")}
@@ -2160,16 +2181,12 @@ ToolRegistry.register({
               />
             </Tooltip>
           </div>
-          <div data-slot="bash-scroll" data-scrollable>
-            <pre data-slot="bash-pre">
-              <code>{text()}</code>
-            </pre>
-          </div>
-          <div data-slot="bash-status" data-status={statusKind()}>
-            <Show when={statusKind() === "completed"}>
-              <span aria-hidden="true">{"\u2713"}</span>
-            </Show>
-            <span>{statusLabel()}</span>
+          <div data-slot="bash-output-section">
+            <div data-slot="bash-scroll" data-scrollable>
+              <pre data-slot="bash-output-pre">
+                <code>{output()}</code>
+              </pre>
+            </div>
           </div>
         </div>
       </BasicTool>

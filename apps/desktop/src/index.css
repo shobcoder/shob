@@ -2232,7 +2232,7 @@ html[data-color-scheme="dark"] .agent-terminal-composer-region {
   max-width: 100% !important;
   margin: 2px 0 7px !important;
   border: 1px solid color-mix(in srgb, var(--border-weak-base) 76%, transparent) !important;
-  border-radius: 6px !important;
+  border-radius: 8px !important;
   background: color-mix(in srgb, var(--surface-raised-base) 35%, transparent) !important;
   overflow: hidden !important;
   contain: layout paint style;
@@ -2262,14 +2262,16 @@ html[data-color-scheme="dark"] .agent-terminal-composer-region {
 
 .agent-terminal-view [data-component="tool-output"] [data-component="markdown"] pre,
 .agent-terminal-view [data-component="tool-output"] pre,
-.agent-terminal-view [data-slot="bash-pre"] {
+.agent-terminal-view [data-slot="bash-input-pre"],
+.agent-terminal-view [data-slot="bash-output-pre"] {
   margin: 0 !important;
   background: transparent !important;
 }
 
 .agent-terminal-view [data-component="tool-output"] [data-component="markdown"] code,
 .agent-terminal-view [data-component="tool-output"] pre,
-.agent-terminal-view [data-slot="bash-pre"] code {
+.agent-terminal-view [data-slot="bash-input-pre"] code,
+.agent-terminal-view [data-slot="bash-output-pre"] code {
   font-family: var(--font-family-mono), ui-monospace, monospace !important;
   font-size: 12px !important;
   line-height: 1.55 !important;
@@ -2277,13 +2279,14 @@ html[data-color-scheme="dark"] .agent-terminal-composer-region {
   overflow-wrap: anywhere !important;
 }
 
-.agent-terminal-view [data-component="bash-output"] [data-slot="bash-pre"] {
-  padding: 9px 10px !important;
+.agent-terminal-view [data-component="bash-output"] [data-slot="bash-input-pre"],
+.agent-terminal-view [data-component="bash-output"] [data-slot="bash-output-pre"] {
+  padding: 0 !important;
 }
 
 .agent-terminal-view [data-component="bash-output"] [data-slot="bash-copy"] {
-  top: 6px !important;
-  right: 6px !important;
+  top: 12px !important;
+  right: 12px !important;
 }
 
 .agent-terminal-view [data-component="reasoning-part"] [data-component="markdown"] {

@@ -358,18 +358,95 @@
 [data-component="bash-output"] {
   width: 100%;
   border: 1px solid var(--border-weak-base);
-  border-radius: 6px;
-  background: transparent;
+  border-radius: 8px;
+  background: var(--background-base);
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  [data-slot="bash-header"] {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--surface-raised-base);
+    border-bottom: 1px solid var(--border-weak-base);
+  }
+
+  [data-slot="bash-header-left"] {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  [data-slot="bash-header-left"] [data-slot="icon-svg"] {
+    color: var(--icon-info-base);
+    flex-shrink: 0;
+  }
+
+  [data-slot="bash-header-title"] {
+    font-family: var(--font-family-sans);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-base);
+    flex-shrink: 0;
+  }
+
+  [data-slot="bash-header-path"] {
+    font-family: var(--font-family-mono);
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text-weak);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  [data-slot="bash-header-right"] {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  [data-slot="bash-input-section"] {
+    padding: 12px 14px;
+    background: var(--background-stronger);
+    border-bottom: 1px solid var(--border-weak-base);
+  }
+
+  [data-slot="bash-input-pre"] {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+  }
+
+  [data-slot="bash-input-pre"] code {
+    font-family: var(--font-family-mono);
+    font-feature-settings: var(--font-family-mono--font-feature-settings);
+    font-size: 13px;
+    line-height: var(--line-height-large);
+    color: var(--text-base);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  [data-slot="bash-output-section"] {
+    position: relative;
+    background: var(--background-base);
+  }
 
   [data-slot="bash-copy"] {
     position: absolute;
-    top: 4px;
-    right: 4px;
+    top: 12px;
+    right: 12px;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.15s ease;
+    z-index: 10;
   }
 
   &:hover [data-slot="bash-copy"],
@@ -381,6 +458,7 @@
   [data-slot="bash-copy"] [data-component="icon-button"][data-variant="secondary"] {
     box-shadow: none;
     border: 1px solid var(--border-weak-base);
+    background: var(--surface-raised-base);
   }
 
   [data-slot="bash-copy"] [data-component="icon-button"][data-variant="secondary"] [data-slot="icon-svg"] {
@@ -391,7 +469,8 @@
     width: 100%;
     overflow-y: auto;
     overflow-x: hidden;
-    max-height: 240px;
+    max-height: 360px;
+    padding: 12px 14px;
 
     scrollbar-width: none;
     &::-webkit-scrollbar {
@@ -399,16 +478,18 @@
     }
   }
 
-  [data-slot="bash-pre"] {
+  [data-slot="bash-output-pre"] {
     margin: 0;
-    padding: 12px;
+    padding: 0;
+    background: transparent;
   }
 
-  [data-slot="bash-pre"] code {
+  [data-slot="bash-output-pre"] code {
     font-family: var(--font-family-mono);
     font-feature-settings: var(--font-family-mono--font-feature-settings);
     font-size: 13px;
     line-height: var(--line-height-large);
+    color: var(--text-base);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
   }
