@@ -167,6 +167,7 @@ export namespace Skill {
     const devRoots = [
       path.resolve(process.cwd(), "../../skills"),
       path.resolve(__dirname, "../../../../skills"),
+      path.resolve(__dirname, "../skills"),
     ]
     for (const devRoot of devRoots) {
       if (yield* fsys.isDir(devRoot).pipe(Effect.catch(() => Effect.succeed(false)))) {
