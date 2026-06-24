@@ -33,6 +33,7 @@ import { detectShells } from "./shell-detector.js";
 import { startServer, type ServerInstance } from "./server.js";
 import { applyMacDockIcon, applyWindowIcon, applyWindowsAppIdentity, resolveAppIconPath } from "./icon.js";
 import { createBrowserControl } from "./browser-control.js";
+import { createSystemTray, destroySystemTray } from "./tray.js";
 
 const execFileAsync = promisify(execFile);
 const isDev = !app.isPackaged;
@@ -1754,6 +1755,10 @@ async function createWindow() {
 
 app.whenReady().then(async () => {
   applyMacDockIcon();
+  
+  // Create system tray icon for all platforms (especially important for Linux/GNOME)
+  createSystemTray(() => mainWindow);
+  
   browserControl = createBrowserControl({
     getWindow: () => mainWindow,
     emit: sendAppEvent,
@@ -1775,6 +1780,7 @@ app.whenReady().then(async () => {
 
 app.on("before-quit", async () => {
   await handlers.cleanup_runtime();
+  destroySystemTray();
   await browserControl?.stop();
   browserControl = null;
   if (serverInstance) {

@@ -80,9 +80,16 @@
       "category": "Development",
       "icon": "electron/icons/icon.png",
       "desktop": {
-        "entry": {
-          "StartupWMClass": "shob"
-        }
+        "Name": "shob",
+        "Comment": "Desktop app for running and organizing multiple CLI agent sessions in one workspace",
+        "GenericName": "AI Agent Desktop",
+        "Keywords": "AI;Agent;CLI;Development;Terminal;Assistant;",
+        "Categories": "Development;Utility;",
+        "StartupNotify": "true",
+        "Terminal": "false",
+        "Type": "Application",
+        "Icon": "shob",
+        "StartupWMClass": "shob"
       }
     }
   },

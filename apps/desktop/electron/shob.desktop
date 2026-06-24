@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=shob
+Comment=Desktop app for running and organizing multiple CLI agent sessions in one workspace
+GenericName=AI Agent Desktop
+Exec=shob %U
+Icon=shob
+Type=Application
+Terminal=false
+Categories=Development;Utility;
+Keywords=AI;Agent;CLI;Development;Terminal;Assistant;
+StartupNotify=true
+StartupWMClass=shob
+MimeType=x-scheme-handler/shob;
