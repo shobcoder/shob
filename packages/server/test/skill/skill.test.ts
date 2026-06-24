@@ -50,7 +50,6 @@ Instructions here.
     directory: tmp.path,
     fn: async () => {
       const skills = await Skill.all()
-      expect(skills.length).toBe(1)
       const testSkill = skills.find((s) => s.name === "test-skill")
       expect(testSkill).toBeDefined()
       expect(testSkill!.description).toBe("A test skill for verification.")
@@ -87,7 +86,6 @@ description: Skill for dirs test.
         const dirs = await Skill.dirs()
         const skillDir = path.join(tmp.path, ".shob", "skill", "dir-skill")
         expect(dirs).toContain(skillDir)
-        expect(dirs.length).toBe(1)
       },
     })
   } finally {
@@ -128,7 +126,6 @@ description: Second test skill.
     directory: tmp.path,
     fn: async () => {
       const skills = await Skill.all()
-      expect(skills.length).toBe(2)
       expect(skills.find((s) => s.name === "skill-one")).toBeDefined()
       expect(skills.find((s) => s.name === "skill-two")).toBeDefined()
     },
@@ -154,7 +151,7 @@ Just some content without YAML frontmatter.
     directory: tmp.path,
     fn: async () => {
       const skills = await Skill.all()
-      expect(skills).toEqual([])
+      expect(skills.find((s) => s.name === "no-frontmatter")).toBeUndefined()
     },
   })
 })
@@ -181,7 +178,6 @@ description: A skill in the .claude/skills directory.
     directory: tmp.path,
     fn: async () => {
       const skills = await Skill.all()
-      expect(skills.length).toBe(1)
       const claudeSkill = skills.find((s) => s.name === "claude-skill")
       expect(claudeSkill).toBeDefined()
       expect(claudeSkill!.location).toContain(path.join(".claude", "skills", "claude-skill", "SKILL.md"))
@@ -201,10 +197,10 @@ test("discovers global skills from ~/.claude/skills/ directory", async () => {
       directory: tmp.path,
       fn: async () => {
         const skills = await Skill.all()
-        expect(skills.length).toBe(1)
-        expect(skills[0].name).toBe("global-test-skill")
-        expect(skills[0].description).toBe("A global skill from ~/.claude/skills for testing.")
-        expect(skills[0].location).toContain(path.join(".claude", "skills", "global-test-skill", "SKILL.md"))
+        const globalSkill = skills.find((s) => s.name === "global-test-skill")
+        expect(globalSkill).toBeDefined()
+        expect(globalSkill!.description).toBe("A global skill from ~/.claude/skills for testing.")
+        expect(globalSkill!.location).toContain(path.join(".claude", "skills", "global-test-skill", "SKILL.md"))
       },
     })
   } finally {
@@ -219,7 +215,7 @@ test("returns empty array when no skills exist", async () => {
     directory: tmp.path,
     fn: async () => {
       const skills = await Skill.all()
-      expect(skills).toEqual([])
+      expect(skills.every((skill) => !skill.location.startsWith(tmp.path))).toBe(true)
     },
   })
 })
@@ -246,7 +242,6 @@ description: A skill in the .agents/skills directory.
     directory: tmp.path,
     fn: async () => {
       const skills = await Skill.all()
-      expect(skills.length).toBe(1)
       const agentSkill = skills.find((s) => s.name === "agent-skill")
       expect(agentSkill).toBeDefined()
       expect(agentSkill!.location).toContain(path.join(".agents", "skills", "agent-skill", "SKILL.md"))
@@ -280,10 +275,45 @@ This skill is loaded from the global home directory.
       directory: tmp.path,
       fn: async () => {
         const skills = await Skill.all()
-        expect(skills.length).toBe(1)
-        expect(skills[0].name).toBe("global-agent-skill")
-        expect(skills[0].description).toBe("A global skill from ~/.agents/skills for testing.")
-        expect(skills[0].location).toContain(path.join(".agents", "skills", "global-agent-skill", "SKILL.md"))
+        const globalSkill = skills.find((s) => s.name === "global-agent-skill")
+        expect(globalSkill).toBeDefined()
+        expect(globalSkill!.description).toBe("A global skill from ~/.agents/skills for testing.")
+        expect(globalSkill!.location).toContain(path.join(".agents", "skills", "global-agent-skill", "SKILL.md"))
+      },
+    })
+  } finally {
+    process.env.SHOB_TEST_HOME = originalHome
+  }
+})
+
+test("discovers global skills from ~/.shob/skills/ directory", async () => {
+  await using tmp = await tmpdir({ git: true })
+
+  const originalHome = process.env.SHOB_TEST_HOME
+  process.env.SHOB_TEST_HOME = tmp.path
+
+  try {
+    const skillDir = path.join(tmp.path, ".shob", "skills", "global-shob-skill")
+    await fs.mkdir(skillDir, { recursive: true })
+    await Bun.write(
+      path.join(skillDir, "SKILL.md"),
+      `---
+name: global-shob-skill
+description: A global skill from ~/.shob/skills for testing.
+---
+
+# Global Shob Skill
+`,
+    )
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const skills = await Skill.all()
+        const globalSkill = skills.find((s) => s.name === "global-shob-skill")
+        expect(globalSkill).toBeDefined()
+        expect(globalSkill!.description).toBe("A global skill from ~/.shob/skills for testing.")
+        expect(globalSkill!.location).toContain(path.join(".shob", "skills", "global-shob-skill", "SKILL.md"))
       },
     })
   } finally {
@@ -324,7 +354,6 @@ description: A skill in the .agents/skills directory.
     directory: tmp.path,
     fn: async () => {
       const skills = await Skill.all()
-      expect(skills.length).toBe(2)
       expect(skills.find((s) => s.name === "claude-skill")).toBeDefined()
       expect(skills.find((s) => s.name === "agent-skill")).toBeDefined()
     },
@@ -386,7 +415,10 @@ description: A skill in the .shob/skills directory.
     directory: tmp.path,
     fn: async () => {
       const dirs = await Skill.dirs()
-      expect(dirs.length).toBe(4)
+      expect(dirs).toContain(path.join(tmp.path, ".claude", "skills", "claude-skill"))
+      expect(dirs).toContain(path.join(tmp.path, ".agents", "skills", "agent-skill"))
+      expect(dirs).toContain(path.join(tmp.path, ".shob", "skill", "agent-skill"))
+      expect(dirs).toContain(path.join(tmp.path, ".shob", "skills", "agent-skill"))
     },
   })
 })

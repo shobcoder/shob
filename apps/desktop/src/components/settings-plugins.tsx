@@ -566,7 +566,7 @@ export function SettingsPlugins() {
     }))
   })
 
-  const [storeData, { refetch }] = createResource(
+  const [storeData, { mutate: mutateStoreData }] = createResource(
     () => {
       const ready = server.ready()
       const conn = server.current
@@ -630,14 +630,37 @@ export function SettingsPlugins() {
   const featuredItems = createMemo(() => availableItems().slice(0, 2))
   const businessItems = createMemo(() => availableItems().slice(2))
 
+  const patchStoreItem = (item: ElectronSkillStoreItem, installed: boolean) => {
+    mutateStoreData((current) => {
+      if (!current) return current
+      const catalog = current.catalog.map((catalogItem) =>
+        catalogItem.id === item.id
+          ? {
+              ...catalogItem,
+              installed,
+              managed: installed ? item.managed : false,
+              location: installed ? item.location : null,
+            }
+          : catalogItem,
+      )
+      const skills = installed
+        ? [
+            ...current.skills.filter((skill) => skill.name !== item.name),
+            { name: item.name, description: item.description, location: item.location ?? "" },
+          ]
+        : current.skills.filter((skill) => skill.name !== item.name)
+      return { catalog, skills }
+    })
+  }
+
   const installSkill = async (item: SkillStoreViewItem) => {
     if (item.installed || installingId() || uninstallingId()) return
 
     setInstallingId(item.id)
     try {
-      await api.installSkill(item.id)
+      const installed = await api.installSkill(item.id)
+      patchStoreItem(installed, true)
       await globalSync.refreshSkills().catch(() => undefined)
-      await refetch()
       showToast({
         title: "Skill installed",
         description: `${item.displayName} is now available in Shob.`,
@@ -662,8 +685,8 @@ export function SettingsPlugins() {
     setUninstallingId(item.id)
     try {
       await api.uninstallSkill(item.id)
+      patchStoreItem(item, false)
       await globalSync.refreshSkills().catch(() => undefined)
-      await refetch()
       showToast({
         title: "Skill uninstalled",
         description: `${item.displayName} was removed from Shob.`,
@@ -786,7 +809,7 @@ export function SettingsPlugins() {
         </Show>
       </Show>
 
-      <Show when={!isSkillsShMode() && !storeData.loading}>
+      <Show when={!isSkillsShMode()}>
         <Show
           when={filteredItems().length > 0}
           fallback={

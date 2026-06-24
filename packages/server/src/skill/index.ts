@@ -21,6 +21,7 @@ import { Discovery } from "./discovery"
 export namespace Skill {
   const log = Log.create({ service: "skill" })
   const EXTERNAL_DIRS = [".claude", ".agents"]
+  const GLOBAL_EXTERNAL_DIRS = [".shob", ...EXTERNAL_DIRS]
   const EXTERNAL_SKILL_PATTERN = "skills/**/SKILL.md"
   const SHOB_SKILL_PATTERN = "{skill,skills}/**/SKILL.md"
   const SKILL_PATTERN = "**/SKILL.md"
@@ -144,7 +145,7 @@ export namespace Skill {
     worktree: string,
   ) {
     if (!Flag.SHOB_DISABLE_EXTERNAL_SKILLS) {
-      for (const dir of EXTERNAL_DIRS) {
+      for (const dir of GLOBAL_EXTERNAL_DIRS) {
         const root = path.join(Global.Path.home, dir)
         if (!(yield* fsys.isDir(root))) continue
         yield* scan(state, bus, root, EXTERNAL_SKILL_PATTERN, { dot: true, scope: "global" })
@@ -162,44 +163,6 @@ export namespace Skill {
     const configDirs = yield* config.directories()
     for (const dir of configDirs) {
       yield* scan(state, bus, dir, SHOB_SKILL_PATTERN)
-    }
-
-    const devRoots: string[] = []
-    
-    // For packaged apps, prioritize SHOB_RESOURCES_PATH
-    if (process.env.SHOB_RESOURCES_PATH) {
-      const resourcesSkillsPath = path.join(process.env.SHOB_RESOURCES_PATH, "skills")
-      log.info("checking packaged skills path", { 
-        resourcesPath: process.env.SHOB_RESOURCES_PATH,
-        skillsPath: resourcesSkillsPath 
-      })
-      
-      const exists = yield* fsys.isDir(resourcesSkillsPath).pipe(Effect.catch(() => Effect.succeed(false)))
-      if (exists) {
-        devRoots.push(resourcesSkillsPath)
-        log.info("found packaged skills directory", { path: resourcesSkillsPath })
-      } else {
-        log.warn("packaged skills directory not found", { path: resourcesSkillsPath })
-      }
-    }
-    
-    // Add development paths
-    devRoots.push(
-      path.resolve(process.cwd(), "../../skills"),
-      path.resolve(__dirname, "../../../../skills"),
-      path.resolve(__dirname, "../skills"),
-    )
-    
-    log.info("scanning skill root candidates", { roots: devRoots })
-    
-    for (const devRoot of devRoots) {
-      const exists = yield* fsys.isDir(devRoot).pipe(Effect.catch(() => Effect.succeed(false)))
-      if (exists) {
-        log.info("scanning skills from", { path: devRoot })
-        yield* scan(state, bus, devRoot, SKILL_PATTERN)
-      } else {
-        log.debug("skill root does not exist", { path: devRoot })
-      }
     }
 
     const cfg = yield* config.get()

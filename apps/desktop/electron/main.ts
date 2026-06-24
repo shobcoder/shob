@@ -644,6 +644,10 @@ const SHOB_SKILL_STORE_SOURCE = "shob/builtin-skills";
 const LEGACY_DUMMY_SKILL_TEXT = "This Shob store skill provides workflow guidance only.";
 
 function skillStoreRoot() {
+  return path.join(os.homedir(), ".shob", "skills");
+}
+
+function legacySkillStoreRoot() {
   return path.join(os.homedir(), ".agents", "skills");
 }
 
@@ -782,16 +786,16 @@ async function resolveSkillStoreItem(skillId: string) {
   return catalog.find((item) => item.id === skillId);
 }
 
-function resolveManagedSkillDir(skillId: string) {
+function resolveManagedSkillDir(skillId: string, storeRoot = skillStoreRoot()) {
   if (!/^[a-z0-9][a-z0-9._-]*$/i.test(skillId)) throw new Error("Invalid skill id");
-  const root = path.resolve(skillStoreRoot());
+  const root = path.resolve(storeRoot);
   const target = path.resolve(root, skillId);
   if (target !== root && target.startsWith(`${root}${path.sep}`)) return { root, target };
   throw new Error("Invalid skill install path");
 }
 
-async function readSkillStoreFile(skillId: string) {
-  const { target } = resolveManagedSkillDir(skillId);
+async function readSkillStoreFile(skillId: string, storeRoot = skillStoreRoot()) {
+  const { target } = resolveManagedSkillDir(skillId, storeRoot);
   const filePath = path.join(target, "SKILL.md");
   try {
     return { filePath, content: await fs.readFile(filePath, "utf8") };
@@ -801,8 +805,8 @@ async function readSkillStoreFile(skillId: string) {
   }
 }
 
-async function readManagedMarker(skillId: string) {
-  const { target } = resolveManagedSkillDir(skillId);
+async function readManagedMarker(skillId: string, storeRoot = skillStoreRoot()) {
+  const { target } = resolveManagedSkillDir(skillId, storeRoot);
   try {
     return await fs.readFile(path.join(target, SHOB_SKILL_STORE_MARKER_FILE), "utf8");
   } catch (error: any) {
@@ -824,9 +828,9 @@ function parseSkillStoreMarker(marker: string | null) {
   }
 }
 
-async function readSkillInstallState(skillId: string) {
-  const { filePath, content } = await readSkillStoreFile(skillId);
-  const marker = await readManagedMarker(skillId);
+async function readSkillInstallState(skillId: string, storeRoot = skillStoreRoot()) {
+  const { filePath, content } = await readSkillStoreFile(skillId, storeRoot);
+  const marker = await readManagedMarker(skillId, storeRoot);
   const markerData = parseSkillStoreMarker(marker);
   const legacyDummy = isLegacyDummySkill(skillId, content);
   return {
@@ -837,6 +841,37 @@ async function readSkillInstallState(skillId: string) {
     deprecatedManaged: Boolean(markerData?.source && markerData.source !== SHOB_SKILL_STORE_SOURCE),
     legacyDummy,
   };
+}
+
+async function migrateLegacyManagedSkill(skillId: string) {
+  const legacyRoot = legacySkillStoreRoot();
+  const currentRoot = skillStoreRoot();
+  const { target: legacyTarget } = resolveManagedSkillDir(skillId, legacyRoot);
+  const { target: currentTarget } = resolveManagedSkillDir(skillId, currentRoot);
+  const legacyState = await readSkillInstallState(skillId, legacyRoot);
+  if (!legacyState.content || !legacyState.managed) return;
+
+  const currentState = await readSkillInstallState(skillId, currentRoot);
+  if (legacyState.legacyDummy) {
+    await fs.rm(legacyTarget, { recursive: true, force: true });
+    return;
+  }
+  if (currentState.content && !currentState.managed && !currentState.deprecatedManaged) {
+    await fs.rm(legacyTarget, { recursive: true, force: true });
+    return;
+  }
+  if (currentState.content) {
+    await fs.rm(currentTarget, { recursive: true, force: true });
+  }
+
+  await fs.mkdir(path.dirname(currentTarget), { recursive: true });
+  try {
+    await fs.rename(legacyTarget, currentTarget);
+  } catch (error: any) {
+    if (error?.code !== "EXDEV") throw error;
+    await fs.cp(legacyTarget, currentTarget, { recursive: true });
+    await fs.rm(legacyTarget, { recursive: true, force: true });
+  }
 }
 
 async function cleanupDeprecatedStoreSkills(activeSkillIds = new Set<string>()) {
@@ -861,6 +896,7 @@ async function cleanupDeprecatedStoreSkills(activeSkillIds = new Set<string>()) 
 
 async function listSkillStore() {
   const catalog = await readBuiltInSkillCatalog();
+  await Promise.all(catalog.map((item) => migrateLegacyManagedSkill(item.id)));
   await cleanupDeprecatedStoreSkills(new Set(catalog.map((item) => item.id)));
   return Promise.all(
     catalog.map(async (item) => {
@@ -880,6 +916,7 @@ async function installSkill(skillId: string) {
   const item = await resolveSkillStoreItem(skillId);
   if (!item) throw new Error(`Unknown skill: ${skillId}`);
 
+  await migrateLegacyManagedSkill(item.id);
   const { target } = resolveManagedSkillDir(item.id);
   const state = await readSkillInstallState(item.id);
   if (state.content && !state.managed) {
@@ -927,6 +964,7 @@ async function uninstallSkill(skillId: string) {
   const item = await resolveSkillStoreItem(skillId);
   if (!item) throw new Error(`Unknown skill: ${skillId}`);
 
+  await migrateLegacyManagedSkill(item.id);
   const { root, target } = resolveManagedSkillDir(item.id);
   const state = await readSkillInstallState(item.id);
   if (!state.content) return { ok: true };
