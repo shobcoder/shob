@@ -2032,11 +2032,13 @@ function AgentViewInner(props: AgentViewProps) {
                   </Show>
                 </div>
               </Show>
-              <PromptInput
-                shouldQueue={() => working()}
-                onQueue={enqueueFollowup}
-                onSubmit={resumeScroll}
-              />
+              <Show when={!composerState.permissionRequest() && !composerState.questionRequest()}>
+                <PromptInput
+                  shouldQueue={() => working()}
+                  onQueue={enqueueFollowup}
+                  onSubmit={resumeScroll}
+                />
+              </Show>
             </div>
           </Show>
         </div>
