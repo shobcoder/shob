@@ -4104,6 +4104,7 @@ html[data-color-scheme="dark"] .agent-terminal-composer-region {
   max-width: var(--agent-content-max-width, 736px) !important;
   margin-left: auto !important;
   margin-right: auto !important;
+  padding-top: 18px !important;
 }
 
 .agent-turn-diff-card {
@@ -4112,6 +4113,10 @@ html[data-color-scheme="dark"] .agent-terminal-composer-region {
   max-width: 100%;
   min-width: 0;
   color: var(--terminal-agent-text);
+  border: 1px solid var(--terminal-agent-border, var(--border-weak-base));
+  border-radius: 10px;
+  background: var(--terminal-agent-panel, transparent);
+  padding: 14px 16px;
 }
 
 .agent-turn-diff-card-header {
@@ -4119,9 +4124,9 @@ html[data-color-scheme="dark"] .agent-terminal-composer-region {
   min-height: 0;
   min-width: 0;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
+  align-items: center;
   gap: 16px;
-  padding: 0 0 10px;
+  padding: 0 0 14px;
 }
 
 .agent-turn-diff-heading {
@@ -4134,8 +4139,8 @@ html[data-color-scheme="dark"] .agent-terminal-composer-region {
 
 .agent-turn-diff-title {
   color: var(--terminal-agent-text);
-  font-size: 13px;
-  font-weight: var(--agent-font-medium);
+  font-size: 13.5px;
+  font-weight: var(--agent-font-semibold, 600);
   line-height: 1.25;
 }
 
@@ -4153,7 +4158,7 @@ html[data-color-scheme="dark"] .agent-terminal-composer-region {
 }
 
 .agent-turn-diff-file-stats {
-  min-width: 70px;
+  min-width: 78px;
   justify-content: flex-end;
   text-align: right;
 }
@@ -4196,34 +4201,41 @@ html[data-color-scheme="dark"] .agent-terminal-composer-region {
 
 .agent-turn-diff-review {
   min-height: 30px;
-  padding: 0 10px !important;
-  border: 1px solid var(--terminal-agent-border) !important;
+  padding: 0 12px !important;
+  border: 1px solid var(--terminal-agent-border, var(--border-weak-base)) !important;
   border-radius: 7px !important;
-  background: var(--terminal-agent-panel) !important;
+  background: var(--terminal-agent-panel, transparent) !important;
   color: var(--terminal-agent-text) !important;
-  font-weight: var(--agent-font-medium);
+  font-size: 12.5px;
+  font-weight: var(--agent-font-medium, 500);
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .agent-turn-diff-review:hover {
-  border-color: var(--border-hover, var(--terminal-agent-border)) !important;
-  background: var(--terminal-agent-panel-hover) !important;
+  border-color: var(--border-hover, var(--border-base)) !important;
+  background: var(--terminal-agent-panel-hover, var(--surface-base-hover)) !important;
+}
+
+.agent-turn-diff-review:active {
+  background: var(--terminal-agent-panel-active, var(--surface-base-active)) !important;
 }
 
 .agent-turn-diff-files {
   display: grid;
   min-width: 0;
-  gap: 6px;
+  gap: 8px;
   padding-top: 0;
 }
 
 .agent-turn-diff-file-row {
   display: grid;
-  min-height: 0;
+  min-height: 18px;
   min-width: 0;
-  grid-template-columns: minmax(0, 1fr) 70px;
+  grid-template-columns: minmax(0, 1fr) 78px;
   align-items: center;
   gap: 16px;
-  padding: 1px 0;
+  padding: 2px 0;
+  border-radius: 5px;
 }
 
 .agent-turn-diff-file-path {
@@ -4231,10 +4243,11 @@ html[data-color-scheme="dark"] .agent-terminal-composer-region {
   overflow: hidden;
   color: var(--terminal-agent-text);
   font-size: 13px;
-  font-weight: var(--agent-font-regular);
-  line-height: 1.4;
+  font-weight: var(--agent-font-semibold, 600);
+  line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-family: var(--font-family-mono, ui-monospace, monospace);
 }
 
 .agent-turn-diff-more {
@@ -4243,10 +4256,21 @@ html[data-color-scheme="dark"] .agent-terminal-composer-region {
   min-width: 0;
   align-items: center;
   gap: 4px;
-  padding: 1px 0;
+  padding: 3px 6px 3px 0;
+  margin-top: 2px;
   color: var(--terminal-agent-text);
-  font-weight: var(--agent-font-medium);
+  font-size: 12.5px;
+  font-weight: var(--agent-font-medium, 500);
   text-align: left;
+  border-radius: 5px;
+  transition: color 0.15s ease;
+}
+
+.agent-turn-diff-more:hover {
+  color: var(--terminal-agent-text);
+  background: transparent;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .agent-turn-diff-more svg {
