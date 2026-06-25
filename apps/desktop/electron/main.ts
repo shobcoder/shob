@@ -30,6 +30,7 @@ import {
   saveTerminalLayout,
 } from "./session-db.js";
 import { detectShells } from "./shell-detector.js";
+import { resolveTerminalCwd } from "./terminal-cwd.js";
 import { startServer, type ServerInstance } from "./server.js";
 import { applyMacDockIcon, applyWindowIcon, applyWindowsAppIdentity, resolveAppIconPath } from "./icon.js";
 import { createBrowserControl } from "./browser-control.js";
@@ -1622,10 +1623,17 @@ function registerIpc() {
 
     let proc;
     let launchedShell = options.shell;
+    const terminalCwd = resolveTerminalCwd(options.cwd);
+    if (terminalCwd.replaced) {
+      console.warn("[shob] terminal cwd replaced", {
+        requested: terminalCwd.requested ?? null,
+        cwd: terminalCwd.cwd,
+      });
+    }
     const spawnPty = (shellPath: string) => {
       return pty.spawn(shellPath, options.args || [], {
         name: "xterm-256color",
-        cwd: options.cwd || os.homedir(),
+        cwd: terminalCwd.cwd,
         cols: Math.max(2, Number(options.cols) || 80),
         rows: Math.max(2, Number(options.rows) || 24),
         env: {
@@ -1672,7 +1680,7 @@ function registerIpc() {
       finishPty(id, runtime);
     });
 
-    return { id, reused: false, buffer: "", bufferCursor: 0, cursor: 0, shell: launchedShell };
+    return { id, reused: false, buffer: "", bufferCursor: 0, cursor: 0, shell: launchedShell, cwd: terminalCwd.cwd };
   });
 
   ipcMain.handle("shob:terminal-write", (_event, id, data) => {

@@ -93,6 +93,7 @@ export interface ElectronTerminalSpawnResult {
   bufferCursor?: number
   cursor?: number
   shell?: string
+  cwd?: string
 }
 
 export type ElectronBrowserAction =
