@@ -22,9 +22,10 @@ import type {
   ElectronBrowserState,
 } from "@/electron"
 
-type BrowserTabProps = {
+type CustomBrowserPanelProps = {
   active: () => boolean
   panelResizing?: () => boolean
+  onClose?: () => void
 }
 
 const EMPTY_STATE: ElectronBrowserState = {
@@ -105,7 +106,7 @@ function PresetIcon(props: { kind: "monitor" | "smartphone" | "tablet"; size?: n
   )
 }
 
-export function BrowserTab(props: BrowserTabProps) {
+export function CustomBrowserPanel(props: CustomBrowserPanelProps) {
   const [state, setState] = createSignal<ElectronBrowserState>(EMPTY_STATE)
   const [address, setAddress] = createSignal("")
   const [editingAddress, setEditingAddress] = createSignal(false)
@@ -532,6 +533,19 @@ export function BrowserTab(props: BrowserTabProps) {
         >
           <RotateCcw size={14} />
         </button>
+        <Show when={props.onClose}>
+          {(onClose) => (
+            <button
+              type="button"
+              class="size-7 shrink-0 inline-flex items-center justify-center rounded-md text-text-weak hover:bg-surface-raised-base-hover hover:text-text"
+              aria-label="Close browser"
+              title="Close browser"
+              onClick={onClose()}
+            >
+              <X size={14} />
+            </button>
+          )}
+        </Show>
       </form>
 
       <div class="h-0.5 shrink-0 overflow-hidden bg-transparent">

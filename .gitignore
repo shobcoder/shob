@@ -27,3 +27,5 @@ release
 *.njsproj
 *.sln
 *.sw?
+
+docs

@@ -25,7 +25,7 @@ import { ScrollView } from '@shob-ai/ui/scroll-view'
 import { SessionSidePanel } from '@/pages/session/session-side-panel'
 import { findReusableEmptyRootShobSession, sortShobSessionsById } from '@/utils/shob-session'
 import { AGENT_REVIEW_OPEN_EVENT } from '@/components/agent-turn-diff-summary'
-import { BrowserTab } from '@/components/BrowserTab'
+import { CustomBrowserPanel } from '@/components/CustomBrowserPanel'
 
 const DEFAULT_SESSION_PANEL_WIDTH = 600
 const BROWSER_TAB_STATE_KEY = "shob.browser-tab-state.v1"
@@ -39,14 +39,14 @@ type BrowserTabPersistedState = {
 function readBrowserTabState(projectPath: string): BrowserTabPersistedState | null {
   if (!projectPath || typeof localStorage !== "object") return null
   try {
-    const raw = localStorage.getItem(BROWSER_TAB_STATE_KEY)
+    const raw = localStorage.getItem(BROWSER_TAB_STATE_KEY) ?? localStorage.getItem("shob.browser-panel-state.v1")
     if (!raw) return null
-    const parsed = JSON.parse(raw) as Partial<BrowserTabPersistedState>
+    const parsed = JSON.parse(raw) as Partial<BrowserTabPersistedState & { width?: number }>
     if (parsed.projectPath !== projectPath) return null
     return {
       projectPath,
       open: parsed.open === true,
-      active: parsed.active === true,
+      active: parsed.active === true || parsed.open === true,
     }
   } catch {
     return null
@@ -210,9 +210,10 @@ function ShobReviewContent(props: {
       )}
       renderFileTab={(filePath) => <FileTabContent projectPath={props.projectPath} filePath={filePath} />}
       renderBrowserTab={(active) => (
-        <BrowserTab
+        <CustomBrowserPanel
           active={() => props.sidePanelVisible() && active()}
           panelResizing={props.panelResizing}
+          onClose={props.onCloseBrowser}
         />
       )}
     />
@@ -592,6 +593,7 @@ export function MainView() {
     setActiveTabId("browser")
     setIsSidePanelHidden(false)
     setIsReviewVisible(true)
+    setActivePage("workspace")
   }
 
   createEffect(() => {
