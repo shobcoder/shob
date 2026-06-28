@@ -134,10 +134,13 @@ export const ProviderRoutes = lazy(() =>
           ),
           connected,
         )
+        for (const [providerID, provider] of Object.entries(providers)) {
+          if (Object.keys(provider.models).length === 0) delete providers[providerID]
+        }
         return c.json({
           all: Object.values(providers),
           default: mapValues(providers, (item) => Provider.sort(Object.values(item.models))[0].id),
-          connected: Object.keys(connected),
+          connected: Object.keys(connected).filter((providerID) => providers[providerID]),
         })
       },
     )
