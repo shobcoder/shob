@@ -59,7 +59,7 @@ import { Installation } from "../installation"
 import { ModelID, ProviderID } from "./schema"
 import { ProviderError } from "./error"
 import { buildClineHeaders } from "../plugin/cline"
-import { createMimoFreeFetch, MIMO_CHAT_URL } from "./mimo-free/fetch"
+import { COMMANDCODE_BASE_URL, COMMANDCODE_MODELS_URL, COMMANDCODE_NPM } from "./commandcode/models"
 
 export namespace Provider {
   const log = Log.create({ service: "provider" })
@@ -898,20 +898,73 @@ export namespace Provider {
           },
         }
       }),
-      "mimo-free": () =>
-        Effect.succeed({
-          autoload: true,
-          options: {
-            apiKey: "mimo-free",
-            baseURL: MIMO_CHAT_URL,
-            fetch: createMimoFreeFetch(),
-          },
-        }),
       qoder: () =>
         Effect.succeed({
           autoload: false,
           options: {},
         }),
+      commandcode: Effect.fnUntraced(function* () {
+        const auth = yield* dep.auth("commandcode")
+        if (auth?.type !== "api") return { autoload: false, options: {} }
+        const apiKey = auth.key
+        return {
+          autoload: true,
+          options: {
+            apiKey,
+            baseURL: COMMANDCODE_BASE_URL,
+          },
+          async discoverModels(): Promise<Record<string, Model>> {
+            try {
+              const res = await fetch(COMMANDCODE_MODELS_URL, {
+                headers: {
+                  Authorization: `Bearer ${apiKey}`,
+                  "Content-Type": "application/json",
+                },
+              })
+              if (!res.ok) return {}
+              const data = (await res.json()) as { data?: Array<Record<string, any>> }
+              const list = data.data ?? (Array.isArray(data) ? data : [])
+              const models: Record<string, Model> = {}
+              for (const m of list) {
+                if (!m?.id) continue
+                models[m.id] = {
+                  id: ModelID.make(m.id),
+                  providerID: ProviderID.make("commandcode"),
+                  name: m.name ?? m.id,
+                  family: m.family ?? "",
+                  api: {
+                    id: m.id,
+                    url: COMMANDCODE_BASE_URL,
+                    npm: COMMANDCODE_NPM,
+                  },
+                  status: "active",
+                  headers: {},
+                  options: {},
+                  cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
+                  limit: {
+                    context: m.context_length ?? 131072,
+                    output: m.max_output_tokens ?? 32768,
+                  },
+                  capabilities: {
+                    temperature: true,
+                    reasoning: m.reasoning ?? false,
+                    attachment: m.attachment ?? false,
+                    toolcall: m.tool_call ?? true,
+                    input: { text: true, audio: false, image: false, video: false, pdf: false },
+                    output: { text: true, audio: false, image: false, video: false, pdf: false },
+                    interleaved: false,
+                  },
+                  release_date: m.release_date ?? "",
+                  variants: {},
+                }
+              }
+              return models
+            } catch {
+              return {}
+            }
+          },
+        }
+      }),
     }
   }
 

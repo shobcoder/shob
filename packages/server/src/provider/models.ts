@@ -12,7 +12,6 @@ import { withAntigravityModels } from "./antigravity/models"
 import { withQoderModels } from "./qoder/models"
 import { withCommandCodeModels } from "./commandcode/models"
 import { withClineModels } from "./cline/models"
-import { withMimoFreeModels } from "./mimo-free/models"
 import { withNvidiaNimModels } from "./nvidia-nim/models"
 import { withZaiCodingPlanModels } from "./zai/models"
 
@@ -162,7 +161,7 @@ export namespace ModelsDev {
     const enriched = await withClineModels(
       withCommandCodeModels(withQoderModels(withAntigravityModels(result as Record<string, Provider>))),
     )
-    return withNvidiaNimModels(withZaiCodingPlanModels(withMimoFreeModels(enriched)))
+    return withNvidiaNimModels(withZaiCodingPlanModels(enriched))
   }
 
   export async function refresh(force = false) {

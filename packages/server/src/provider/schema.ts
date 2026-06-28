@@ -24,6 +24,7 @@ export const ProviderID = providerIdSchema.pipe(
     gitlab: schema.make("gitlab"),
     qoder: schema.make("qoder"),
     cline: schema.make("cline"),
+    commandcode: schema.make("commandcode"),
   })),
 )
 
