@@ -121,6 +121,7 @@ export function DialogCustomProvider(props: Props) {
     mutationFn: async (result: NonNullable<ReturnType<typeof validate>>) => {
       const disabledProviders = globalSync.data.config.disabled_providers ?? []
       const nextDisabled = disabledProviders.filter((id) => id !== result.providerID)
+      const connectedBeforeSave = globalSync.data.provider.connected.includes(result.providerID)
 
       if (result.key) {
         await globalSDK.client.auth.set({
@@ -135,6 +136,14 @@ export function DialogCustomProvider(props: Props) {
       await globalSync.updateConfig({
         provider: { [result.providerID]: result.config },
         disabled_providers: nextDisabled,
+        ...(connectedBeforeSave
+          ? {}
+          : {
+              hidden_models: {
+                ...(globalSync.data.config.hidden_models ?? {}),
+                [result.providerID]: Object.keys(result.config.models ?? {}),
+              },
+            }),
       })
       return result
     },

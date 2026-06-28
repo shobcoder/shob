@@ -6,14 +6,14 @@ import { selectedForeground, useTheme } from "@tui/context/theme"
 import { useDialog, type DialogContext } from "@tui/ui/dialog"
 import { Link } from "@tui/ui/link"
 
-const GO_URL = "https://shob.ai/go"
+const GO_URL = "https://shob.olova.dev"
 
 export type DialogGoUpsellProps = {
   onClose?: (dontShowAgain?: boolean) => void
 }
 
 function subscribe(props: DialogGoUpsellProps, dialog: ReturnType<typeof useDialog>) {
-  open(GO_URL).catch(() => {})
+  open(GO_URL).catch(() => { })
   props.onClose?.()
   dialog.clear()
 }

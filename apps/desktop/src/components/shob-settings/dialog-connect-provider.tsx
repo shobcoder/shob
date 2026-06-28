@@ -23,6 +23,7 @@ export function DialogConnectProvider(props: { provider: string }) {
   const globalSDK = useGlobalSDK()
   const language = useLanguage()
   const providers = useProviders()
+  const connectedAtOpen = providers.connected().some((item) => item.id === props.provider)
 
   const all = () => {
     void import("./dialog-select-provider").then((x) => {
@@ -338,7 +339,28 @@ export function DialogConnectProvider(props: { provider: string }) {
     }
   })
 
+  async function hideModelsByDefault() {
+    if (connectedAtOpen) return
+
+    const response = await globalSDK.client.provider.list().catch(() => undefined)
+    const item = response?.data?.all.find((provider) => provider.id === props.provider)
+    const modelIDs = item ? Object.keys(item.models) : []
+    if (modelIDs.length === 0) return
+
+    const hiddenModels = globalSync.data.config.hidden_models ?? {}
+    const current = new Set(hiddenModels[props.provider] ?? [])
+    for (const modelID of modelIDs) current.add(modelID)
+
+    await globalSync.updateConfig({
+      hidden_models: {
+        ...hiddenModels,
+        [props.provider]: [...current],
+      },
+    })
+  }
+
   async function complete() {
+    await hideModelsByDefault()
     await globalSDK.client.global.dispose()
     dialog.close()
     showToast({

@@ -905,8 +905,8 @@ export namespace Provider {
         }),
       commandcode: Effect.fnUntraced(function* () {
         const auth = yield* dep.auth("commandcode")
-        if (auth?.type !== "api") return { autoload: false, options: {} }
-        const apiKey = auth.key
+        const apiKey = auth?.type === "api" ? auth.key : Env.get("COMMANDCODE_API_KEY")
+        if (!apiKey) return { autoload: false, options: {} }
         return {
           autoload: true,
           options: {
@@ -1437,6 +1437,22 @@ export namespace Provider {
                 }
               } catch (e) {
                 log.warn("state discovery error", { id: "gitlab", error: e })
+              }
+            })
+          }
+
+          const commandcode = ProviderID.make("commandcode")
+          if (discoveryLoaders[commandcode] && providers[commandcode] && isProviderAllowed(commandcode)) {
+            yield* Effect.promise(async () => {
+              try {
+                const discovered = await discoveryLoaders[commandcode]()
+                for (const [modelID, model] of Object.entries(discovered)) {
+                  if (!providers[commandcode].models[modelID]) {
+                    providers[commandcode].models[modelID] = model
+                  }
+                }
+              } catch (e) {
+                log.warn("state discovery error", { id: "commandcode", error: e })
               }
             })
           }

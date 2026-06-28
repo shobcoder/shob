@@ -134,12 +134,15 @@ export const ProviderRoutes = lazy(() =>
           ),
           connected,
         )
-        for (const [providerID, provider] of Object.entries(providers)) {
-          if (Object.keys(provider.models).length === 0) delete providers[providerID]
-        }
+        const defaults = Object.fromEntries(
+          Object.entries(providers).flatMap(([providerID, provider]) => {
+            const model = Provider.sort(Object.values(provider.models))[0]
+            return model ? [[providerID, model.id]] : []
+          }),
+        )
         return c.json({
           all: Object.values(providers),
-          default: mapValues(providers, (item) => Provider.sort(Object.values(item.models))[0].id),
+          default: defaults,
           connected: Object.keys(connected).filter((providerID) => providers[providerID]),
         })
       },

@@ -244,6 +244,7 @@ export function DialogOpenAICompatible(props: Props = {}) {
       if (selectedModels.length === 0) {
         throw new Error(language.t("provider.openaiCompatible.error.noModelsSelected"))
       }
+      const connectedBeforeSave = globalSync.data.provider.connected.includes(providerID)
 
       const modelConfig = Object.fromEntries(
         selectedModels.map((m) => [
@@ -292,6 +293,14 @@ export function DialogOpenAICompatible(props: Props = {}) {
           },
         },
         disabled_providers: nextDisabled,
+        ...(connectedBeforeSave
+          ? {}
+          : {
+              hidden_models: {
+                ...(globalSync.data.config.hidden_models ?? {}),
+                [providerID]: selectedModels.map((m) => m.id),
+              },
+            }),
       })
       await globalSDK.client.global.dispose()
 
