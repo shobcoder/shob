@@ -92,6 +92,7 @@ export const SettingsModels: Component = () => {
 
   const query = createMemo(() => filter().trim().toLowerCase())
   const hiddenModels = createMemo(() => globalSync.data.config.hidden_models ?? {})
+  const disabledProviders = createMemo(() => globalSync.data.config.disabled_providers ?? [])
 
   const providerList = createMemo(() => {
     const byID = new Map<string, ProviderItem>()
@@ -155,6 +156,7 @@ export const SettingsModels: Component = () => {
   })
 
   const isVisible = (item: ModelItem) => !(hiddenModels()[item.provider.id] ?? []).includes(item.id)
+  const isProviderEnabled = (provider: ProviderItem) => !disabledProviders().includes(provider.id)
 
   const saveHiddenModels = async (next: Record<string, string[]>, before: Record<string, string[]>) => {
     globalSync.set("config", "hidden_models", next)
@@ -162,6 +164,17 @@ export const SettingsModels: Component = () => {
       .updateConfig({ hidden_models: next })
       .catch((err: unknown) => {
         globalSync.set("config", "hidden_models", before)
+        const message = err instanceof Error ? err.message : String(err)
+        showToast({ title: language.t("common.requestFailed"), description: message })
+      })
+  }
+
+  const saveDisabledProviders = async (next: string[], before: string[]) => {
+    globalSync.set("config", "disabled_providers", next)
+    await globalSync
+      .updateConfig({ disabled_providers: next })
+      .catch((err: unknown) => {
+        globalSync.set("config", "disabled_providers", before)
         const message = err instanceof Error ? err.message : String(err)
         showToast({ title: language.t("common.requestFailed"), description: message })
       })
@@ -176,19 +189,10 @@ export const SettingsModels: Component = () => {
     models.setVisibility({ providerID: item.provider.id, modelID: item.id }, checked)
   }
 
-  const providerVisible = (provider: ProviderItem) => {
-    const all = selectedProviderModels().filter((model) => model.provider.id === provider.id)
-    return all.length > 0 && all.every(isVisible)
-  }
-
   const handleProviderToggle = (provider: ProviderItem, checked: boolean) => {
-    const all = selectedProviderModels().filter((model) => model.provider.id === provider.id)
-    const before = hiddenModels()
-    const next = { ...before, [provider.id]: checked ? [] : all.map((model) => model.id) }
-    void saveHiddenModels(next, before)
-    for (const model of all) {
-      models.setVisibility({ providerID: provider.id, modelID: model.id }, checked)
-    }
+    const before = disabledProviders()
+    const next = checked ? before.filter((id) => id !== provider.id) : before.includes(provider.id) ? before : [...before, provider.id]
+    void saveDisabledProviders(next, before)
   }
 
   const clearFilter = () => setFilter("")
@@ -275,7 +279,7 @@ export const SettingsModels: Component = () => {
                 <span class="min-w-0 truncate text-14-medium text-text-strong">{providerName(provider())}</span>
                 <span class="ml-auto">
                   <Switch
-                    checked={providerVisible(provider())}
+                    checked={isProviderEnabled(provider())}
                     onChange={(checked) => handleProviderToggle(provider(), checked)}
                     hideLabel
                   >

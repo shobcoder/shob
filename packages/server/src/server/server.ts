@@ -8,7 +8,9 @@ import { basicAuth } from "hono/basic-auth"
 import type { UpgradeWebSocket } from "hono/ws"
 import z from "zod"
 import { Auth } from "../auth"
+import { Config } from "../config/config"
 import { Flag } from "../flag/flag"
+import { ModelsDev } from "../provider/models"
 import { ProviderID } from "../provider/schema"
 import { WorkspaceRouterMiddleware } from "./router"
 import { errors } from "./error"
@@ -43,6 +45,32 @@ export namespace Server {
   }
 
   export const Default = lazy(() => create({}))
+
+  async function hideProviderModelsByDefault(providerID: ProviderID) {
+    const id = String(providerID)
+    const config = await Config.getGlobal()
+    const existing = config.hidden_models?.[id]
+    if (existing && existing.length > 0) return
+
+    const modelsDev = await ModelsDev.get()
+    const modelIDs = new Set<string>()
+    for (const modelID of Object.keys(modelsDev[id]?.models ?? {})) modelIDs.add(modelID)
+    for (const modelID of Object.keys(config.provider?.[id]?.models ?? {})) modelIDs.add(modelID)
+    await import("../provider/provider")
+      .then(async ({ Provider }) => {
+        const provider = (await Provider.list())[id]
+        for (const modelID of Object.keys(provider?.models ?? {})) modelIDs.add(modelID)
+      })
+      .catch(() => undefined)
+    if (modelIDs.size === 0) return
+
+    await Config.updateGlobal({
+      hidden_models: {
+        ...(config.hidden_models ?? {}),
+        [id]: [...modelIDs],
+      },
+    })
+  }
 
   export function ControlPlaneRoutes(upgrade: UpgradeWebSocket, app = new Hono(), opts?: { cors?: string[] }): Hono {
     return app
@@ -128,6 +156,7 @@ export namespace Server {
           const providerID = c.req.valid("param").providerID
           const info = c.req.valid("json")
           await Auth.set(providerID, info)
+          await hideProviderModelsByDefault(providerID)
           return c.json(true)
         },
       )
