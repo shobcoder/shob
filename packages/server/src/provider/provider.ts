@@ -1191,7 +1191,6 @@ export namespace Provider {
       for (const modelID of Object.keys(provider.models)) {
         if (hiddenSet.has(modelID)) delete provider.models[modelID]
       }
-      if (Object.keys(provider.models).length === 0) delete providers[providerID]
     }
     return providers
   }
