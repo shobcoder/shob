@@ -11,6 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: write
 
 concurrency:
@@ -207,6 +208,46 @@ jobs:
         shell: bash
         run: |
           node scripts/ci-run-with-retry.mjs --attempts 6 --timeout 1800 --delay-step 45 -- bun run build:electron
+
+      - name: upload-unsigned-artifact
+        if: runner.os == 'Windows'
+        id: upload-unsigned-artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-windows-installer-${{ github.run_id }}-${{ github.run_attempt }}
+          path: release/*.exe
+          if-no-files-found: error
+
+      - name: submit-signing-request
+        if: runner.os == 'Windows'
+        id: submit-signing-request
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: 61cfd03f-8ef9-4901-b822-eeb51545687f
+          project-slug: shob
+          signing-policy-slug: test-signing
+          github-artifact-id: ${{ steps.upload-unsigned-artifact.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed-artifact
+
+      - name: Replace unsigned installer with signed installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $signedFiles = @(Get-ChildItem -Path signed-artifact -Recurse -File -Filter "*.exe")
+          if ($signedFiles.Count -ne 1) {
+            throw "Expected exactly one signed .exe, found $($signedFiles.Count)."
+          }
+
+          $releaseFiles = @(Get-ChildItem -Path release -File -Filter "*.exe")
+          if ($releaseFiles.Count -ne 1) {
+            throw "Expected exactly one release .exe, found $($releaseFiles.Count)."
+          }
+
+          Copy-Item -LiteralPath $signedFiles[0].FullName -Destination $releaseFiles[0].FullName -Force
           
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
