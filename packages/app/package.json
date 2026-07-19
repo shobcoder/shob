@@ -1,6 +1,6 @@
-{
+﻿{
   "name": "@shob/app",
-  "version": "0.0.87",
+  "version": "0.0.88",
   "description": "",
   "type": "module",
   "exports": {
@@ -92,3 +92,4 @@
     "tailwindcss": "catalog:"
   }
 }
+

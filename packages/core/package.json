@@ -1,6 +1,6 @@
-{
+﻿{
   "$schema": "https://json.schemastore.org/package.json",
-  "version": "0.0.87",
+  "version": "0.0.88",
   "name": "@shob/core",
   "type": "module",
   "license": "MIT",
@@ -130,3 +130,4 @@
     "drizzle-orm": "catalog:"
   }
 }
+

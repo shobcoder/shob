@@ -1,7 +1,7 @@
-{
+﻿{
   "$schema": "https://json.schemastore.org/package.json",
   "name": "@shob/server",
-  "version": "0.0.87",
+  "version": "0.0.88",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -23,3 +23,4 @@
     "@typescript/native-preview": "catalog:"
   }
 }
+

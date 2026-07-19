@@ -1,6 +1,6 @@
-{
+﻿{
   "$schema": "https://json.schemastore.org/package.json",
-  "version": "0.0.87",
+  "version": "0.0.88",
   "name": "@shob/effect-sqlite-node",
   "type": "module",
   "license": "MIT",
@@ -20,3 +20,4 @@
     "effect": "catalog:"
   }
 }
+
