@@ -73,7 +73,7 @@ Submit-SigningRequest `
   -ApiToken $apiToken `
   -OrganizationId "61cfd03f-8ef9-4901-b822-eeb51545687f" `
   -ProjectSlug "shob" `
-  -SigningPolicySlug "release-signing" `
+  -SigningPolicySlug "test-signing" `
   -OutputArtifactPath $zipSigned `
   -WaitForCompletion
 
