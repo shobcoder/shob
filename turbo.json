@@ -1,0 +1,33 @@
+{
+  "$schema": "https://v2-8-13.turborepo.dev/schema.json",
+  "globalEnv": ["CI", "SHOB_DISABLE_SHARE"],
+  "globalPassThroughEnv": ["CI", "SHOB_DISABLE_SHARE"],
+  "tasks": {
+    "typecheck": {},
+    "build": {
+      "dependsOn": [],
+      "outputs": ["dist/**"]
+    },
+    "shob#test": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "passThroughEnv": ["*"]
+    },
+    "@shob/core#test": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "@shob/app#test": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "@shob/ui#test": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "@shob/session-ui#test": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    }
+  }
+}

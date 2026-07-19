@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Shob
+Exec=/opt/Shob/ai.shob.desktop %U
+Terminal=false
+Type=Application
+Icon=ai.shob.desktop
+StartupWMClass=ai.shob.desktop
+NoDisplay=true
+Comment=Open source AI coding agent
+Categories=Development;

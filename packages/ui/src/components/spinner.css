@@ -1,0 +1,20 @@
+[data-component="spinner"] {
+  color: inherit;
+  flex-shrink: 0;
+  width: 18px;
+  aspect-ratio: 1;
+  transform-origin: center;
+  animation: spinner-spin 0.75s linear infinite;
+}
+
+@keyframes spinner-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-component="spinner"] {
+    animation: none;
+  }
+}
