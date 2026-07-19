@@ -1,6 +1,6 @@
 ﻿{
   "name": "@shob/session-ui",
-  "version": "0.0.88",
+  "version": "0.0.89",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -66,4 +66,5 @@
     "strip-ansi": "7.1.2"
   }
 }
+
 
