@@ -1,6 +1,6 @@
 ﻿{
   "$schema": "https://json.schemastore.org/package.json",
-  "version": "0.0.89",
+  "version": "0.0.90",
   "name": "@shob/http-recorder",
   "description": "Record and replay Effect HTTP client traffic with deterministic cassettes",
   "type": "module",
@@ -58,5 +58,6 @@
     "effect": "4.0.0-beta.83"
   }
 }
+
 
 
