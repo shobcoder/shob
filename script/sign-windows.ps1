@@ -14,19 +14,14 @@ if ($env:GITHUB_ACTIONS -ne "true") {
   exit 0
 }
 
-$vars = @{
-  endpoint = $env:AZURE_TRUSTED_SIGNING_ENDPOINT
-  account = $env:AZURE_TRUSTED_SIGNING_ACCOUNT_NAME
-  profile = $env:AZURE_TRUSTED_SIGNING_CERTIFICATE_PROFILE
-}
+$apiToken = $env:SIGNPATH_API_TOKEN
 
-if ($vars.Values | Where-Object { -not $_ }) {
-  Write-Host "Skipping Windows signing because Azure Artifact Signing is not configured"
+if (-not $apiToken) {
+  Write-Host "Skipping Windows signing because SIGNPATH_API_TOKEN is not set"
   exit 0
 }
 
-$moduleVersion = "0.5.8"
-$module = Get-Module -ListAvailable -Name TrustedSigning | Where-Object { $_.Version -eq [version] $moduleVersion }
+$module = Get-Module -ListAvailable -Name SignPath
 
 if (-not $module) {
   try {
@@ -36,10 +31,10 @@ if (-not $module) {
     Write-Host "NuGet package provider install skipped: $($_.Exception.Message)"
   }
 
-  Install-Module -Name TrustedSigning -RequiredVersion $moduleVersion -Force -Repository PSGallery -Scope CurrentUser
+  Install-Module -Name SignPath -Force -Repository PSGallery -Scope CurrentUser
 }
 
-Import-Module TrustedSigning -RequiredVersion $moduleVersion -Force
+Import-Module SignPath -Force
 
 $files = @($Path | ForEach-Object { Resolve-Path $_ -ErrorAction SilentlyContinue } | Select-Object -ExpandProperty Path -Unique)
 
@@ -47,24 +42,23 @@ if (-not $files -or $files.Count -eq 0) {
   throw "No files matched the requested paths"
 }
 
-$params = @{
-  Endpoint                         = $vars.endpoint
-  CodeSigningAccountName           = $vars.account
-  CertificateProfileName           = $vars.profile
-  Files                            = ($files -join ",")
-  FileDigest                       = "SHA256"
-  TimestampDigest                  = "SHA256"
-  TimestampRfc3161                 = "http://timestamp.acs.microsoft.com"
-  ExcludeEnvironmentCredential     = $true
-  ExcludeWorkloadIdentityCredential = $true
-  ExcludeManagedIdentityCredential = $true
-  ExcludeSharedTokenCacheCredential = $true
-  ExcludeVisualStudioCredential    = $true
-  ExcludeVisualStudioCodeCredential = $true
-  ExcludeAzureCliCredential        = $false
-  ExcludeAzurePowerShellCredential = $true
-  ExcludeAzureDeveloperCliCredential = $true
-  ExcludeInteractiveBrowserCredential = $true
-}
+foreach ($file in $files) {
+  Write-Host "Signing $file with SignPath..."
+  $tempOut = "$file.signed"
+  
+  Submit-SigningRequest `
+    -InputArtifactPath $file `
+    -ApiToken $apiToken `
+    -OrganizationId "61cfd03f-8ef9-4901-b822-eeb51545687f" `
+    -ProjectSlug "shob" `
+    -SigningPolicySlug "release-signing" `
+    -OutputArtifactPath $tempOut `
+    -WaitForCompletion
 
-Invoke-TrustedSigning @params
+  if (Test-Path $tempOut) {
+    Move-Item -Path $tempOut -Destination $file -Force
+    Write-Host "Successfully signed $file"
+  } else {
+    throw "Signing failed, no output artifact found at $tempOut"
+  }
+}
