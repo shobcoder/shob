@@ -320,7 +320,10 @@ jobs:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
           organization-id: 61cfd03f-8ef9-4901-b822-eeb51545687f
           project-slug: shob
-          signing-policy-slug: test-signing
+          # Public artifacts must use a publicly trusted production certificate.
+          # SignPath test certificates are only trusted on explicitly configured test machines.
+          signing-policy-slug: release-signing
+          artifact-configuration-slug: windows-binaries
           github-artifact-id: ${{ steps.upload-unsigned-win-binaries.outputs.artifact-id }}
           wait-for-completion: true
           wait-for-completion-timeout-in-seconds: 1800
@@ -334,6 +337,18 @@ jobs:
           pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File script/signpath-apply-files.ps1 `
             -SignedDir "signpath-signed/win-unpacked" `
             -TargetDir "packages/desktop/dist/win-unpacked"
+
+      - name: Verify signed Windows app
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $app = Get-ChildItem -Path "packages/desktop/dist/win-unpacked" -Filter "*.exe" -File |
+            Select-Object -First 1
+          if (-not $app) {
+            throw "Packaged Windows app executable was not found"
+          }
+          pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File script/verify-windows-signature.ps1 $app.FullName
 
       - name: Build Windows NSIS installer
         if: runner.os == 'Windows'
@@ -381,7 +396,8 @@ jobs:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
           organization-id: 61cfd03f-8ef9-4901-b822-eeb51545687f
           project-slug: shob
-          signing-policy-slug: test-signing
+          signing-policy-slug: release-signing
+          artifact-configuration-slug: windows-installer
           github-artifact-id: ${{ steps.upload-unsigned-win-installer.outputs.artifact-id }}
           wait-for-completion: true
           wait-for-completion-timeout-in-seconds: 1800
@@ -403,6 +419,13 @@ jobs:
           Copy-Item -LiteralPath $signed.FullName -Destination $env:INSTALLER_PATH -Force
           Write-Host "Replaced installer with signed file: $($env:INSTALLER_PATH)"
           bun script/refresh-windows-update-meta.ts $env:INSTALLER_PATH
+
+      - name: Verify signed Windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File script/verify-windows-signature.ps1 $env:INSTALLER_PATH
 
       - name: Package Electron app (macOS/Linux)
         if: runner.os != 'Windows'

@@ -14,7 +14,7 @@ if ($env:GITHUB_ACTIONS -ne "true") {
   exit 0
 }
 
-# The SignPath policy (test-signing) requires submission via a trusted build
+# The SignPath release-signing policy requires submission via a trusted build
 # system. Direct Submit-SigningRequest API calls are rejected with HTTP 403:
 #   "The selected signing policy requires that the signing request is submitted
 #    via a trusted build system."
