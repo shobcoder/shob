@@ -323,7 +323,6 @@ jobs:
           # Public artifacts must use a publicly trusted production certificate.
           # SignPath test certificates are only trusted on explicitly configured test machines.
           signing-policy-slug: release-signing
-          artifact-configuration-slug: windows-binaries
           github-artifact-id: ${{ steps.upload-unsigned-win-binaries.outputs.artifact-id }}
           wait-for-completion: true
           wait-for-completion-timeout-in-seconds: 1800
@@ -397,7 +396,6 @@ jobs:
           organization-id: 61cfd03f-8ef9-4901-b822-eeb51545687f
           project-slug: shob
           signing-policy-slug: release-signing
-          artifact-configuration-slug: windows-installer
           github-artifact-id: ${{ steps.upload-unsigned-win-installer.outputs.artifact-id }}
           wait-for-completion: true
           wait-for-completion-timeout-in-seconds: 1800
