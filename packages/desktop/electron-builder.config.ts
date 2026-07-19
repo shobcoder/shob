@@ -9,6 +9,7 @@ const execFileAsync = promisify(execFile)
 const packageDir = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(packageDir, "../..")
 const signScript = path.join(rootDir, "script", "sign-windows.ps1")
+const batchSignScript = path.join(rootDir, "script", "sign-batch.ps1")
 const legacyDesktopEntry = path.join(packageDir, "resources", "linux", "shob-desktop.desktop")
 const legacyDesktopEntryFpm = `${legacyDesktopEntry}=/usr/share/applications/shob-desktop.desktop`
 
@@ -40,6 +41,15 @@ const getBase = (appId: string): Configuration => ({
   directories: {
     output: "dist",
     buildResources: "resources",
+  },
+  afterPack: async (context) => {
+    if (context.packager.platform.name === 'windows' && process.env.GITHUB_ACTIONS === "true") {
+      await execFileAsync(
+        "pwsh",
+        ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", batchSignScript, context.appOutDir],
+        { cwd: rootDir },
+      )
+    }
   },
   // Linux launchers are .desktop files, so this is the desktop file name,
   // not just the app id. For prod, app id "ai.shob.desktop" becomes

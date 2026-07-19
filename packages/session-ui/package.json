@@ -1,6 +1,6 @@
 {
   "name": "@shob/session-ui",
-  "version": "0.0.91",
+  "version": "0.0.92",
   "private": true,
   "type": "module",
   "license": "MIT",

@@ -43,6 +43,11 @@ if (-not $files -or $files.Count -eq 0) {
 }
 
 foreach ($file in $files) {
+  if ($file -match 'unpacked[\\/]') {
+    Write-Host "Skipping $file because it was already batch signed in afterPack"
+    continue
+  }
+
   Write-Host "Signing $file with SignPath..."
   $tempOut = "$file.signed"
   

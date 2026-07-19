@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "version": "0.0.91",
+  "version": "0.0.92",
   "name": "@shob/effect-drizzle-sqlite",
   "type": "module",
   "license": "MIT",
