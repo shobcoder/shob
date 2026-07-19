@@ -14,56 +14,17 @@ if ($env:GITHUB_ACTIONS -ne "true") {
   exit 0
 }
 
-$apiToken = $env:SIGNPATH_API_TOKEN
-
-if (-not $apiToken) {
-  Write-Host "Skipping Windows signing because SIGNPATH_API_TOKEN is not set"
+# The SignPath policy (test-signing) requires submission via a trusted build
+# system. Direct Submit-SigningRequest API calls are rejected with HTTP 403:
+#   "The selected signing policy requires that the signing request is submitted
+#    via a trusted build system."
+# Windows CI signing is performed by signpath/github-action-submit-signing-request
+# in .github/workflows/build.yml (batch for win-unpacked, then the NSIS installer).
+if ($env:SIGNPATH_API_TOKEN) {
+  Write-Host "Skipping in-process SignPath file signing (trusted build system required)."
+  Write-Host "Paths left unsigned here (signed later in CI when applicable): $($Path -join ', ')"
   exit 0
 }
 
-$module = Get-Module -ListAvailable -Name SignPath
-
-if (-not $module) {
-  try {
-    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser | Out-Null
-  }
-  catch {
-    Write-Host "NuGet package provider install skipped: $($_.Exception.Message)"
-  }
-
-  Install-Module -Name SignPath -Force -Repository PSGallery -Scope CurrentUser
-}
-
-Import-Module SignPath -Force
-
-$files = @($Path | ForEach-Object { Resolve-Path $_ -ErrorAction SilentlyContinue } | Select-Object -ExpandProperty Path -Unique)
-
-if (-not $files -or $files.Count -eq 0) {
-  throw "No files matched the requested paths"
-}
-
-foreach ($file in $files) {
-  if ($file -match 'unpacked[\\/]') {
-    Write-Host "Skipping $file because it was already batch signed in afterPack"
-    continue
-  }
-
-  Write-Host "Signing $file with SignPath..."
-  $tempOut = "$file.signed"
-  
-  Submit-SigningRequest `
-    -InputArtifactPath $file `
-    -ApiToken $env:SIGNPATH_API_TOKEN `
-    -OrganizationId "61cfd03f-8ef9-4901-b822-eeb51545687f" `
-    -ProjectSlug "shob" `
-    -SigningPolicySlug "test-signing" `
-    -OutputArtifactPath $tempOut `
-    -WaitForCompletion
-
-  if (Test-Path $tempOut) {
-    Move-Item -Path $tempOut -Destination $file -Force
-    Write-Host "Successfully signed $file"
-  } else {
-    throw "Signing failed, no output artifact found at $tempOut"
-  }
-}
+Write-Host "Skipping Windows signing because SIGNPATH_API_TOKEN is not set"
+exit 0

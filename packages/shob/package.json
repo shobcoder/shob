@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "version": "0.0.92",
+  "version": "0.0.93",
   "name": "shob",
   "type": "module",
   "license": "MIT",

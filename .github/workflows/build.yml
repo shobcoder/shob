@@ -13,6 +13,8 @@ on:
 
 permissions:
   contents: write
+  # SignPath trusted-build connector needs to read workflow artifacts/jobs.
+  actions: read
 
 concurrency:
   group: build-${{ github.event.release.tag_name || github.ref_name }}
@@ -282,14 +284,131 @@ jobs:
         run: |
           node script/ci-run-with-retry.mjs --attempts 6 --timeout 1800 --delay-step 45 -- bun run --cwd packages/desktop build
 
-      - name: Package Electron app
+      # Windows code signing uses SignPath's GitHub trusted build system connector.
+      # The signing policy rejects direct API Submit-SigningRequest calls (HTTP 403).
+      # Flow: pack app dir → SignPath batch-sign binaries → build NSIS → SignPath-sign installer.
+      - name: Package Electron app (Windows directory)
+        if: runner.os == 'Windows'
         shell: bash
-        env:
-          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
         run: |
-          if [ "${RUNNER_OS}" = "Windows" ]; then
-            package_script="package:win"
-          elif [ "${RUNNER_OS}" = "macOS" ]; then
+          node script/ci-run-with-retry.mjs --attempts 3 --timeout 1800 --delay-step 45 -- \
+            bun run --cwd packages/desktop package:win -- --dir
+
+      - name: Stage Windows binaries for SignPath
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File script/signpath-stage-files.ps1 `
+            -SourceDir "packages/desktop/dist/win-unpacked" `
+            -StagingDir "signpath-staging/win-unpacked"
+
+      - name: Upload unsigned Windows binaries
+        if: runner.os == 'Windows'
+        id: upload-unsigned-win-binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-win-binaries-${{ github.run_id }}-${{ github.run_attempt }}
+          path: signpath-staging/win-unpacked
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Sign Windows binaries with SignPath
+        if: runner.os == 'Windows'
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: 61cfd03f-8ef9-4901-b822-eeb51545687f
+          project-slug: shob
+          signing-policy-slug: test-signing
+          github-artifact-id: ${{ steps.upload-unsigned-win-binaries.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 1800
+          output-artifact-directory: signpath-signed/win-unpacked
+
+      - name: Apply signed Windows binaries
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File script/signpath-apply-files.ps1 `
+            -SignedDir "signpath-signed/win-unpacked" `
+            -TargetDir "packages/desktop/dist/win-unpacked"
+
+      - name: Build Windows NSIS installer
+        if: runner.os == 'Windows'
+        shell: bash
+        working-directory: packages/desktop
+        run: |
+          node ../../script/ci-run-with-retry.mjs --attempts 3 --timeout 1800 --delay-step 45 -- \
+            bunx electron-builder --win nsis \
+              --config electron-builder.config.ts --publish never \
+              --prepackaged dist/win-unpacked
+
+      - name: Stage Windows installer for SignPath
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $installer = Get-ChildItem -Path "packages/desktop/dist" -Filter "*.exe" -File |
+            Where-Object { $_.Name -notlike "*.blockmap" -and $_.FullName -notmatch '[\\/]win-unpacked[\\/]' } |
+            Select-Object -First 1
+          if (-not $installer) {
+            throw "No Windows NSIS installer found under packages/desktop/dist"
+          }
+          Write-Host "Staging installer $($installer.FullName)"
+          "INSTALLER_PATH=$($installer.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "INSTALLER_NAME=$($installer.Name)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          $staging = "signpath-staging/installer"
+          if (Test-Path $staging) { Remove-Item $staging -Recurse -Force }
+          New-Item -ItemType Directory -Path $staging -Force | Out-Null
+          Copy-Item -LiteralPath $installer.FullName -Destination (Join-Path $staging $installer.Name) -Force
+
+      - name: Upload unsigned Windows installer
+        if: runner.os == 'Windows'
+        id: upload-unsigned-win-installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-win-installer-${{ github.run_id }}-${{ github.run_attempt }}
+          path: signpath-staging/installer
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Sign Windows installer with SignPath
+        if: runner.os == 'Windows'
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: 61cfd03f-8ef9-4901-b822-eeb51545687f
+          project-slug: shob
+          signing-policy-slug: test-signing
+          github-artifact-id: ${{ steps.upload-unsigned-win-installer.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 1800
+          output-artifact-directory: signpath-signed/installer
+
+      - name: Apply signed Windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $signed = Get-ChildItem -Path "signpath-signed/installer" -Filter "*.exe" -File -Recurse |
+            Select-Object -First 1
+          if (-not $signed) {
+            throw "Signed installer not found under signpath-signed/installer"
+          }
+          if (-not $env:INSTALLER_PATH -or -not (Test-Path $env:INSTALLER_PATH)) {
+            throw "INSTALLER_PATH is missing or invalid: $($env:INSTALLER_PATH)"
+          }
+          Copy-Item -LiteralPath $signed.FullName -Destination $env:INSTALLER_PATH -Force
+          Write-Host "Replaced installer with signed file: $($env:INSTALLER_PATH)"
+          bun script/refresh-windows-update-meta.ts $env:INSTALLER_PATH
+
+      - name: Package Electron app (macOS/Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          if [ "${RUNNER_OS}" = "macOS" ]; then
             package_script="package:mac"
           else
             package_script="package:linux"
