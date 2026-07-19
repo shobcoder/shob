@@ -4,7 +4,7 @@
 
 <table>
   <tr>
-   <img width="500" height="200" alt="shob" src="https://github.com/user-attachments/assets/096e64c8-e948-486c-b02a-302aefd48031" />
+    <img width="1630" height="209" alt="image" src="https://github.com/user-attachments/assets/a8ede053-0d97-4caf-958d-4305cae891e2" />
   </tr>
 </table>
 
@@ -65,3 +65,4 @@ We are actively improving the platform and building new capabilities based on co
 **GitHub Repository:** [https://github.com/shobcoder/shob](https://github.com/shobcoder/shob)
 
 If you find the project useful, consider giving it a star and sharing your feedback.
+<img width="883" height="179" alt="image" src="https://github.com/user-attachments/assets/1c86c214-5a73-4835-bd84-a1ebf5660302" />
