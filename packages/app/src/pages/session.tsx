@@ -25,7 +25,6 @@ import { Portal } from "solid-js/web"
 import { useLocal } from "@/context/local"
 import { FileProvider, selectionFromLines, useFile, type FileSelection, type SelectedLineRange } from "@/context/file"
 import { createStore } from "solid-js/store"
-import type { SessionReviewLineComment } from "@shob/session-ui/session-review"
 import { ResizeHandle } from "@shob/ui/resize-handle"
 import { Select } from "@shob/ui/select"
 import { SelectV2 } from "@shob/ui/v2/select-v2"
@@ -82,10 +81,6 @@ import { useSessionLayout } from "@/pages/session/session-layout"
 import { syncSessionModel } from "@/pages/session/session-model-helpers"
 import { SessionSidePanel } from "@/pages/session/session-side-panel"
 import { SessionBrowserStack } from "@/pages/session/browser-stack"
-import { SessionReviewEmptyChangesV2 } from "@shob/session-ui/v2/session-review-empty-changes-v2"
-import { SessionReviewEmptyNoGitV2 } from "@shob/session-ui/v2/session-review-empty-no-git-v2"
-import { ReviewPanelV2 } from "@/pages/session/v2/review-panel-v2"
-import { createReviewPanelV2State } from "@/pages/session/v2/review-panel-v2-state"
 import { TerminalPanel } from "@/pages/session/terminal-panel"
 import { useComposerCommands } from "@/pages/session/use-composer-commands"
 import { useSessionCommands } from "@/pages/session/use-session-commands"
@@ -435,7 +430,9 @@ export default function Page() {
   const [browserPanelVisible, setBrowserPanelVisible] = createSignal(false)
   const [browserStackOpen, setBrowserStackOpen] = createSignal(false)
   const [browserStackWidth, setBrowserStackWidth] = createSignal(390)
-  const desktopReviewOpen = createMemo(() => isDesktop() && view().reviewPanel.opened())
+  // Review renders full repository diffs and retains their virtualized previews.
+  // It is intentionally disabled in the desktop build to keep the session view light.
+  const desktopReviewOpen = () => false
   const desktopFileTreeOpen = createMemo(
     () =>
       isDesktop() &&
@@ -479,21 +476,6 @@ export default function Page() {
     return next
   }
 
-  const openReviewPanel = () => {
-    if (browserStackOpen()) return false
-    if (!view().reviewPanel.opened()) view().reviewPanel.open()
-    return true
-  }
-
-  const toggleReviewPanel = () => {
-    if (!isDesktop()) {
-      setStore("mobileTab", store.mobileTab === "changes" ? "session" : "changes")
-      return
-    }
-    if (!view().reviewPanel.opened() && browserStackOpen()) return
-    view().reviewPanel.toggle()
-  }
-
   const toggleTerminalPanel = () => {
     const next = !view().terminal.opened()
     view().terminal.toggle()
@@ -514,7 +496,6 @@ export default function Page() {
 
   const panelControls = () => {
     const terminalOpened = view().terminal.opened()
-    const reviewOpened = isDesktop() ? view().reviewPanel.opened() : store.mobileTab === "changes"
     const buttonClass =
       "titlebar-icon size-8 rounded-md border-0 bg-transparent px-0 text-text-weaker shadow-none transition-colors hover:bg-surface-raised-base/45 hover:text-text-base aria-pressed:bg-surface-raised-base/55 aria-pressed:text-text-base active:translate-y-0"
 
@@ -524,9 +505,6 @@ export default function Page() {
           variant="ghost"
           class={buttonClass}
           onClick={toggleBrowserPanel}
-          disabled={desktopReviewOpen()}
-          aria-label={desktopReviewOpen() ? "Close review panel before opening browsers" : "Toggle browsers"}
-          title={desktopReviewOpen() ? "Close review panel before opening browsers" : "Toggle browsers"}
           aria-expanded={browserStackOpen()}
           aria-pressed={browserStackOpen()}
           aria-controls="agent-browser-panel"
@@ -581,42 +559,6 @@ export default function Page() {
                 y1="15"
                 x2="3"
                 y2="15"
-                stroke="currentColor"
-                stroke-miterlimit="10"
-                stroke-width="2"
-              />
-            </svg>
-          </Button>
-        </TooltipKeybind>
-        <TooltipKeybind title={language.t("command.review.toggle")} keybind={command.keybind("review.toggle")}>
-          <Button
-            variant="ghost"
-            class={buttonClass}
-            onClick={toggleReviewPanel}
-            disabled={browserStackOpen()}
-            aria-label={language.t("command.review.toggle")}
-            title={browserStackOpen() ? "Close browsers before opening review" : language.t("command.review.toggle")}
-            aria-expanded={reviewOpened}
-            aria-pressed={reviewOpened}
-            aria-controls="review-panel"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" class="shrink-0" aria-hidden="true">
-              <rect
-                x="3"
-                y="3"
-                width="18"
-                height="18"
-                rx="2"
-                ry="2"
-                stroke="currentColor"
-                stroke-miterlimit="10"
-                stroke-width="2"
-              />
-              <line
-                x1="15"
-                y1="21"
-                x2="15"
-                y2="3"
                 stroke="currentColor"
                 stroke-miterlimit="10"
                 stroke-width="2"
@@ -1275,16 +1217,6 @@ export default function Page() {
     )
   }
 
-  const reviewEmptyV2 = () => {
-    if ((store.changes === "git" || store.changes === "branch") && !reviewReady()) {
-      return <div class="px-6 py-4 text-text-weak">{language.t("session.review.loadingChanges")}</div>
-    }
-    if (store.changes === "turn" && nogit()) {
-      return <SessionReviewEmptyNoGitV2 pending={gitMutation.isPending} onInitGit={initGit} />
-    }
-    return <SessionReviewEmptyChangesV2 />
-  }
-
   const reviewContent = (input: {
     diffStyle: DiffStyle
     onDiffStyleChange?: (style: DiffStyle) => void
@@ -1316,63 +1248,6 @@ export default function Page() {
         classes={input.classes}
       />
     </Show>
-  )
-
-  const reviewV2State = createReviewPanelV2State()
-
-  // Getters defer reactive reads to the consuming scope. Eager reads here ran inside
-  // the side panel's Show children and remounted the whole review panel on unrelated
-  // updates such as session switches.
-  const reviewPanelV2Props = () => ({
-    get title() {
-      return changesTitleV2()
-    },
-    get empty() {
-      return reviewEmptyV2()
-    },
-    diffs: reviewDiffs,
-    diffsReady: reviewReady,
-    get activeFile() {
-      return tree.activeDiff
-    },
-    onSelectFile: focusReviewDiff,
-    get diffStyle() {
-      return layout.review.diffStyle()
-    },
-    onDiffStyleChange: layout.review.setDiffStyle,
-    state: reviewV2State,
-    onLineComment: (comment: SessionReviewLineComment) => addCommentToContext({ ...comment, origin: "review" }),
-    onLineCommentUpdate: updateCommentInContext,
-    onLineCommentDelete: removeCommentFromContext,
-    get lineCommentActions() {
-      return reviewCommentActions()
-    },
-    get comments() {
-      return comments.all()
-    },
-    get focusedComment() {
-      return comments.focus()
-    },
-    onFocusedCommentChange: (focus: { file: string; id: string } | null) => {
-      // The preview clears the focus once it has opened the comment; persist the
-      // focused file as the active selection so the preview stays on it. Skip
-      // files outside the current diff set (their focus is cleared unhandled).
-      if (!focus) {
-        const current = comments.focus()
-        if (current && reviewDiffs().some((diff) => diff.file === current.file)) focusReviewDiff(current.file)
-      }
-      comments.setFocus(focus)
-    },
-  })
-
-  const reviewPanelV2 = () => (
-    <div class="flex flex-col h-full overflow-hidden bg-background-stronger contain-strict">
-      {/* The route remounts per session; defer the diff render off the switch critical path
-          like the legacy review tab does. */}
-      <Show when={!store.deferRender}>
-        <ReviewPanelV2 {...reviewPanelV2Props()} />
-      </Show>
-    </div>
   )
 
   const reviewPanel = () => (
@@ -1440,11 +1315,7 @@ export default function Page() {
     return true
   }
 
-  const focusReviewDiff = (path: string) => {
-    if (!openReviewPanel()) return
-    view().review.openPath(path)
-    setTree({ activeDiff: path, pendingDiff: path })
-  }
+  const focusReviewDiff = (_path: string) => {}
 
   createEffect(() => {
     const pending = tree.pendingDiff
@@ -2364,7 +2235,7 @@ export default function Page() {
           empty={reviewEmptyText}
           hasReview={hasReview}
           reviewCount={reviewCount}
-          reviewPanel={() => (reviewPanelV2())}
+          reviewPanel={() => <></>}
           activeDiff={tree.activeDiff}
           focusReviewDiff={focusReviewDiff}
           reviewSnap={ui.reviewSnap}
