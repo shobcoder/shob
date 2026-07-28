@@ -137,7 +137,7 @@ function getConfig() {
         appId,
         productName: "Shob Beta",
         protocols: { name: "Shob Beta", schemes: ["shob"] },
-        publish: { provider: "github", owner: "anomalyco", repo: "shob-beta", channel: "latest" },
+        publish: { provider: "github", owner: "shobcoder", repo: "shob", channel: "beta" },
         rpm: { packageName: "shob-beta" },
       }
     }
@@ -147,7 +147,9 @@ function getConfig() {
         appId,
         productName: "Shob",
         protocols: { name: "Shob", schemes: ["shob"] },
-        publish: { provider: "github", owner: "anomalyco", repo: "shob", channel: "latest" },
+        // The updater reads latest*.yml files uploaded by the release workflow.
+        // Keep this in sync with the repository that publishes the installers.
+        publish: { provider: "github", owner: "shobcoder", repo: "shob", channel: "latest" },
         deb: { fpm: [legacyDesktopEntryFpm] },
         rpm: { packageName: "shob", fpm: [legacyDesktopEntryFpm] },
       }
