@@ -246,14 +246,15 @@ export default function NewLayout(props: ParentProps) {
       : "margin-left 0.2s ease-out, opacity 0.2s ease-out, visibility 0.2s ease-out",
   )
   const mobileSidebarAnimate = createMemo(() => !chromelessPage() && !sidebarRouteSnap())
-  const SidebarAction = (props: { icon?: string; glyph?: import("solid-js").JSX.Element; label: string; onClick: () => void }) => (
+  const SidebarAction = (props: { icon?: string; glyph?: import("solid-js").JSX.Element; label: string; onClick: () => void, active?: boolean }) => (
     <button
       type="button"
-      class="flex h-7 w-full items-center gap-3 rounded-md px-2 text-left text-[13px] text-v2-text-text-base transition-colors hover:bg-v2-overlay-simple-overlay-hover focus-visible:bg-v2-overlay-simple-overlay-hover focus-visible:outline-none"
+      class="flex h-8 w-full items-center gap-3 rounded-md px-2 text-left text-[14px] transition-colors hover:bg-v2-overlay-simple-overlay-hover focus-visible:bg-v2-overlay-simple-overlay-hover focus-visible:outline-none"
+      classList={{ "bg-v2-overlay-simple-overlay-hover text-v2-text-text-base font-medium": props.active, "text-v2-text-text-muted": !props.active }}
       onClick={props.onClick}
     >
-      <Show when={props.glyph} fallback={<IconV2 name={props.icon!} size="small" class="shrink-0 text-v2-text-text-muted" />}>
-        <span class="shrink-0 text-v2-text-text-muted flex items-center justify-center size-4">{props.glyph}</span>
+      <Show when={props.glyph} fallback={<IconV2 name={props.icon!} size="small" class="shrink-0 text-current opacity-80" />}>
+        <span class="shrink-0 text-current opacity-80 flex items-center justify-center size-4">{props.glyph}</span>
       </Show>
       <span class="min-w-0 truncate">{props.label}</span>
     </button>
@@ -380,23 +381,17 @@ export default function NewLayout(props: ParentProps) {
         classList={{ "opacity-50 z-50": sortable.isActiveDraggable }}
       >
         <div 
-          class="group/project flex h-7 min-w-0 items-center gap-2 rounded-md px-2 transition-colors hover:bg-v2-overlay-simple-overlay-hover focus-within:bg-v2-overlay-simple-overlay-hover cursor-grab active:cursor-grabbing"
+          class="group/project flex h-8 min-w-0 items-center gap-2 rounded-md px-2 transition-colors hover:bg-v2-overlay-simple-overlay-hover focus-within:bg-v2-overlay-simple-overlay-hover cursor-grab active:cursor-grabbing"
         >
           <button
             type="button"
-            class="flex min-w-0 flex-1 items-center gap-1.5 text-left focus-visible:outline-none"
+            class="flex min-w-0 flex-1 items-center gap-3 text-left focus-visible:outline-none"
             onClick={() => setProjectCollapsed(expandedKey(), !isCollapsed())}
           >
             <span class="text-v2-text-text-muted shrink-0 flex items-center justify-center">
-              <ProjectIcon project={props.project} class="!size-[18px]" />
+              <ProjectIcon project={props.project} class="!size-4" />
             </span>
-            <span class="min-w-0 truncate text-[14px] text-v2-text-text-base">{displayName(props.project)}</span>
-            <span 
-              class="text-v2-text-text-faint shrink-0 transition-transform duration-200"
-              classList={{ "-rotate-90": isCollapsed() }}
-            >
-              <CodexChevronDownGlyph />
-            </span>
+            <span class="min-w-0 truncate text-[14px] text-v2-text-text-base font-medium">{displayName(props.project)}</span>
           </button>
           <ProjectMenu project={props.project} />
           <button
@@ -466,10 +461,10 @@ export default function NewLayout(props: ParentProps) {
 
                 return (
                   <div
-                    class="group/session flex h-7 w-full items-center gap-2 rounded-md pl-8 pr-2 text-[13px] transition-colors hover:bg-v2-overlay-simple-overlay-hover focus-within:bg-v2-overlay-simple-overlay-hover"
+                    class="group/session flex h-8 w-full items-center gap-2 rounded-md pl-9 pr-2 text-[14px] transition-colors hover:bg-v2-overlay-simple-overlay-hover focus-within:bg-v2-overlay-simple-overlay-hover"
                     classList={{
-                      "bg-v2-background-bg-layer-03 text-v2-text-text-base": active(),
-                      "text-v2-text-text-muted": !active(),
+                      "bg-v2-overlay-simple-overlay-hover text-v2-text-text-base font-medium": active(),
+                      "text-v2-text-text-muted hover:text-v2-text-text-base": !active(),
                     }}
                   >
                     <Show
@@ -633,9 +628,9 @@ export default function NewLayout(props: ParentProps) {
           <SidebarAction icon="settings-gear" label={language.t("sidebar.settings")} onClick={openSettings} />
         </div>
         <div class="mb-5 flex flex-col gap-2">
-          <div class="flex items-center justify-between gap-2 px-2">
+          <div class="flex items-center justify-between gap-2 px-2 mb-1 mt-2">
             <span
-              class="flex min-w-0 items-center gap-1 text-left text-[14px] text-v2-text-text-faint"
+              class="flex min-w-0 items-center gap-1 text-left text-[12px] font-semibold text-v2-text-text-faint"
             >
               Projects
             </span>

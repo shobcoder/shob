@@ -117,27 +117,12 @@ export default function NewSessionPage() {
                     </div>
                   }
                 >
-                  <div class="flex flex-col" classList={{ "gap-8": showWorkspaceBar, "gap-3": !showWorkspaceBar }}>
-                    <PromptInput
-                      controls={inputController()}
-                      variant="new-session"
-                      ref={(el) => {
-                        inputRef = el
-                      }}
-                      newSessionWorktree={newSessionWorktree()}
-                      onNewSessionWorktreeReset={() => setStore("worktree", undefined)}
-                      onSubmit={() => comments.clear()}
-                      toolbar={
-                        <Show when={!projectController.selected()}>
-                          <PromptProjectAddButton controller={projectController} />
-                        </Show>
-                      }
-                    />
+                  <div class="flex flex-col gap-3">
                     <Show when={projectController.selected()}>
                       <div
-                        class="flex min-h-7 min-w-0 items-center gap-0 text-v2-text-text-faint"
+                        class="flex min-h-7 min-w-0 items-center gap-2 text-v2-text-text-faint"
                         classList={{
-                          "flex-col justify-center sm:flex-row": showWorkspaceBar,
+                          "justify-center": showWorkspaceBar,
                           "justify-start": !showWorkspaceBar,
                         }}
                       >
@@ -164,6 +149,21 @@ export default function NewSessionPage() {
                         </Show>
                       </div>
                     </Show>
+                    <PromptInput
+                      controls={inputController()}
+                      variant="new-session"
+                      ref={(el) => {
+                        inputRef = el
+                      }}
+                      newSessionWorktree={newSessionWorktree()}
+                      onNewSessionWorktreeReset={() => setStore("worktree", undefined)}
+                      onSubmit={() => comments.clear()}
+                      toolbar={
+                        <Show when={!projectController.selected()}>
+                          <PromptProjectAddButton controller={projectController} />
+                        </Show>
+                      }
+                    />
                   </div>
                 </Show>
               </div>

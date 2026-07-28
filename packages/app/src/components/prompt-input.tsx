@@ -1473,6 +1473,10 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
   const designPlaceholder = () => {
     if (store.mode === "shell") return placeholder()
+    const currentAgent = (props.controls.agents.current || "build").toLowerCase()
+    if (currentAgent === "plan") {
+      return "Plan and design before coding..."
+    }
     return "Ask anything, / for commands, @ for context..."
   }
 
@@ -1568,9 +1572,8 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
               data-component={newSession() ? "session-new-composer" : "session-composer"}
               onSubmit={handleSubmit}
               classList={{
-                "group/prompt-input min-h-[96px] w-full rounded-[24px] bg-v2-background-bg-layer-01 transition-all duration-200 outline-none [box-shadow:none]": true,
+                "group/prompt-input min-h-[96px] w-full rounded-xl bg-v2-background-bg-layer-01 transition-all duration-200 outline-none border border-v2-border-border-muted/50 focus-within:border-v2-border-border-base": true,
                 "hover:bg-v2-background-bg-weak": true,
-                "focus-within:bg-v2-background-bg-layer-01 outline-none": true,
                 "border-icon-info-active border-dashed": store.draggingType !== null,
                 [props.class ?? ""]: !!props.class,
               }}
@@ -1650,28 +1653,28 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                 </div>
               </div>
               <div class="flex h-12 items-center justify-between gap-3 px-4 pb-3">
-                <div class="flex items-center gap-1.5 min-w-0">
+                <div class="flex items-center gap-2 min-w-0 pl-1">
                   {fileAttachmentInput()}
-                  <IconButton
+                  <button
                     data-action="prompt-attach"
                     type="button"
-                    icon="plus"
-                    variant="ghost"
-                    class="size-8 rounded-full p-2 text-v2-icon-icon-muted hover:text-v2-icon-icon-base hover:bg-v2-background-bg-weak transition-colors"
+                    class="size-7 rounded-md flex items-center justify-center text-v2-icon-icon-muted hover:text-v2-icon-icon-base hover:bg-v2-background-bg-weak transition-colors bg-transparent border-none"
                     style={buttons()}
                     onClick={() => setDummyDocsOpen(!dummyDocsOpen())}
                     disabled={store.mode !== "normal"}
                     tabIndex={store.mode === "normal" ? undefined : -1}
                     aria-label={language.t("prompt.action.attachFile")}
-                  />
+                  >
+                    <Icon name="plus" class="size-3.5" />
+                  </button>
                   <Show when={showAgentControl()}>
                     <ComposerAgentControl state={agentControlState()} />
                   </Show>
+                  <ComposerModelControl state={modelControlState()} />
                   {props.toolbar}
                 </div>
 
-                <div class="flex items-center gap-1.5 shrink-0">
-                  <ComposerModelControl state={modelControlState()} />
+                <div class="flex items-center gap-1.5 shrink-0 pr-1">
                   <Show when={!providersLoading() && store.mode !== "shell" && showVariantControl()}>
                     <div
                       data-component="prompt-variant-control"
@@ -1740,7 +1743,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                       type="submit"
                       disabled={!working() && blank()}
                       tabIndex={store.mode === "normal" ? undefined : -1}
-                      class="size-8 flex items-center justify-center rounded-full bg-v2-background-bg-contrast text-v2-text-text-base shadow-sm disabled:opacity-40 hover:opacity-90 active:scale-95 transition-all duration-150"
+                      class="size-7 flex items-center justify-center rounded-md text-v2-icon-icon-muted hover:text-v2-icon-icon-base hover:bg-v2-background-bg-weak transition-colors bg-transparent border-none disabled:opacity-40"
                       aria-label={stopping() ? language.t("prompt.action.stop") : language.t("prompt.action.send")}
                     >
                       <Show when={stopping()}>
@@ -1750,7 +1753,9 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                         <Icon name="arrow-undo-down" class="size-full" />
                       </Show>
                       <Show when={!stopping() && store.mode !== "shell"}>
-                        <Icon name="arrow-up" class="size-4" stroke-width="2.5" />
+                        <Show when={!blank()} fallback={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4.5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>}>
+                          <Icon name="arrow-up" class="size-4.5" stroke-width="2.5" />
+                        </Show>
                       </Show>
                     </button>
                   </TooltipV2>
@@ -1782,8 +1787,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
             <DockShellForm
               onSubmit={handleSubmit}
               classList={{
-                "group/prompt-input": true,
-                "focus-within:shadow-xs-border": true,
+                "group/prompt-input border border-v2-border-border-muted/50 focus-within:border-v2-border-border-base rounded-xl transition-all duration-200": true,
                 "border-icon-info-active border-dashed": store.draggingType !== null,
                 [props.class ?? ""]: !!props.class,
               }}
@@ -1893,7 +1897,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                     }}
                   />
 
-                  <div class="flex items-center gap-1.5 pointer-events-auto">
+                  <div class="flex items-center gap-2 pointer-events-auto pl-1">
                     <div
                       aria-hidden={store.mode !== "normal"}
                       class="pointer-events-auto"
@@ -1901,43 +1905,33 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                         "pointer-events": buttonsSpring() > 0.5 ? "auto" : "none",
                       }}
                     >
-                      <Button
+                      <button
                         data-action="prompt-attach"
                         type="button"
-                        variant="ghost"
-                        class="size-7 p-0 text-text-base hover:text-text-strong hover:bg-background-weak transition-colors"
+                        class="size-7 rounded-md flex items-center justify-center text-v2-icon-icon-muted hover:text-v2-icon-icon-base hover:bg-v2-background-bg-weak transition-colors bg-transparent border-none"
                         style={buttons()}
                         onClick={() => setDummyDocsOpen(!dummyDocsOpen())}
                         disabled={store.mode !== "normal"}
                         tabIndex={store.mode === "normal" ? undefined : -1}
                         aria-label={language.t("prompt.action.attachFile")}
                       >
-                        <Icon name="plus" class="size-4" />
-                      </Button>
+                        <Icon name="plus" class="size-3.5" />
+                      </button>
                     </div>
                     <Show when={!agentsLoading()}>
-                      <div
-                        data-component="prompt-agent-control"
-                        classList={{ "animate-in fade-in duration-300": agentsShouldFadeIn() }}
-                      >
-                        <div
-                          class="max-w-[175px] h-[28px] px-2 flex items-center justify-start rounded-md text-v2-text-text-faint capitalize"
-                          style={agentControlState().style}
-                        >
-                          <span class="truncate text-[13px] font-[440] leading-5">{agentControlState().current || "build"}</span>
-                        </div>
-                      </div>
+                      <ComposerAgentControl state={agentControlState()} />
                     </Show>
+                    <ComposerModelControl state={modelControlState()} />
                   </div>
 
-                  <div class="flex items-center gap-1.5 pointer-events-auto">
+                  <div class="flex items-center gap-1.5 pointer-events-auto pr-1">
                     <Tooltip placement="top" inactive={!working() && blank()} value={tip()}>
                       <button
                         data-action="prompt-submit"
                         type="submit"
                         disabled={!working() && blank()}
                         tabIndex={store.mode === "normal" ? undefined : -1}
-                        class="size-7 flex items-center justify-center rounded-lg bg-icon-info-active text-white disabled:opacity-40 hover:opacity-90 active:scale-95 transition-all duration-150 p-1.5 shadow-sm"
+                        class="size-7 flex items-center justify-center rounded-md text-v2-icon-icon-muted hover:text-v2-icon-icon-base hover:bg-v2-background-bg-weak transition-colors bg-transparent border-none disabled:opacity-40"
                         aria-label={stopping() ? language.t("prompt.action.stop") : language.t("prompt.action.send")}
                       >
                         <Show when={stopping()}>
@@ -1947,10 +1941,9 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                           <Icon name="arrow-undo-down" class="size-full" />
                         </Show>
                         <Show when={!stopping() && store.mode !== "shell"}>
-                          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="size-full">
-                            <path d="M7.39999 6.32003L15.89 3.49003C19.7 2.22003 21.77 4.30003 20.51 8.11003L17.68 16.6C15.78 22.31 12.66 22.31 10.76 16.6L9.91999 14.08L7.39999 13.24C1.68999 11.34 1.68999 8.23003 7.39999 6.32003Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                            <path d="M10.11 13.6501L13.69 10.0601" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                          </svg>
+                          <Show when={!blank()} fallback={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4.5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>}>
+                            <Icon name="arrow-up" class="size-4.5" stroke-width="2.5" />
+                          </Show>
                         </Show>
                       </button>
                     </Tooltip>
@@ -2001,119 +1994,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                       {language.t("common.cancel")}
                     </Button>
                   </div>
-                  <div class="flex items-center gap-1.5 min-w-0 flex-1 h-7">
-                    <Show when={!providersLoading()}>
-                      <Show when={store.mode !== "shell"}>
-                        <div
-                          data-component="prompt-model-control"
-                          classList={{ "animate-in fade-in duration-300": providersShouldFadeIn() }}
-                        >
-                          <Show
-                            when={props.controls.model.paid}
-                            fallback={
-                              <TooltipKeybind
-                                placement="top"
-                                gutter={4}
-                                title={language.t("command.model.choose")}
-                                keybind={command.keybind("model.choose")}
-                              >
-                                <Button
-                                  data-action="prompt-model"
-                                  as="div"
-                                  variant="ghost"
-                                  size="normal"
-                                  class="min-w-0 max-w-[320px] text-13-regular text-text-base group"
-                                  style={control()}
-                                  onClick={() => {
-                                    void import("@/components/dialog-select-model-unpaid").then((x) => {
-                                      dialog.show(() => (
-                                        <x.DialogSelectModelUnpaid model={props.controls.model.selection} />
-                                      ))
-                                    })
-                                  }}
-                                >
-                                  <Show when={props.controls.model.selection.current()?.provider?.id}>
-                                    <ProviderIcon
-                                      id={props.controls.model.selection.current()?.provider?.id ?? ""}
-                                      class="size-4 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity duration-150"
-                                      style={{ "will-change": "opacity", transform: "translateZ(0)" }}
-                                    />
-                                  </Show>
-                                  <span class="truncate">
-                                    {props.controls.model.selection.current()?.name ??
-                                      language.t("dialog.model.select.title")}
-                                  </span>
-                                  <Icon name="chevron-down" size="small" class="shrink-0" />
-                                </Button>
-                              </TooltipKeybind>
-                            }
-                          >
-                            <TooltipKeybind
-                              placement="top"
-                              gutter={4}
-                              title={language.t("command.model.choose")}
-                              keybind={command.keybind("model.choose")}
-                            >
-                              <ModelSelectorPopover
-                                model={props.controls.model.selection}
-                                triggerAs={Button}
-                                triggerProps={{
-                                  variant: "ghost",
-                                  size: "normal",
-                                  style: control(),
-                                  class: "min-w-0 max-w-[320px] text-13-regular text-text-base group",
-                                  "data-action": "prompt-model",
-                                }}
-                                onClose={restoreFocus}
-                              >
-                                <Show when={props.controls.model.selection.current()?.provider?.id}>
-                                  <ProviderIcon
-                                    id={props.controls.model.selection.current()?.provider?.id ?? ""}
-                                    class="size-4 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity duration-150"
-                                    style={{ "will-change": "opacity", transform: "translateZ(0)" }}
-                                  />
-                                </Show>
-                                <span class="truncate">
-                                  {props.controls.model.selection.current()?.name ??
-                                    language.t("dialog.model.select.title")}
-                                </span>
-                                <Icon name="chevron-down" size="small" class="shrink-0" />
-                              </ModelSelectorPopover>
-                            </TooltipKeybind>
-                          </Show>
-                        </div>
-                        <Show when={showVariantControl()}>
-                          <div
-                            data-component="prompt-variant-control"
-                            classList={{ "animate-in fade-in duration-300": providersShouldFadeIn() }}
-                          >
-                            <TooltipKeybind
-                              placement="top"
-                              gutter={4}
-                              title={language.t("command.model.variant.cycle")}
-                              keybind={command.keybind("model.variant.cycle")}
-                            >
-                              <Select
-                                size="normal"
-                                options={variants()}
-                                current={props.controls.model.selection.variant.current() ?? "default"}
-                                label={(x) => (x === "default" ? language.t("common.default") : x)}
-                                onSelect={(value) => {
-                                  props.controls.model.selection.variant.set(value === "default" ? undefined : value)
-                                  restoreFocus()
-                                }}
-                                class="capitalize max-w-[160px] text-text-base"
-                                valueClass="truncate text-13-regular text-text-base"
-                                triggerStyle={control()}
-                                triggerProps={{ "data-action": "prompt-model-variant" }}
-                                variant="ghost"
-                              />
-                            </TooltipKeybind>
-                          </div>
-                        </Show>
-                      </Show>
-                    </Show>
-                  </div>
+                  <div class="flex items-center gap-1.5 min-w-0 flex-1 h-7" />
                 </div>
               </div>
             </DockTray>
@@ -2149,13 +2030,34 @@ type ComposerModelControlState = {
 }
 
 function ComposerAgentControl(props: { state: ComposerAgentControlState }) {
+  const isDefault = () => {
+    const c = (props.state.current || "build").toLowerCase();
+    return c === "build" || c === "normal" || c === "chat";
+  }
+  const isPlan = () => (props.state.current || "").toLowerCase() === "plan"
+
   return (
-    <div 
-      class="max-w-[175px] h-[28px] px-2 flex items-center justify-start rounded-md text-v2-text-text-faint"
-      style={props.state.style}
-    >
-      <span class="truncate text-[13px] font-[440] leading-5 capitalize">{props.state.current || "build"}</span>
-    </div>
+    <Show when={!isDefault()}>
+      <div 
+        class="max-w-[175px] h-[28px] px-2.5 flex items-center justify-start rounded-full transition-colors cursor-pointer gap-1.5 shadow-sm border"
+        classList={{
+          "bg-[#3f2a1b] text-[#f28b25] border-[#5e381b]": isPlan(),
+          "bg-v2-background-bg-layer-03 text-v2-text-text-base border-v2-border-border-muted": !isPlan()
+        }}
+        style={props.state.style}
+        onClick={(e) => {
+          e.stopPropagation();
+          props.state.onSelect(undefined);
+        }}
+      >
+        <Show when={isPlan()} fallback={
+          <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+        }>
+          <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l2 2 4-4" /><path d="M13 9h8" /><circle cx="6" cy="16" r="2" /><path d="M13 16h8" /></svg>
+        </Show>
+        <span class="truncate text-[13px] font-medium leading-5 capitalize">{props.state.current}</span>
+      </div>
+    </Show>
   )
 }
 
@@ -2180,24 +2082,12 @@ function ComposerModelControl(props: { state: ComposerModelControlState }) {
               as="div"
               variant="ghost"
               size="normal"
-              class="min-w-0 max-w-[220px] justify-start text-[13px] font-[440] leading-5 text-v2-text-text-faint group"
+              class="min-w-0 max-w-[220px] justify-start text-[13px] font-medium leading-5 text-v2-text-text-muted hover:text-v2-text-text-base group bg-transparent border-0 px-2"
               classList={{ "animate-in fade-in": props.state.shouldAnimate }}
               style={props.state.style}
               onClick={props.state.onUnpaidClick}
             >
-              <Show when={props.state.providerID}>
-                {(providerID) => (
-                  <ProviderIcon
-                    id={providerID()}
-                    class="size-4 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity duration-150"
-                    style={{ "will-change": "opacity", transform: "translateZ(0)" }}
-                  />
-                )}
-              </Show>
-              <span class="truncate">{props.state.modelName}</span>
-              <span class="-ml-1 shrink-0 flex size-fit">
-                <Icon name="chevron-down" size="small" class="text-v2-icon-icon-muted" />
-              </span>
+              <ModelControlContent state={props.state} />
             </Button>
           </TooltipV2>
         }
@@ -2219,7 +2109,7 @@ function ComposerModelControl(props: { state: ComposerModelControlState }) {
               variant: "ghost-muted",
               size: "normal",
               style: props.state.style,
-              class: "min-w-0 max-w-[220px] justify-start ![font-weight:440] group",
+              class: "min-w-0 max-w-[220px] justify-start font-medium text-v2-text-text-muted hover:text-v2-text-text-base bg-transparent border-0 px-2 group",
               classList: { "animate-in fade-in": props.state.shouldAnimate },
               "data-action": "prompt-model",
             }}
@@ -2236,16 +2126,7 @@ function ComposerModelControl(props: { state: ComposerModelControlState }) {
 function ModelControlContent(props: { state: ComposerModelControlState; v2?: boolean }) {
   return (
     <>
-      <Show when={props.state.providerID}>
-        {(providerID) => (
-          <ProviderIcon
-            id={providerID()}
-            class="size-4 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity duration-150"
-            style={{ "will-change": "opacity", transform: "translateZ(0)" }}
-          />
-        )}
-      </Show>
-      <span class="truncate">{props.state.modelName}</span>
+      <span class="truncate text-[13px] font-medium">{props.state.modelName}</span>
       <span class={props.v2 ? "-ml-0.5 -mr-1 flex shrink-0" : "-ml-1 shrink-0 flex size-fit"}>
         <Icon name="chevron-down" size="small" class="text-v2-icon-icon-muted" />
       </span>

@@ -39,7 +39,7 @@ export function PromptWorkspaceSelector(props: {
 
   return (
     <>
-      <span class="hidden select-none opacity-50 sm:inline mx-1">/</span>
+      <span class="select-none opacity-50 mx-1">/</span>
       <MenuV2 placement="bottom" gutter={4} onOpenChange={onOpenChange}>
         <MenuV2.Trigger class="flex h-7 min-w-0 max-w-[203px] items-center gap-1.5 rounded-sm px-1.5 hover:bg-v2-overlay-simple-overlay-hover focus-visible:bg-v2-overlay-simple-overlay-hover focus-visible:outline-none data-[expanded]:bg-v2-overlay-simple-overlay-pressed data-[expanded]:text-v2-text-text-muted">
           <IconV2 name={icon()} class="shrink-0 text-v2-icon-icon-muted" />
@@ -95,7 +95,7 @@ export function PromptWorkspaceSelector(props: {
       <Show when={props.branch}>
         {(branch) => (
           <>
-            <span class="hidden select-none opacity-50 sm:inline mx-1">/</span>
+            <span class="select-none opacity-50 mx-1">/</span>
             <div class="flex h-7 min-w-0 max-w-[220px] items-center gap-1.5 px-2 text-[13px] font-[440] leading-5 tracking-[-0.04px]">
               <Icon name="branch" size="small" class="shrink-0 text-v2-icon-icon-muted" />
               <span class="min-w-0 truncate">{branch()}</span>
