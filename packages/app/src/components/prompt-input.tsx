@@ -1658,7 +1658,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                   <button
                     data-action="prompt-attach"
                     type="button"
-                    class="size-7 rounded-md flex items-center justify-center text-v2-icon-icon-muted hover:text-v2-icon-icon-base hover:bg-v2-background-bg-weak transition-colors bg-transparent border-none"
+                    class="size-[28px] rounded-full flex items-center justify-center text-v2-icon-icon-muted hover:text-v2-icon-icon-base bg-[#2a2a2d] hover:bg-[#333336] transition-colors border-none"
                     style={buttons()}
                     onClick={() => setDummyDocsOpen(!dummyDocsOpen())}
                     disabled={store.mode !== "normal"}
@@ -1743,17 +1743,21 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                       type="submit"
                       disabled={!working() && blank()}
                       tabIndex={store.mode === "normal" ? undefined : -1}
-                      class="size-7 flex items-center justify-center rounded-md text-v2-icon-icon-muted hover:text-v2-icon-icon-base hover:bg-v2-background-bg-weak transition-colors bg-transparent border-none disabled:opacity-40"
+                      class="flex items-center justify-center transition-colors border-none disabled:opacity-40"
+                      classList={{
+                        "size-8 rounded-full bg-v2-background-bg-layer-03 text-v2-icon-icon-base hover:bg-v2-background-bg-weak": blank() && !stopping() && store.mode !== "shell",
+                        "size-7 rounded-md bg-transparent text-v2-icon-icon-muted hover:text-v2-icon-icon-base hover:bg-v2-background-bg-weak": !blank() || stopping() || store.mode === "shell",
+                      }}
                       aria-label={stopping() ? language.t("prompt.action.stop") : language.t("prompt.action.send")}
                     >
                       <Show when={stopping()}>
-                        <Icon name="stop" class="size-full" />
+                        <Icon name="stop" class="size-4" />
                       </Show>
                       <Show when={!stopping() && store.mode === "shell"}>
-                        <Icon name="arrow-undo-down" class="size-full" />
+                        <Icon name="arrow-undo-down" class="size-4" />
                       </Show>
                       <Show when={!stopping() && store.mode !== "shell"}>
-                        <Show when={!blank()} fallback={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4.5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>}>
+                        <Show when={!blank()} fallback={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>}>
                           <Icon name="arrow-up" class="size-4.5" stroke-width="2.5" />
                         </Show>
                       </Show>
@@ -1908,7 +1912,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                       <button
                         data-action="prompt-attach"
                         type="button"
-                        class="size-7 rounded-md flex items-center justify-center text-v2-icon-icon-muted hover:text-v2-icon-icon-base hover:bg-v2-background-bg-weak transition-colors bg-transparent border-none"
+                        class="size-[28px] rounded-full flex items-center justify-center text-v2-icon-icon-muted hover:text-v2-icon-icon-base bg-[#2a2a2d] hover:bg-[#333336] transition-colors border-none"
                         style={buttons()}
                         onClick={() => setDummyDocsOpen(!dummyDocsOpen())}
                         disabled={store.mode !== "normal"}
@@ -1931,17 +1935,21 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                         type="submit"
                         disabled={!working() && blank()}
                         tabIndex={store.mode === "normal" ? undefined : -1}
-                        class="size-7 flex items-center justify-center rounded-md text-v2-icon-icon-muted hover:text-v2-icon-icon-base hover:bg-v2-background-bg-weak transition-colors bg-transparent border-none disabled:opacity-40"
+                        class="flex items-center justify-center transition-colors border-none disabled:opacity-40"
+                        classList={{
+                          "size-8 rounded-full bg-v2-background-bg-layer-03 text-v2-icon-icon-base hover:bg-v2-background-bg-weak": blank() && !stopping() && store.mode !== "shell",
+                          "size-7 rounded-md bg-transparent text-v2-icon-icon-muted hover:text-v2-icon-icon-base hover:bg-v2-background-bg-weak": !blank() || stopping() || store.mode === "shell",
+                        }}
                         aria-label={stopping() ? language.t("prompt.action.stop") : language.t("prompt.action.send")}
                       >
                         <Show when={stopping()}>
-                          <Icon name="stop" class="size-full" />
+                          <Icon name="stop" class="size-4" />
                         </Show>
                         <Show when={!stopping() && store.mode === "shell"}>
-                          <Icon name="arrow-undo-down" class="size-full" />
+                          <Icon name="arrow-undo-down" class="size-4" />
                         </Show>
                         <Show when={!stopping() && store.mode !== "shell"}>
-                          <Show when={!blank()} fallback={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4.5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>}>
+                          <Show when={!blank()} fallback={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>}>
                             <Icon name="arrow-up" class="size-4.5" stroke-width="2.5" />
                           </Show>
                         </Show>
@@ -2038,24 +2046,28 @@ function ComposerAgentControl(props: { state: ComposerAgentControlState }) {
 
   return (
     <Show when={!isDefault()}>
-      <div 
-        class="max-w-[175px] h-[28px] px-2.5 flex items-center justify-start rounded-full transition-colors cursor-pointer gap-1.5 shadow-sm border"
+      <div
+        class="h-[28px] pl-2 pr-1 flex items-center justify-start rounded-full transition-colors gap-1 shadow-sm border select-none"
         classList={{
           "bg-[#3f2a1b] text-[#f28b25] border-[#5e381b]": isPlan(),
           "bg-v2-background-bg-layer-03 text-v2-text-text-base border-v2-border-border-muted": !isPlan()
         }}
         style={props.state.style}
-        onClick={(e) => {
-          e.stopPropagation();
-          props.state.onSelect(undefined);
-        }}
       >
         <Show when={isPlan()} fallback={
-          <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+          <svg class="size-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
         }>
-          <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l2 2 4-4" /><path d="M13 9h8" /><circle cx="6" cy="16" r="2" /><path d="M13 16h8" /></svg>
+          <svg class="size-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l2 2 4-4" /><path d="M13 9h8" /><circle cx="6" cy="16" r="2" /><path d="M13 16h8" /></svg>
         </Show>
         <span class="truncate text-[13px] font-medium leading-5 capitalize">{props.state.current}</span>
+        <button
+          type="button"
+          class="size-4 flex items-center justify-center rounded-full opacity-60 hover:opacity-100 transition-opacity bg-transparent border-none ml-0.5 cursor-pointer"
+          onClick={(e) => { e.stopPropagation(); props.state.onSelect(undefined); }}
+          aria-label="Remove agent"
+        >
+          <svg class="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
     </Show>
   )
