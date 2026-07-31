@@ -13,7 +13,6 @@ import contextMenu from "electron-context-menu"
 
 import type { ServerReadyData } from "../preload/types"
 import { checkAppExists, resolveAppPath } from "./apps"
-import { CHANNEL } from "./constants"
 import { registerIpcHandlers, sendDeepLinks, sendMenuCommand } from "./ipc"
 import { forwardInitializationFailure } from "./initialization"
 import { exportDebugLogs, initCrashReporter, initLogging, startNetLog, write as writeLog } from "./logging"
@@ -43,16 +42,8 @@ import { migrate } from "./migrate"
 import { cleanupStoreFiles } from "./store-cleanup"
 import { createBrowserControl } from "./browser-control"
 
-const APP_NAMES: Record<string, string> = {
-  dev: "Shob Dev",
-  beta: "Shob Beta",
-  prod: "Shob",
-}
-const APP_IDS: Record<string, string> = {
-  dev: "ai.shob.desktop.dev",
-  beta: "ai.shob.desktop.beta",
-  prod: "ai.shob.desktop",
-}
+// Desktop builds are production-only; there is no dev/beta channel anymore.
+const APP_ID = "ai.shob.desktop"
 const TEST_ONBOARDING = process.env.SHOB_TEST_ONBOARDING === "1"
 const jsCallStackFeature = "DocumentPolicyIncludeJSCallStacksInCrashReports"
 
@@ -115,7 +106,6 @@ const main = Effect.gen(function* () {
 
   process.env.SHOB_DISABLE_EMBEDDED_WEB_UI = "true"
 
-  const appId = app.isPackaged ? APP_IDS[CHANNEL] : "ai.shob.desktop.dev"
   const onboardingTestRoot = ((): string | undefined => {
     if (!TEST_ONBOARDING) return
 
@@ -131,11 +121,11 @@ const main = Effect.gen(function* () {
     process.env.XDG_STATE_HOME = join(root, "state")
     return root
   })()
-  app.setName(app.isPackaged ? APP_NAMES[CHANNEL] : "Shob Dev")
-  app.setAppUserModelId(app.isPackaged ? appId : process.execPath)
+  app.setName("Shob")
+  app.setAppUserModelId(APP_ID)
   app.setPath(
     "userData",
-    onboardingTestRoot ? join(onboardingTestRoot, "desktop") : join(app.getPath("appData"), appId),
+    onboardingTestRoot ? join(onboardingTestRoot, "desktop") : join(app.getPath("appData"), APP_ID),
   )
   if (onboardingTestRoot) app.setPath("sessionData", join(onboardingTestRoot, "session"))
   logger = initLogging()
@@ -187,8 +177,6 @@ const main = Effect.gen(function* () {
   app.commandLine.appendSwitch("proxy-bypass-list", "<-loopback>")
   const features = app.commandLine.getSwitchValue("enable-features")
   app.commandLine.appendSwitch("enable-features", features ? `${jsCallStackFeature},${features}` : jsCallStackFeature)
-  if (!app.isPackaged) app.commandLine.appendSwitch("remote-debugging-port", "9222")
-
   if (!app.requestSingleInstanceLock()) {
     app.quit()
     return

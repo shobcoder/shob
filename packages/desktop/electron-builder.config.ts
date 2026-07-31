@@ -24,20 +24,13 @@ async function signWindows(configuration: { path: string }) {
   )
 }
 
-const channel = (() => {
-  const raw = process.env.SHOB_CHANNEL
-  if (raw === "dev" || raw === "beta" || raw === "prod") return raw
-  return "dev"
-})()
+// Desktop builds are production-only; there is no dev/beta channel anymore.
+const APP_ID = "ai.shob.desktop"
 
-const APP_IDS = {
-  dev: "ai.shob.desktop.dev",
-  beta: "ai.shob.desktop.beta",
-  prod: "ai.shob.desktop",
-} as const
-
-const getBase = (appId: string): Configuration => ({
+const config: Configuration = {
   artifactName: "shob-desktop-${os}-${arch}.${ext}",
+  appId: APP_ID,
+  productName: "Shob",
   directories: {
     output: "dist",
     buildResources: "resources",
@@ -57,10 +50,16 @@ const getBase = (appId: string): Configuration => ({
   // https://developer.gnome.org/documentation/guidelines/maintainer/integrating.html
   // https://www.electron.build/docs/linux/
   extraMetadata: {
-    desktopName: `${appId}.desktop`,
+    desktopName: `${APP_ID}.desktop`,
   },
   files: ["out/**/*", "resources/**/*"],
   extraResources: [
+    // App icons are copied to resources/icons so the main process can load
+    // them from process.resourcesPath/icons at runtime.
+    {
+      from: "icons/prod",
+      to: "icons",
+    },
     {
       from: "native/",
       to: "native/",
@@ -74,7 +73,7 @@ const getBase = (appId: string): Configuration => ({
   ],
   mac: {
     category: "public.app-category.developer-tools",
-    icon: `resources/icons/icon.icns`,
+    icon: `icons/prod/icon.icns`,
     hardenedRuntime: true,
     gatekeeperAssess: false,
     entitlements: "resources/entitlements.plist",
@@ -85,12 +84,8 @@ const getBase = (appId: string): Configuration => ({
   dmg: {
     sign: true,
   },
-  protocols: {
-    name: "shob",
-    schemes: ["shob"],
-  },
   win: {
-    icon: `resources/icons/icon.ico`,
+    icon: `icons/prod/icon.ico`,
     signtoolOptions: {
       sign: signWindows,
     },
@@ -100,61 +95,28 @@ const getBase = (appId: string): Configuration => ({
   nsis: {
     oneClick: true,
     perMachine: false,
-    installerIcon: `resources/icons/icon.ico`,
-    installerHeaderIcon: `resources/icons/icon.ico`,
+    installerIcon: `icons/prod/icon.ico`,
+    installerHeaderIcon: `icons/prod/icon.ico`,
   },
   linux: {
-    icon: `resources/icons`,
+    icon: `icons/prod`,
     category: "Development",
-    executableName: appId,
+    executableName: APP_ID,
     desktop: {
       entry: {
         // Match the installed .desktop file and hicolor icon basename so
         // Linux shells can associate the running Electron window with its launcher.
-        StartupWMClass: appId,
+        StartupWMClass: APP_ID,
       },
     },
     target: ["AppImage", "deb", "rpm"],
   },
-})
-
-function getConfig() {
-  const appId = APP_IDS[channel]
-  const base = getBase(appId)
-
-  switch (channel) {
-    case "dev": {
-      return {
-        ...base,
-        appId,
-        productName: "Shob Dev",
-        rpm: { packageName: "shob-dev" },
-      }
-    }
-    case "beta": {
-      return {
-        ...base,
-        appId,
-        productName: "Shob Beta",
-        protocols: { name: "Shob Beta", schemes: ["shob"] },
-        publish: { provider: "github", owner: "shobcoder", repo: "shob", channel: "beta" },
-        rpm: { packageName: "shob-beta" },
-      }
-    }
-    case "prod": {
-      return {
-        ...base,
-        appId,
-        productName: "Shob",
-        protocols: { name: "Shob", schemes: ["shob"] },
-        // The updater reads latest*.yml files uploaded by the release workflow.
-        // Keep this in sync with the repository that publishes the installers.
-        publish: { provider: "github", owner: "shobcoder", repo: "shob", channel: "latest" },
-        deb: { fpm: [legacyDesktopEntryFpm] },
-        rpm: { packageName: "shob", fpm: [legacyDesktopEntryFpm] },
-      }
-    }
-  }
+  protocols: { name: "Shob", schemes: ["shob"] },
+  // The updater reads latest*.yml files uploaded by the release workflow.
+  // Keep this in sync with the repository that publishes the installers.
+  publish: { provider: "github", owner: "shobcoder", repo: "shob", channel: "latest" },
+  deb: { fpm: [legacyDesktopEntryFpm] },
+  rpm: { packageName: "shob", fpm: [legacyDesktopEntryFpm] },
 }
 
-export default getConfig()
+export default config

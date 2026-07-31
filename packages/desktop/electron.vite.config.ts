@@ -5,12 +5,8 @@ import * as fs from "node:fs/promises"
 
 const SHOB_SERVER_DIST = "../shob/dist/node"
 
-const channel = (() => {
-  const raw = process.env.SHOB_CHANNEL
-  if (raw === "dev" || raw === "beta" || raw === "prod") return raw
-  if (process.env.SHOB_CHANNEL === "latest") return "prod"
-  return "dev"
-})()
+// Desktop builds are production-only; there is no dev/beta channel anymore.
+const channel = "prod"
 
 const nodePtyPkg = `@lydell/node-pty-${process.platform}-${process.arch}`
 

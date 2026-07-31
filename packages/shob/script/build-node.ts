@@ -1,6 +1,5 @@
 #!/usr/bin/env bun
 
-import { Script } from "@shob/script"
 import path from "path"
 import { fileURLToPath } from "url"
 
@@ -21,7 +20,8 @@ await Bun.build({
   external: ["jsonc-parser", "@lydell/node-pty"],
   define: {
     SHOB_MODELS_DEV: generated.modelsData,
-    SHOB_CHANNEL: `'${Script.channel}'`,
+    // Desktop builds are production-only; there is no dev/beta channel anymore.
+    SHOB_CHANNEL: `'prod'`,
   },
   files: {
     "shob-web-ui.gen.ts": "",

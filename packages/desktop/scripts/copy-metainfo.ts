@@ -1,11 +1,7 @@
-import { resolveChannel } from "./utils"
-
-const arg = process.argv[2]
-const channel = arg === "dev" || arg === "beta" || arg === "prod" ? arg : resolveChannel()
-
-const appId = channel === "prod" ? "ai.shob.desktop" : `ai.shob.desktop.${channel}`
-const productName = channel === "prod" ? "Shob" : `Shob ${channel.charAt(0).toUpperCase() + channel.slice(1)}`
-const summary = `Open source AI coding agent${channel !== "prod" ? ` (${channel})` : ""}`
+// Desktop builds are production-only; there is no dev/beta channel anymore.
+const appId = "ai.shob.desktop"
+const productName = "Shob"
+const summary = "Open source AI coding agent"
 
 const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
@@ -44,4 +40,4 @@ const xml = `<?xml version="1.0" encoding="UTF-8"?>
 `
 
 await Bun.write(`resources/${appId}.metainfo.xml`, xml)
-console.log(`Generated metainfo for ${channel} at resources/${appId}.metainfo.xml`)
+console.log(`Generated metainfo for ${productName} at resources/${appId}.metainfo.xml`)
