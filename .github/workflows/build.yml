@@ -459,7 +459,9 @@ jobs:
             "latest*.yml"
           )
 
-          $files = Get-ChildItem -Path packages/desktop/dist -Recurse -File -ErrorAction SilentlyContinue | Where-Object {
+          # Release artifacts are emitted at the dist root. Do not recurse into
+          # win-unpacked and accidentally publish internal application binaries.
+          $files = Get-ChildItem -Path packages/desktop/dist -File -ErrorAction SilentlyContinue | Where-Object {
             $name = $_.Name
             $patterns | Where-Object { $name -like $_ }
           }

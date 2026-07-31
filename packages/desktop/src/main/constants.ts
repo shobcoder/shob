@@ -1,5 +1,8 @@
 import { app } from "electron"
+import fs from "node:fs"
+import path from "node:path"
 
-// electron-updater can apply Linux releases only when launched from an AppImage.
-// DEB/RPM installations are deliberately updated by their package manager.
-export const UPDATER_ENABLED = app.isPackaged && (process.platform !== "linux" || !!process.env.APPIMAGE)
+export const UPDATER_ENABLED =
+  app.isPackaged &&
+  (process.platform !== "linux" || !!process.env.APPIMAGE) &&
+  fs.existsSync(path.join(process.resourcesPath, "app-update.yml"))

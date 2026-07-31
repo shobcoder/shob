@@ -13,6 +13,7 @@ export const SettingsAboutV2: Component = () => {
   const updater = useUpdaterAction()
 
   const updateStatusText = () => {
+    if (platform.updater?.state()?.status === "disabled") return "Updates are unavailable in this build"
     const label = updater.action().label
     if (label === "settings.updates.action.checking") return "Checking for updates..."
     if (label === "settings.updates.action.downloading") return "Downloading update..."

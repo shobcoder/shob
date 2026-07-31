@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process"
+import { writeFile } from "node:fs/promises"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { promisify } from "node:util"
@@ -27,6 +28,21 @@ async function signWindows(configuration: { path: string }) {
 // Desktop builds are production-only; there is no dev/beta channel anymore.
 const APP_ID = "ai.shob.desktop"
 
+export async function writeWindowsUpdateConfig(appOutDir: string, updaterCacheDirName: string) {
+  await writeFile(
+    path.join(appOutDir, "resources", "app-update.yml"),
+    [
+      "provider: github",
+      "owner: shobcoder",
+      "repo: shob",
+      "channel: latest",
+      `updaterCacheDirName: ${JSON.stringify(updaterCacheDirName)}`,
+      "",
+    ].join("\n"),
+    "utf8",
+  )
+}
+
 const config: Configuration = {
   artifactName: "shob-desktop-${os}-${arch}.${ext}",
   appId: APP_ID,
@@ -36,7 +52,14 @@ const config: Configuration = {
     buildResources: "resources",
   },
   afterPack: async (context) => {
-    if (context.packager.platform.name === 'windows' && process.env.GITHUB_ACTIONS === "true") {
+    if (context.packager.platform.name !== "windows") return
+
+    // The release workflow packages a Windows directory before creating the
+    // signed NSIS installer. electron-builder does not generate app-update.yml
+    // for a directory target, so place it in the prepackaged app explicitly.
+    await writeWindowsUpdateConfig(context.appOutDir, context.packager.appInfo.updaterCacheDirName)
+
+    if (process.env.GITHUB_ACTIONS === "true") {
       await execFileAsync(
         "pwsh",
         ["-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", batchSignScript, context.appOutDir],
