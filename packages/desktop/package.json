@@ -1,7 +1,7 @@
 {
   "name": "@shob/desktop",
   "private": true,
-  "version": "0.0.95",
+  "version": "0.0.96",
   "type": "module",
   "license": "MIT",
   "homepage": "https://opencode.ai",
@@ -74,6 +74,3 @@
     "@parcel/watcher-win32-x64": "2.5.1"
   }
 }
-
-
-
