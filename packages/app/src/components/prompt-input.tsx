@@ -11,7 +11,6 @@ import {
   createResource,
   Switch,
   Match,
-  For,
   type JSX,
 } from "solid-js"
 import { createStore, type SetStoreFunction, type Store } from "solid-js/store"
@@ -113,7 +112,6 @@ export type PromptInputControls = {
       open: () => void
     }
   }
-
 }
 
 export function createPromptInputHistory(): PromptInputHistory {
@@ -215,7 +213,6 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const language = useLanguage()
   const platform = usePlatform()
   const tabs = () => props.controls.session.tabs
-  const [dummyDocsOpen, setDummyDocsOpen] = createSignal(false)
   let editorRef!: HTMLDivElement
   let fileInputRef: HTMLInputElement | undefined
   let scrollRef!: HTMLDivElement
@@ -429,9 +426,9 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
         selection ??
         (item.selection
           ? ({
-            start: item.selection.startLine,
-            end: item.selection.endLine,
-          } satisfies SelectedLineRange)
+              start: item.selection.startLine,
+              end: item.selection.endLine,
+            } satisfies SelectedLineRange)
           : undefined)
       if (!nextSelection) return []
 
@@ -962,15 +959,15 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       const source =
         file.dataset.sourceType === "resource" && file.dataset.sourceClientName && file.dataset.sourceUri
           ? {
-            type: "resource" as const,
-            text: {
-              value: content,
-              start: position,
-              end: position + content.length,
-            },
-            clientName: file.dataset.sourceClientName,
-            uri: file.dataset.sourceUri,
-          }
+              type: "resource" as const,
+              text: {
+                value: content,
+                start: position,
+                end: position + content.length,
+              },
+              clientName: file.dataset.sourceClientName,
+              uri: file.dataset.sourceUri,
+            }
           : undefined
       parts.push({
         type: "file",
@@ -1508,7 +1505,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
         type: "text",
         content: `\n\n\`\`\`html\n${selection}\n\`\`\`\n`,
         start: 0,
-        end: 0
+        end: 0,
       }
 
       const cursor = currentCursor() ?? promptLength(prompt.current())
@@ -1517,7 +1514,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       showToast({
         title: "Element attached",
         description: "Browser element HTML and CSS attached to prompt",
-        variant: "success"
+        variant: "success",
       })
 
       restoreFocus()
@@ -1533,18 +1530,91 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     restoreEndOnFocus = true
     props.ref?.(el)
   }
-  const showAgentControl = createMemo(() => props.controls.agents.visible && props.controls.agents.options.length > 0)
+  const agentModes = createMemo(() =>
+    ["build", "plan"].flatMap((mode) => {
+      const option = props.controls.agents.options.find((value) => value.toLowerCase() === mode)
+      return option ? [option] : []
+    }),
+  )
+  const currentAgentMode = createMemo(
+    () =>
+      agentModes().find((option) => option.toLowerCase() === props.controls.agents.current?.toLowerCase()) ??
+      agentModes()[0] ??
+      "build",
+  )
+  createEffect(() => {
+    if (agentsLoading()) return
+    if (agentModes().some((option) => option.toLowerCase() === props.controls.agents.current?.toLowerCase())) return
+    const build = agentModes().find((option) => option.toLowerCase() === "build")
+    if (build) props.controls.agents.select(build)
+  })
+  const showAgentControl = createMemo(() => agentModes().length > 0)
   const agentControlState = createMemo<ComposerAgentControlState>(() => ({
     title: language.t("command.agent.cycle"),
     keybind: command.keybindParts("agent.cycle"),
-    options: props.controls.agents.options,
-    current: props.controls.agents.current,
+    options: agentModes(),
+    current: currentAgentMode(),
     style: control(),
     onSelect: (value) => {
       props.controls.agents.select(value)
       restoreFocus()
     },
   }))
+  const variantControl = () => (
+    <Show when={!providersLoading() && store.mode !== "shell" && showVariantControl()}>
+      <div
+        data-component="prompt-variant-control"
+        class="shrink-0 [&_[data-action=prompt-model-variant]]:![font-weight:440]"
+        classList={{ "animate-in fade-in": providersShouldFadeIn() }}
+      >
+        <TooltipV2
+          placement="top"
+          gutter={4}
+          value={
+            <>
+              {language.t("command.model.variant.cycle")}
+              <KeybindV2 keys={command.keybindParts("model.variant.cycle")} variant="neutral" />
+            </>
+          }
+        >
+          <MenuV2 gutter={6} modal={false} placement="top-start">
+            <MenuV2.Trigger
+              as={ButtonV2}
+              data-action="prompt-model-variant"
+              variant="ghost-muted"
+              size="normal"
+              class="max-w-[120px] justify-start capitalize"
+              style={control()}
+            >
+              <span class="truncate">
+                {props.controls.model.selection.variant.current() ?? language.t("common.default")}
+              </span>
+              <span class="-ml-0.5 -mr-1 flex shrink-0">
+                <Icon name="chevron-down" size="small" />
+              </span>
+            </MenuV2.Trigger>
+            <MenuV2.Portal>
+              <MenuV2.Content>
+                <MenuV2.RadioGroup
+                  value={props.controls.model.selection.variant.current() ?? "default"}
+                  onChange={(value) => {
+                    props.controls.model.selection.variant.set(value === "default" ? undefined : value)
+                    restoreFocus()
+                  }}
+                >
+                  {variants().map((value) => (
+                    <MenuV2.RadioItem value={value} class="capitalize">
+                      {value === "default" ? language.t("common.default") : value}
+                    </MenuV2.RadioItem>
+                  ))}
+                </MenuV2.RadioGroup>
+              </MenuV2.Content>
+            </MenuV2.Portal>
+          </MenuV2>
+        </TooltipV2>
+      </div>
+    </Show>
+  )
   return (
     <div class="relative size-full flex flex-col gap-0">
       {(promptReady(), null)}
@@ -1562,7 +1632,6 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
         onSlashSelect={handleSlashSelect}
         commandKeybind={command.keybind}
         commandKeybindParts={command.keybindParts}
-
         t={(key) => language.t(key as Parameters<typeof language.t>[0])}
       />
       <Switch>
@@ -1614,7 +1683,10 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                   editorRef?.focus()
                 }}
               >
-                <div class="relative max-h-[180px] overflow-y-auto no-scrollbar scrollbar-thin" ref={(el) => (scrollRef = el)}>
+                <div
+                  class="relative max-h-[180px] overflow-y-auto no-scrollbar scrollbar-thin"
+                  ref={(el) => (scrollRef = el)}
+                >
                   <div
                     data-component="prompt-input"
                     ref={bindEditorRef}
@@ -1660,83 +1732,22 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                     type="button"
                     class="size-[28px] rounded-full flex items-center justify-center text-v2-icon-icon-muted hover:text-v2-icon-icon-base bg-[#2a2a2d] hover:bg-[#333336] transition-colors border-none"
                     style={buttons()}
-                    onClick={() => setDummyDocsOpen(!dummyDocsOpen())}
+                    onClick={pick}
                     disabled={store.mode !== "normal"}
                     tabIndex={store.mode === "normal" ? undefined : -1}
                     aria-label={language.t("prompt.action.attachFile")}
                   >
                     <Icon name="plus" class="size-3.5" />
                   </button>
+                  <ComposerModelControl state={modelControlState()} />
+                  {variantControl()}
                   <Show when={showAgentControl()}>
                     <ComposerAgentControl state={agentControlState()} />
                   </Show>
-                  <ComposerModelControl state={modelControlState()} />
                   {props.toolbar}
                 </div>
 
                 <div class="flex items-center gap-1.5 shrink-0 pr-1">
-                  <Show when={!providersLoading() && store.mode !== "shell" && showVariantControl()}>
-                    <div
-                      data-component="prompt-variant-control"
-                      class="[&_[data-action=prompt-model-variant]]:![font-weight:440]"
-                      classList={{
-                        "animate-in fade-in": providersShouldFadeIn(),
-                        "hidden group-hover/prompt-input:block group-focus-within/prompt-input:block":
-                          !props.controls.model.selection.variant.current() && !store.variantOpen,
-                      }}
-                    >
-                      <TooltipV2
-                        placement="top"
-                        gutter={4}
-                        value={
-                          <>
-                            {language.t("command.model.variant.cycle")}
-                            <KeybindV2 keys={command.keybindParts("model.variant.cycle")} variant="neutral" />
-                          </>
-                        }
-                      >
-                        <MenuV2
-                          gutter={6}
-                          modal={false}
-                          placement="top-start"
-                          onOpenChange={(open) => setStore("variantOpen", open)}
-                        >
-                          <MenuV2.Trigger
-                            as={ButtonV2}
-                            data-action="prompt-model-variant"
-                            variant="ghost-muted"
-                            size="normal"
-                            class="max-w-[160px] justify-start capitalize"
-                            style={control()}
-                          >
-                            <span class="truncate">
-                              {props.controls.model.selection.variant.current() ?? language.t("common.default")}
-                            </span>
-                            <span class="-ml-0.5 -mr-1 flex shrink-0">
-                              <Icon name="chevron-down" size="small" />
-                            </span>
-                          </MenuV2.Trigger>
-                          <MenuV2.Portal>
-                            <MenuV2.Content>
-                              <MenuV2.RadioGroup
-                                value={props.controls.model.selection.variant.current() ?? "default"}
-                                onChange={(value) => {
-                                  props.controls.model.selection.variant.set(value === "default" ? undefined : value)
-                                  restoreFocus()
-                                }}
-                              >
-                                {variants().map((value) => (
-                                  <MenuV2.RadioItem value={value} class="capitalize">
-                                    {value === "default" ? language.t("common.default") : value}
-                                  </MenuV2.RadioItem>
-                                ))}
-                              </MenuV2.RadioGroup>
-                            </MenuV2.Content>
-                          </MenuV2.Portal>
-                        </MenuV2>
-                      </TooltipV2>
-                    </div>
-                  </Show>
                   <TooltipV2 placement="top" inactive={!working() && blank()} value={tip()}>
                     <button
                       data-action="prompt-submit"
@@ -1745,8 +1756,10 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                       tabIndex={store.mode === "normal" ? undefined : -1}
                       class="flex items-center justify-center transition-colors border-none disabled:opacity-40"
                       classList={{
-                        "size-8 rounded-full bg-v2-background-bg-layer-03 text-v2-icon-icon-base hover:bg-v2-background-bg-weak": blank() && !stopping() && store.mode !== "shell",
-                        "size-7 rounded-md bg-transparent text-v2-icon-icon-muted hover:text-v2-icon-icon-base hover:bg-v2-background-bg-weak": !blank() || stopping() || store.mode === "shell",
+                        "size-8 rounded-full bg-v2-background-bg-layer-03 text-v2-icon-icon-base hover:bg-v2-background-bg-weak":
+                          blank() && !stopping() && store.mode !== "shell",
+                        "size-7 rounded-md bg-transparent text-v2-icon-icon-muted hover:text-v2-icon-icon-base hover:bg-v2-background-bg-weak":
+                          !blank() || stopping() || store.mode === "shell",
                       }}
                       aria-label={stopping() ? language.t("prompt.action.stop") : language.t("prompt.action.send")}
                     >
@@ -1757,33 +1770,13 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                         <Icon name="arrow-undo-down" class="size-4" />
                       </Show>
                       <Show when={!stopping() && store.mode !== "shell"}>
-                        <Show when={!blank()} fallback={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>}>
-                          <Icon name="arrow-up" class="size-4.5" stroke-width="2.5" />
-                        </Show>
+                        <Icon name="arrow-up" class="size-4.5" stroke-width="2.5" />
                       </Show>
                     </button>
                   </TooltipV2>
                 </div>
               </div>
             </DockShellForm>
-            <Show when={dummyDocsOpen()}>
-              <PopsDocs 
-                agentOptions={agentControlState().options}
-                currentAgent={agentControlState().current || "build"}
-                onAgentSelect={(agent) => {
-                  agentControlState().onSelect(agent);
-                  setDummyDocsOpen(false);
-                }}
-                onFilesSelect={() => {
-                  pick();
-                  setDummyDocsOpen(false);
-                }}
-                onGoalSelect={() => {
-                  setDummyDocsOpen(false);
-                }}
-                onClose={() => setDummyDocsOpen(false)}
-              />
-            </Show>
           </div>
         </Match>
         <Match when>
@@ -1914,7 +1907,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                         type="button"
                         class="size-[28px] rounded-full flex items-center justify-center text-v2-icon-icon-muted hover:text-v2-icon-icon-base bg-[#2a2a2d] hover:bg-[#333336] transition-colors border-none"
                         style={buttons()}
-                        onClick={() => setDummyDocsOpen(!dummyDocsOpen())}
+                        onClick={pick}
                         disabled={store.mode !== "normal"}
                         tabIndex={store.mode === "normal" ? undefined : -1}
                         aria-label={language.t("prompt.action.attachFile")}
@@ -1922,10 +1915,11 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                         <Icon name="plus" class="size-3.5" />
                       </button>
                     </div>
-                    <Show when={!agentsLoading()}>
+                    <ComposerModelControl state={modelControlState()} />
+                    {variantControl()}
+                    <Show when={showAgentControl()}>
                       <ComposerAgentControl state={agentControlState()} />
                     </Show>
-                    <ComposerModelControl state={modelControlState()} />
                   </div>
 
                   <div class="flex items-center gap-1.5 pointer-events-auto pr-1">
@@ -1937,8 +1931,10 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                         tabIndex={store.mode === "normal" ? undefined : -1}
                         class="flex items-center justify-center transition-colors border-none disabled:opacity-40"
                         classList={{
-                          "size-8 rounded-full bg-v2-background-bg-layer-03 text-v2-icon-icon-base hover:bg-v2-background-bg-weak": blank() && !stopping() && store.mode !== "shell",
-                          "size-7 rounded-md bg-transparent text-v2-icon-icon-muted hover:text-v2-icon-icon-base hover:bg-v2-background-bg-weak": !blank() || stopping() || store.mode === "shell",
+                          "size-8 rounded-full bg-v2-background-bg-layer-03 text-v2-icon-icon-base hover:bg-v2-background-bg-weak":
+                            blank() && !stopping() && store.mode !== "shell",
+                          "size-7 rounded-md bg-transparent text-v2-icon-icon-muted hover:text-v2-icon-icon-base hover:bg-v2-background-bg-weak":
+                            !blank() || stopping() || store.mode === "shell",
                         }}
                         aria-label={stopping() ? language.t("prompt.action.stop") : language.t("prompt.action.send")}
                       >
@@ -1949,9 +1945,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                           <Icon name="arrow-undo-down" class="size-4" />
                         </Show>
                         <Show when={!stopping() && store.mode !== "shell"}>
-                          <Show when={!blank()} fallback={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>}>
-                            <Icon name="arrow-up" class="size-4.5" stroke-width="2.5" />
-                          </Show>
+                          <Icon name="arrow-up" class="size-4.5" stroke-width="2.5" />
                         </Show>
                       </button>
                     </Tooltip>
@@ -1959,24 +1953,6 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                 </div>
               </div>
             </DockShellForm>
-            <Show when={dummyDocsOpen()}>
-              <PopsDocs 
-                agentOptions={agentControlState().options}
-                currentAgent={agentControlState().current || "build"}
-                onAgentSelect={(agent) => {
-                  agentControlState().onSelect(agent);
-                  setDummyDocsOpen(false);
-                }}
-                onFilesSelect={() => {
-                  pick();
-                  setDummyDocsOpen(false);
-                }}
-                onGoalSelect={() => {
-                  setDummyDocsOpen(false);
-                }}
-                onClose={() => setDummyDocsOpen(false)}
-              />
-            </Show>
           </div>
           <Show when={store.mode === "normal" || store.mode === "shell"}>
             <DockTray attach="top">
@@ -2012,14 +1988,13 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     </div>
   )
 }
-
 type ComposerAgentControlState = {
   title: string
   keybind: string[]
   options: string[]
   current: string
   style: JSX.CSSProperties | undefined
-  onSelect: (value: string | undefined) => void
+  onSelect: (value: string) => void
 }
 
 type ComposerModelControlState = {
@@ -2038,38 +2013,48 @@ type ComposerModelControlState = {
 }
 
 function ComposerAgentControl(props: { state: ComposerAgentControlState }) {
-  const isDefault = () => {
-    const c = (props.state.current || "build").toLowerCase();
-    return c === "build" || c === "normal" || c === "chat";
-  }
   const isPlan = () => (props.state.current || "").toLowerCase() === "plan"
 
   return (
-    <Show when={!isDefault()}>
-      <div
-        class="h-[28px] pl-2 pr-1 flex items-center justify-start rounded-full transition-colors gap-1 shadow-sm border select-none"
-        classList={{
-          "bg-[#3f2a1b] text-[#f28b25] border-[#5e381b]": isPlan(),
-          "bg-v2-background-bg-layer-03 text-v2-text-text-base border-v2-border-border-muted": !isPlan()
-        }}
-        style={props.state.style}
-      >
-        <Show when={isPlan()} fallback={
-          <svg class="size-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
-        }>
-          <svg class="size-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l2 2 4-4" /><path d="M13 9h8" /><circle cx="6" cy="16" r="2" /><path d="M13 16h8" /></svg>
-        </Show>
-        <span class="truncate text-[13px] font-medium leading-5 capitalize">{props.state.current}</span>
-        <button
-          type="button"
-          class="size-4 flex items-center justify-center rounded-full opacity-60 hover:opacity-100 transition-opacity bg-transparent border-none ml-0.5 cursor-pointer"
-          onClick={(e) => { e.stopPropagation(); props.state.onSelect(undefined); }}
-          aria-label="Remove agent"
+    <TooltipV2
+      placement="top"
+      gutter={4}
+      value={
+        <>
+          {props.state.title}
+          <KeybindV2 keys={props.state.keybind} variant="neutral" />
+        </>
+      }
+    >
+      <MenuV2 gutter={6} modal={false} placement="top-start">
+        <MenuV2.Trigger
+          as={ButtonV2}
+          data-action="prompt-agent"
+          variant="ghost-muted"
+          size="normal"
+          class="w-auto min-w-0 justify-start gap-1 rounded-lg border px-2 capitalize"
+          classList={{
+            "border-[#5e381b] bg-[#3f2a1b] text-[#f28b25] hover:bg-[#4a3020]": isPlan(),
+            "border-v2-border-border-muted/60 bg-transparent text-v2-text-text-base": !isPlan(),
+          }}
+          style={props.state.style}
         >
-          <svg class="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-    </Show>
+          <span class="whitespace-nowrap text-left text-[13px] font-medium">{props.state.current}</span>
+          <Icon name="chevron-down" size="small" class="shrink-0" />
+        </MenuV2.Trigger>
+        <MenuV2.Portal>
+          <MenuV2.Content>
+            <MenuV2.RadioGroup value={props.state.current} onChange={props.state.onSelect}>
+              {props.state.options.map((option) => (
+                <MenuV2.RadioItem value={option} class="capitalize">
+                  {option}
+                </MenuV2.RadioItem>
+              ))}
+            </MenuV2.RadioGroup>
+          </MenuV2.Content>
+        </MenuV2.Portal>
+      </MenuV2>
+    </TooltipV2>
   )
 }
 
@@ -2121,7 +2106,8 @@ function ComposerModelControl(props: { state: ComposerModelControlState }) {
               variant: "ghost-muted",
               size: "normal",
               style: props.state.style,
-              class: "min-w-0 max-w-[220px] justify-start font-medium text-v2-text-text-muted hover:text-v2-text-text-base bg-transparent border-0 px-2 group",
+              class:
+                "min-w-0 max-w-[220px] justify-start font-medium text-v2-text-text-muted hover:text-v2-text-text-base bg-transparent border-0 px-2 group",
               classList: { "animate-in fade-in": props.state.shouldAnimate },
               "data-action": "prompt-model",
             }}
@@ -2144,91 +2130,4 @@ function ModelControlContent(props: { state: ComposerModelControlState; v2?: boo
       </span>
     </>
   )
-}
-
-
-function PopsDocs(props: { agentOptions: string[], currentAgent: string, onAgentSelect: (a: string) => void, onFilesSelect: () => void, onGoalSelect: () => void, onClose: () => void }) {
-  const [hoverItem, setHoverItem] = createSignal<string | null>(null);
-  let ref: HTMLDivElement | undefined;
-  
-  createEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (ref && !ref.contains(e.target as Node)) {
-        const target = e.target as HTMLElement;
-        // Ignore clicks on the attach button so it can handle its own toggle
-        if (target.closest('[data-action="prompt-attach"]')) return;
-        props.onClose();
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    onCleanup(() => document.removeEventListener("mousedown", handleClickOutside));
-  });
-
-  const getAgentInfo = (agent: string) => {
-    if (agent === 'build') {
-      return {
-        id: 'build',
-        label: 'Build',
-        desc: 'Default code generation mode',
-        icon: <svg class="w-[15px] h-[15px]" viewBox="0 0 16 16" fill="none"><path fill="currentColor" fill-rule="evenodd" d="M8.603 2.549A4.251 4.251 0 005.47 8.696a1.076 1.076 0 01-.255 1.312l-3 2.374a.75.75 0 01-.93-1.176l2.701-2.139A5.75 5.75 0 019.47 1.004c.53.02.924.363 1.066.797.137.42.035.902-.306 1.243L8.75 4.523v1.596l1.13 1.13h1.597l1.48-1.479a1.22 1.22 0 011.241-.306c.435.142.778.537.798 1.066a5.75 5.75 0 01-7.978 5.52l-2.102 2.664a.75.75 0 01-1.177-.928l2.333-2.959a1.076 1.076 0 011.297-.265 4.251 4.251 0 006.082-3.165L12.41 8.438c-.199.2-.47.312-.75.312h-1.96c-.282 0-.552-.112-.751-.312L7.56 7.052c-.199-.2-.311-.47-.311-.751V4.34c0-.281.112-.551.311-.75l1.042-1.042z" clip-rule="evenodd"/></svg>,
-        action: () => props.onAgentSelect(agent)
-      }
-    }
-    if (agent === 'plan') {
-      return {
-        id: 'plan',
-        label: 'Plan mode',
-        desc: 'Turn plan mode on',
-        icon: <svg class="w-[15px] h-[15px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l2 2 4-4" /><path d="M13 9h8" /><circle cx="6" cy="16" r="2" /><path d="M13 16h8" /></svg>,
-        action: () => props.onAgentSelect(agent)
-      }
-    }
-    return {
-      id: agent,
-      label: agent.charAt(0).toUpperCase() + agent.slice(1) + ' mode',
-      desc: 'Custom agent mode',
-      icon: <svg class="w-[15px] h-[15px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>,
-      action: () => props.onAgentSelect(agent)
-    }
-  }
-
-  const items = [
-    {
-      id: 'files',
-      label: 'Files and folders',
-      desc: '',
-      icon: <svg class="w-[15px] h-[15px]" viewBox="0 0 330.001 330.001" fill="currentColor"><path d="M194.999,0C194.999,0,194.999,0,194.999,0c-20.033,0-38.866,7.801-53.031,21.966 c-14.166,14.166-21.967,33-21.968,53.033v135.004c0,24.813,20.186,44.999,45.001,45c24.813-0.001,44.999-20.189,44.999-45.002 v-77.902c0-8.284-6.716-15-15-15c-8.284,0-15,6.716-15,15v77.902c0,8.272-6.73,15.001-14.999,15.002 c-8.271,0-15.001-6.729-15.001-15V74.999c0-12.02,4.682-23.321,13.181-31.82c8.5-8.5,19.799-13.18,31.818-13.18 c24.814,0,45.001,20.186,45.002,44.998v150.002c-0.002,41.355-33.646,75.001-75,75.001c-20.033,0-38.868-7.8-53.033-21.966 c-14.166-14.165-21.967-33-21.967-53.034L89.999,74.999c0-8.285-6.716-15-15-15s-15,6.716-15,15l0.002,150.001 C60,253.047,70.922,279.415,90.754,299.248c19.832,19.832,46.2,30.754,74.247,30.753c57.895,0,104.998-47.103,105-105V74.998 C270,33.644,236.354,0,194.999,0z" /></svg>,
-      action: props.onFilesSelect
-    },
-    ...props.agentOptions.map(getAgentInfo)
-  ];
-
-  return (
-    <div ref={ref} class="bg-v2-background-bg-layer-01 border border-v2-border-border-muted rounded-lg overflow-hidden py-1 w-full animate-in slide-in-from-top-2 fade-in duration-200 shadow-md">
-      <div class="space-y-[1px]">
-        <div class="text-[12px] font-medium text-v2-text-text-muted px-3 pt-1 pb-1 select-none">Add</div>
-        <For each={items}>
-          {(item) => (
-            <div 
-              onClick={item.action} 
-              onMouseEnter={() => setHoverItem(item.id)} 
-              onMouseLeave={() => setHoverItem(null)}
-              class="mx-1.5 px-2 py-1.5 flex items-center gap-2 cursor-pointer rounded-md transition-colors" 
-              classList={{ "bg-white/[0.08]": hoverItem() === item.id }}
-            >
-              <div class="text-v2-icon-icon-muted flex items-center justify-center w-4 h-4">
-                {item.icon}
-              </div>
-              <div class="flex items-baseline gap-1.5">
-                <span class="font-[450] text-[13px]" classList={{ "text-v2-text-text-base": hoverItem() === item.id, "text-v2-text-text-muted": hoverItem() !== item.id }}>{item.label}</span>
-                <Show when={item.desc}>
-                  <span class="text-v2-text-text-muted/70 text-[12px] font-normal">{item.desc}</span>
-                </Show>
-              </div>
-            </div>
-          )}
-        </For>
-      </div>
-    </div>
-  );
 }
