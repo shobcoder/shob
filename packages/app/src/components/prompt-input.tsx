@@ -1754,23 +1754,46 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                       type="submit"
                       disabled={!working() && blank()}
                       tabIndex={store.mode === "normal" ? undefined : -1}
-                      class="flex items-center justify-center transition-colors border-none disabled:opacity-40"
+                      class="flex items-center justify-center transition-colors border-none"
                       classList={{
+                        "size-7 rounded-full disabled:opacity-100": newSession(),
                         "size-8 rounded-full bg-v2-background-bg-layer-03 text-v2-icon-icon-base hover:bg-v2-background-bg-weak":
-                          blank() && !stopping() && store.mode !== "shell",
-                        "size-7 rounded-md bg-transparent text-v2-icon-icon-muted hover:text-v2-icon-icon-base hover:bg-v2-background-bg-weak":
-                          !blank() || stopping() || store.mode === "shell",
+                          !newSession() && blank() && !stopping() && store.mode !== "shell",
+                        "size-7 rounded-md bg-transparent text-v2-icon-icon-muted hover:text-v2-icon-icon-base hover:bg-v2-background-bg-weak disabled:opacity-40":
+                          !newSession() && (!blank() || stopping() || store.mode === "shell"),
+                      }}
+                      style={{
+                        color: newSession() ? (!working() && blank() ? "rgb(55 55 55)" : "rgb(37 37 37)") : undefined,
+                        "background-color": newSession()
+                          ? !working() && blank()
+                            ? "rgb(138 138 138)"
+                            : "rgb(244 244 244)"
+                          : undefined,
                       }}
                       aria-label={stopping() ? language.t("prompt.action.stop") : language.t("prompt.action.send")}
                     >
                       <Show when={stopping()}>
-                        <Icon name="stop" class="size-4" />
+                        <Show when={newSession()} fallback={<Icon name="stop" class="size-4" />}>
+                          <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true">
+                            <rect x="5" y="5" width="6" height="6" rx="1" fill="rgb(37 37 37)" />
+                          </svg>
+                        </Show>
                       </Show>
                       <Show when={!stopping() && store.mode === "shell"}>
                         <Icon name="arrow-undo-down" class="size-4" />
                       </Show>
                       <Show when={!stopping() && store.mode !== "shell"}>
-                        <Icon name="arrow-up" class="size-4.5" stroke-width="2.5" />
+                        <Show when={newSession()} fallback={<Icon name="arrow-up" class="size-4.5" stroke-width="2.5" />}>
+                          <svg viewBox="0 0 16 16" class="size-4" fill="none" aria-hidden="true">
+                            <path
+                              d="M8 12V4M4.75 7.25 8 4l3.25 3.25"
+                              stroke="rgb(37 37 37)"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                        </Show>
                       </Show>
                     </button>
                   </TooltipV2>

@@ -120,11 +120,7 @@ export default function NewSessionPage() {
                   <div class="flex flex-col gap-3">
                     <Show when={projectController.selected()}>
                       <div
-                        class="flex min-h-7 min-w-0 items-center gap-2 text-v2-text-text-faint"
-                        classList={{
-                          "justify-center": showWorkspaceBar,
-                          "justify-start": !showWorkspaceBar,
-                        }}
+                        class="flex min-h-7 min-w-0 items-center justify-start gap-2 text-v2-text-text-faint"
                       >
                         <PromptProjectSelector
                           controller={projectController}
