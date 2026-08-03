@@ -142,7 +142,7 @@ export const dict = {
   "provider.connect.shobZen.line2":
     "З одним ключем API ви отримаєте доступ до таких моделей, як Claude, GPT, Gemini, GLM та інших.",
   "provider.connect.shobZen.visit.prefix": "Відвідайте ",
-  "provider.connect.shobZen.visit.link": "opencode.ai/zen",
+  "provider.connect.shobZen.visit.link": "shob.olova.dev/zen",
   "provider.connect.shobZen.visit.suffix": ", щоб отримати ключ API.",
   "provider.connect.oauth.code.visit.prefix": "Відвідайте ",
   "provider.connect.oauth.code.visit.link": "це посилання",

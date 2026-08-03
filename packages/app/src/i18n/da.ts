@@ -139,7 +139,7 @@ export const dict = {
   "provider.connect.shobZen.line2":
     "Med en enkelt API-nøgle får du adgang til modeller som Claude, GPT, Gemini, GLM og flere.",
   "provider.connect.shobZen.visit.prefix": "Besøg ",
-  "provider.connect.shobZen.visit.link": "opencode.ai/zen",
+  "provider.connect.shobZen.visit.link": "shob.olova.dev/zen",
   "provider.connect.shobZen.visit.suffix": " for at hente din API-nøgle.",
   "provider.connect.oauth.code.visit.prefix": "Besøg ",
   "provider.connect.oauth.code.visit.link": "dette link",

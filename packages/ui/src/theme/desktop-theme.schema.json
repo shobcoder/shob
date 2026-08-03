@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://opencode.ai/desktop-theme.json",
+  "$id": "https://shob.olova.dev/desktop-theme.json",
   "title": "Shob Desktop Theme",
   "description": "A theme definition for the Shob desktop application",
   "type": "object",

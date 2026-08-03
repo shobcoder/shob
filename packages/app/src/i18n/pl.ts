@@ -127,7 +127,7 @@ export const dict = {
   "provider.connect.shobZen.line2":
     "Z jednym kluczem API uzyskasz dostęp do modeli takich jak Claude, GPT, Gemini, GLM i więcej.",
   "provider.connect.shobZen.visit.prefix": "Odwiedź ",
-  "provider.connect.shobZen.visit.link": "opencode.ai/zen",
+  "provider.connect.shobZen.visit.link": "shob.olova.dev/zen",
   "provider.connect.shobZen.visit.suffix": ", aby odebrać swój klucz API.",
   "provider.connect.oauth.code.visit.prefix": "Odwiedź ",
   "provider.connect.oauth.code.visit.link": "ten link",

@@ -2,7 +2,7 @@
 
 ## Sources
 
-- PR #9817: https://github.com/anomalyco/shob/pull/9817
+- PR #9817: https://github.com/shobcoder/shob/pull/9817
 
 ## Do Not Translate (Locale Additions)
 

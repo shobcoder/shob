@@ -73,7 +73,7 @@ export const KiloPlugin = define({
           if (item.provider.api.url !== "https://api.kilo.ai/api/gateway") continue
           evt.provider.update(item.provider.id, (provider) => {
             provider.integrationID = Integration.ID.make("kilo")
-            provider.request.headers["HTTP-Referer"] = "https://opencode.ai/"
+            provider.request.headers["HTTP-Referer"] = "https://shob.olova.dev/"
             provider.request.headers["X-Title"] = "opencode"
             if (credential) provider.request.body.apiKey = credential
           })

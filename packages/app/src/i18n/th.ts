@@ -139,7 +139,7 @@ export const dict = {
   "provider.connect.shobZen.line2":
     "ด้วยคีย์ API เดียวคุณจะได้รับการเข้าถึงโมเดล เช่น Claude, GPT, Gemini, GLM และอื่น ๆ",
   "provider.connect.shobZen.visit.prefix": "เยี่ยมชม ",
-  "provider.connect.shobZen.visit.link": "opencode.ai/zen",
+  "provider.connect.shobZen.visit.link": "shob.olova.dev/zen",
   "provider.connect.shobZen.visit.suffix": " เพื่อรวบรวมคีย์ API ของคุณ",
   "provider.connect.oauth.code.visit.prefix": "เยี่ยมชม ",
   "provider.connect.oauth.code.visit.link": "ลิงก์นี้",

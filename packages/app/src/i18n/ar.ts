@@ -127,7 +127,7 @@ export const dict = {
   "provider.connect.shobZen.line2":
     "باستخدام مفتاح API واحد، ستحصل على إمكانية الوصول إلى نماذج مثل Claude و GPT و Gemini و GLM والمزيد.",
   "provider.connect.shobZen.visit.prefix": "قم بزيارة ",
-  "provider.connect.shobZen.visit.link": "opencode.ai/zen",
+  "provider.connect.shobZen.visit.link": "shob.olova.dev/zen",
   "provider.connect.shobZen.visit.suffix": " للحصول على مفتاح API الخاص بك.",
   "provider.connect.oauth.code.visit.prefix": "قم بزيارة ",
   "provider.connect.oauth.code.visit.link": "هذا الرابط",

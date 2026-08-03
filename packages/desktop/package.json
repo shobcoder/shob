@@ -4,10 +4,10 @@
   "version": "0.0.97",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://opencode.ai",
+  "homepage": "https://shob.olova.dev",
   "author": {
     "name": "Shob",
-    "email": "hello@opencode.ai"
+    "email": "hello@shob.olova.dev"
   },
   "scripts": {
     "typecheck": "tsgo -b",

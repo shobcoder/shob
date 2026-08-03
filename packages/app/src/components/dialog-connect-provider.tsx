@@ -451,7 +451,7 @@ export function DialogConnectProvider(props: { provider: string; directory?: Acc
               <div class="text-14-regular text-text-base">{language.t("provider.connect.shobZen.line2")}</div>
               <div class="text-14-regular text-text-base">
                 {language.t("provider.connect.shobZen.visit.prefix")}
-                <Link href="https://opencode.ai/zen" tabIndex={-1}>
+                <Link href="https://shob.olova.dev/zen" tabIndex={-1}>
                   {language.t("provider.connect.shobZen.visit.link")}
                 </Link>
                 {language.t("provider.connect.shobZen.visit.suffix")}

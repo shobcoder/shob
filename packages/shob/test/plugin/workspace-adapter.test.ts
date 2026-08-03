@@ -74,7 +74,7 @@ describe("plugin.workspace", () => {
           path.join(dir, "shob.json"),
           JSON.stringify(
             {
-              $schema: "https://opencode.ai/config.json",
+              $schema: "https://shob.olova.dev/config.json",
               plugin: [pathToFileURL(file).href],
             },
             null,

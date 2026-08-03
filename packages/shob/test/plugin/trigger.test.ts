@@ -41,7 +41,7 @@ function withProject<A, E, R>(source: string, self: Effect.Effect<A, E, R>) {
             path.join(test.directory, "shob.json"),
             JSON.stringify(
               {
-                $schema: "https://opencode.ai/config.json",
+                $schema: "https://shob.olova.dev/config.json",
                 plugin: [pathToFileURL(file).href],
               },
               null,

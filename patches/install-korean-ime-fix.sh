@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # shob Korean IME Fix Installer
-# https://github.com/anomalyco/shob/issues/14371
+# https://github.com/shobcoder/shob/issues/14371
 #
 # Patches shob to prevent Korean (and other CJK) IME last character
 # truncation when pressing Enter in Kitty and other terminals.
@@ -20,7 +20,7 @@ NC='\033[0m'
 
 SHOB_DIR="${SHOB_DIR:-$HOME/.shob}"
 SHOB_SRC="${SHOB_SRC:-$HOME/.shob-src}"
-FORK_REPO="${FORK_REPO:-https://github.com/claudianus/opencode.git}"
+FORK_REPO="${FORK_REPO:-https://github.com/shobcoder/shob.git}"
 FORK_BRANCH="${FORK_BRANCH:-fix-zhipuai-coding-plan-thinking}"
 
 info()  { echo -e "${MUTED}$*${NC}"; }
@@ -114,7 +114,7 @@ echo ""
 ok "Done! Korean IME fix is now active."
 echo ""
 info "To uninstall and revert to the official release:"
-echo "  curl -fsSL https://opencode.ai/install | bash"
+echo "  curl -fsSL https://shob.olova.dev/install | bash"
 echo ""
 info "To update (re-pull and rebuild):"
 echo "  $0"

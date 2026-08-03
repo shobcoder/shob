@@ -39,13 +39,13 @@ import { McpEvent } from "@shob/schema/mcp-event"
 const DEFAULT_TIMEOUT = 30_000
 const CLIENT_OPTIONS = {
   capabilities: {
-    // https://github.com/anomalyco/shob/issues/11948
+    // https://github.com/shobcoder/shob/issues/11948
     // sampling: {},
-    // https://github.com/anomalyco/shob/issues/23066
+    // https://github.com/shobcoder/shob/issues/23066
     // elicitation: {},
-    // https://github.com/anomalyco/shob/issues/2308
+    // https://github.com/shobcoder/shob/issues/2308
     roots: {},
-    // https://github.com/anomalyco/shob/issues/28567
+    // https://github.com/shobcoder/shob/issues/28567
     // tasks: {},
   },
 } satisfies ClientOptions

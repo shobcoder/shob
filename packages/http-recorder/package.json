@@ -7,11 +7,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/anomalyco/opencode.git",
+    "url": "git+https://github.com/shobcoder/shob.git",
     "directory": "packages/http-recorder"
   },
-  "homepage": "https://github.com/anomalyco/shob/tree/dev/packages/http-recorder",
-  "bugs": "https://github.com/anomalyco/shob/issues",
+  "homepage": "https://github.com/shobcoder/shob/tree/dev/packages/http-recorder",
+  "bugs": "https://github.com/shobcoder/shob/issues",
   "keywords": [
     "effect",
     "http",

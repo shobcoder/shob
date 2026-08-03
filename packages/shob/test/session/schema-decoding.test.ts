@@ -240,7 +240,7 @@ describe("SessionStatus.Info", () => {
         title: "Free limit reached",
         message: "Subscribe to Shob Go.",
         label: "subscribe",
-        link: "https://opencode.ai/go",
+        link: "https://shob.olova.dev/go",
       },
       next: 500,
     }

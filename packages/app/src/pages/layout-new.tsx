@@ -130,9 +130,9 @@ export default function NewLayout(props: ParentProps) {
     const hour = 60 * minute
     const day = 24 * hour
     if (diff < minute) return "now"
-    if (diff < hour) return `${Math.floor(diff / minute)}m`
-    if (diff < day) return `${Math.floor(diff / hour)}h`
-    return `${Math.floor(diff / day)}d`
+    if (diff < hour) return `${Math.floor(diff / minute)}m ago`
+    if (diff < day) return `${Math.floor(diff / hour)}h ago`
+    return `${Math.floor(diff / day)}d ago`
   }
   const currentProject = createMemo(() => {
     const current = route()
@@ -253,8 +253,8 @@ export default function NewLayout(props: ParentProps) {
       classList={{ "bg-v2-overlay-simple-overlay-hover text-v2-text-text-base font-medium": props.active, "text-v2-text-text-muted": !props.active }}
       onClick={props.onClick}
     >
-      <Show when={props.glyph} fallback={<IconV2 name={props.icon!} size="small" class="shrink-0 text-current opacity-80" />}>
-        <span class="shrink-0 text-current opacity-80 flex items-center justify-center size-4">{props.glyph}</span>
+      <Show when={props.glyph} fallback={<IconV2 name={props.icon!} size="small" class="shrink-0 text-emerald-400 opacity-90" />}>
+        <span class="shrink-0 text-emerald-400 opacity-90 flex items-center justify-center size-4">{props.glyph}</span>
       </Show>
       <span class="min-w-0 truncate">{props.label}</span>
     </button>
@@ -264,7 +264,7 @@ export default function NewLayout(props: ParentProps) {
       <DropdownMenu.Trigger
         as="button"
         type="button"
-        class="flex size-6 shrink-0 items-center justify-center rounded-md text-v2-text-text-faint opacity-0 transition-[opacity,background-color,color] hover:bg-v2-background-bg-layer-03 hover:text-v2-text-text-base focus-visible:bg-v2-background-bg-layer-03 focus-visible:text-v2-text-text-base focus-visible:opacity-100 focus-visible:outline-none group-hover/project:opacity-100 group-focus-within/project:opacity-100 data-[expanded]:opacity-100"
+        class="flex size-6 shrink-0 items-center justify-center rounded-md text-emerald-400/80 transition-[background-color,color] hover:bg-emerald-500/10 hover:text-emerald-300 focus-visible:bg-emerald-500/10 focus-visible:text-emerald-300 focus-visible:outline-none"
         aria-label={language.t("common.moreOptions")}
         title={language.t("common.moreOptions")}
       >
@@ -381,22 +381,29 @@ export default function NewLayout(props: ParentProps) {
         classList={{ "opacity-50 z-50": sortable.isActiveDraggable }}
       >
         <div 
-          class="group/project flex h-8 min-w-0 items-center gap-2 rounded-md px-2 transition-colors hover:bg-v2-overlay-simple-overlay-hover focus-within:bg-v2-overlay-simple-overlay-hover cursor-grab active:cursor-grabbing"
+          class="group/project flex h-8 min-w-0 items-center gap-1 rounded-md px-2 transition-colors hover:bg-v2-overlay-simple-overlay-hover focus-within:bg-v2-overlay-simple-overlay-hover cursor-grab active:cursor-grabbing"
         >
           <button
             type="button"
-            class="flex min-w-0 flex-1 items-center gap-3 text-left focus-visible:outline-none"
+            class="flex min-w-0 flex-1 items-center gap-2 text-left focus-visible:outline-none"
             onClick={() => setProjectCollapsed(expandedKey(), !isCollapsed())}
+            aria-expanded={!isCollapsed()}
           >
-            <span class="text-v2-text-text-muted shrink-0 flex items-center justify-center">
+            <span
+              class="flex size-4 shrink-0 items-center justify-center text-emerald-400/70 transition-transform duration-150"
+              classList={{ "-rotate-90": isCollapsed() }}
+            >
+              <CodexChevronDownGlyph />
+            </span>
+            <span class="text-emerald-400 shrink-0 flex items-center justify-center">
               <ProjectIcon project={props.project} class="!size-4" />
             </span>
-            <span class="min-w-0 truncate text-[14px] text-v2-text-text-base font-medium">{displayName(props.project)}</span>
+            <span class="min-w-0 truncate text-[14px] text-v2-text-text-base font-medium leading-none">{displayName(props.project)}</span>
           </button>
           <ProjectMenu project={props.project} />
           <button
             type="button"
-            class="flex size-6 shrink-0 items-center justify-center rounded-md text-v2-text-text-faint opacity-0 transition-[opacity,background-color,color] hover:bg-v2-background-bg-layer-03 hover:text-v2-text-text-base focus-visible:bg-v2-background-bg-layer-03 focus-visible:text-v2-text-text-base focus-visible:opacity-100 focus-visible:outline-none group-hover/project:opacity-100 group-focus-within/project:opacity-100"
+            class="flex size-6 shrink-0 items-center justify-center rounded-md text-emerald-400/80 transition-[background-color,color] hover:bg-emerald-500/10 hover:text-emerald-300 focus-visible:bg-emerald-500/10 focus-visible:text-emerald-300 focus-visible:outline-none"
             onClick={newSession}
             aria-label="New session"
             title="New session"
@@ -440,7 +447,7 @@ export default function NewLayout(props: ParentProps) {
                     <DropdownMenu.Trigger
                       as="button"
                       type="button"
-                      class="flex size-5 shrink-0 items-center justify-center rounded text-v2-text-text-faint transition-[background-color,color] hover:bg-v2-background-bg-layer-03 hover:text-v2-text-text-base focus-visible:bg-v2-background-bg-layer-03 focus-visible:text-v2-text-text-base focus-visible:outline-none"
+                      class="flex size-5 shrink-0 items-center justify-center rounded text-emerald-400/80 transition-[background-color,color] hover:bg-emerald-500/10 hover:text-emerald-300 focus-visible:bg-emerald-500/10 focus-visible:text-emerald-300 focus-visible:outline-none"
                       aria-label={language.t("common.moreOptions")}
                       title={language.t("common.moreOptions")}
                     >
@@ -461,10 +468,17 @@ export default function NewLayout(props: ParentProps) {
 
                 return (
                   <div
-                    class="group/session flex h-8 w-full items-center gap-2 rounded-md pl-9 pr-2 text-[14px] transition-colors hover:bg-v2-overlay-simple-overlay-hover focus-within:bg-v2-overlay-simple-overlay-hover"
+                    class="group/session mx-1 flex h-8 items-center gap-2 rounded-lg px-2 text-[14px] transition-colors hover:bg-v2-overlay-simple-overlay-hover focus-within:bg-v2-overlay-simple-overlay-hover"
                     classList={{
-                      "bg-v2-overlay-simple-overlay-hover text-v2-text-text-base font-medium": active(),
+                      "font-semibold": active(),
                       "text-v2-text-text-muted hover:text-v2-text-text-base": !active(),
+                    }}
+                    style={{
+                      color: active() ? "rgb(236 253 245)" : undefined,
+                      "background-color": active() ? "rgb(16 185 129 / 0.12)" : undefined,
+                      "box-shadow": active()
+                        ? "inset 3px 0 0 rgb(52 211 153 / 0.9), inset 0 0 0 1px rgb(52 211 153 / 0.35)"
+                        : undefined,
                     }}
                   >
                     <Show
@@ -524,7 +538,7 @@ export default function NewLayout(props: ParentProps) {
                                 <DotsSpinner class="font-mono text-[13px] leading-none text-v2-text-text-base" />
                               </span>
                             </Show>
-                            {/* Action buttons: hidden when NOT hovering, shown on hover */}
+                            {/* Session actions appear on hover. */}
                             <div class="hidden group-hover/session:flex items-center gap-1">
                               <SessionMenu />
                               <button
@@ -579,10 +593,13 @@ export default function NewLayout(props: ParentProps) {
             <Show when={sessions().length > CODEX_PROJECT_SESSION_LIMIT}>
               <button
                 type="button"
-                class="h-7 rounded-md pl-8 pr-2 text-left text-[13px] text-v2-text-text-faint hover:bg-v2-overlay-simple-overlay-hover hover:text-v2-text-text-muted focus-visible:outline-none"
+                class="mx-1 flex h-8 items-center rounded-lg px-2 text-left text-[13px] font-semibold text-v2-text-text-base transition-colors hover:bg-emerald-500/10 hover:text-emerald-300 focus-visible:bg-emerald-500/10 focus-visible:text-emerald-300 focus-visible:outline-none"
                 onClick={() => setExpanded(expandedKey(), !expanded[expandedKey()])}
               >
-                {expanded[expandedKey()] ? "Show less" : "Show more"}
+                <span class="flex-1">{expanded[expandedKey()] ? "Show less" : "Show more"}</span>
+                <span class="text-[12px] font-normal text-emerald-100/70">
+                  {expanded[expandedKey()] ? "" : `+${sessions().length - CODEX_PROJECT_SESSION_LIMIT}`}
+                </span>
               </button>
             </Show>
           </div>
@@ -630,14 +647,14 @@ export default function NewLayout(props: ParentProps) {
         <div class="mb-5 flex flex-col gap-2">
           <div class="flex items-center justify-between gap-2 px-2 mb-1 mt-2">
             <span
-              class="flex min-w-0 items-center gap-1 text-left text-[12px] font-semibold text-v2-text-text-faint"
+              class="flex min-w-0 items-center gap-1 text-left text-[12px] font-semibold text-emerald-400/80"
             >
               Projects
             </span>
             <div class="flex items-center gap-1">
               <button
                 type="button"
-                class="flex size-6 shrink-0 items-center justify-center rounded-md text-v2-text-text-faint transition-colors hover:bg-v2-overlay-simple-overlay-hover hover:text-v2-text-text-base focus-visible:bg-v2-overlay-simple-overlay-hover focus-visible:text-v2-text-text-base focus-visible:outline-none"
+                class="flex size-6 shrink-0 items-center justify-center rounded-md text-emerald-400/80 transition-colors hover:bg-emerald-500/10 hover:text-emerald-300 focus-visible:bg-emerald-500/10 focus-visible:text-emerald-300 focus-visible:outline-none"
                 onClick={chooseProject}
                 aria-label="Open project"
                 title="Open project"

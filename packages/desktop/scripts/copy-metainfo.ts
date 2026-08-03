@@ -27,13 +27,13 @@ const xml = `<?xml version="1.0" encoding="UTF-8"?>
 
   <content_rating type="oars-1.1" />
 
-  <url type="bugtracker">https://github.com/anomalyco/shob/issues</url>
+  <url type="bugtracker">https://github.com/shobcoder/shob/issues</url>
   <url type="homepage">https://shob.ai</url>
-  <url type="vcs-browser">https://github.com/anomalyco/shob</url>
+  <url type="vcs-browser">https://github.com/shobcoder/shob</url>
 
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/anomalyco/shob/dev/packages/web/src/assets/lander/screenshot.png</image>
+      <image>https://raw.githubusercontent.com/shobcoder/shob/dev/packages/web/src/assets/lander/screenshot.png</image>
     </screenshot>
   </screenshots>
 </component>

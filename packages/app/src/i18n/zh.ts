@@ -163,7 +163,7 @@ export const dict = {
   "provider.connect.shobZen.line1": "Shob Zen 为你提供一组精选的可靠优化模型，用于代码智能体。",
   "provider.connect.shobZen.line2": "只需一个 API 密钥，你就能使用 Claude、GPT、Gemini、GLM 等模型。",
   "provider.connect.shobZen.visit.prefix": "访问 ",
-  "provider.connect.shobZen.visit.link": "opencode.ai/zen",
+  "provider.connect.shobZen.visit.link": "shob.olova.dev/zen",
   "provider.connect.shobZen.visit.suffix": " 获取你的 API 密钥。",
   "provider.connect.oauth.code.visit.prefix": "访问 ",
   "provider.connect.oauth.code.visit.link": "此链接",

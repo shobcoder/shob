@@ -3,7 +3,7 @@ description: "find issue(s) on github"
 model: shob/claude-haiku-4-5
 ---
 
-Search through existing issues in anomalyco/shob using the gh cli to find issues matching this query:
+Search through existing issues in shobcoder/shob using the gh cli to find issues matching this query:
 
 $ARGUMENTS
 
