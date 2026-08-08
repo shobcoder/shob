@@ -2,6 +2,7 @@ import { AppIcon } from "@shob/ui/app-icon"
 import { Button } from "@shob/ui/button"
 import { DropdownMenu } from "@shob/ui/dropdown-menu"
 import { Icon } from "@shob/ui/icon"
+import { Icon as IconV2 } from "@shob/ui/v2/icon"
 import { IconButton } from "@shob/ui/icon-button"
 import { Keybind } from "@shob/ui/keybind"
 import { Spinner } from "@shob/ui/spinner"
@@ -497,13 +498,70 @@ type SessionHeaderV2ActionsState = {
 }
 
 function SessionHeaderV2Actions(props: { state: SessionHeaderV2ActionsState }) {
+  const { view } = useSessionLayout()
+  const layout = useLayout()
+  const command = useCommand()
+  const language = useLanguage()
+
+  const reviewOpened = () => view().reviewPanel.opened()
+  const fileTreeOpened = () => layout.fileTree.opened()
+
   return (
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-1">
       <Show when={props.state.statusVisible}>
         <Tooltip placement="bottom" value={props.state.statusLabel}>
           <StatusPopoverV2 />
         </Tooltip>
       </Show>
+      <TooltipKeybind
+        title={language.t("command.fileTree.toggle")}
+        keybind={command.keybind("fileTree.toggle")}
+      >
+        <Button
+          variant="ghost"
+          class="titlebar-icon w-8 h-6 p-0 box-border"
+          onClick={() => layout.fileTree.toggle()}
+          aria-label={language.t("command.fileTree.toggle")}
+          aria-expanded={fileTreeOpened()}
+        >
+          <Icon
+            size="small"
+            name={fileTreeOpened() ? "file-tree-active" : "file-tree"}
+            classList={{
+              "text-icon-strong": fileTreeOpened(),
+              "text-icon-weak": !fileTreeOpened(),
+            }}
+          />
+        </Button>
+      </TooltipKeybind>
+      <Tooltip
+        placement="bottom"
+        value={language.t("session.panel.reviewAndFiles") || "Toggle Right Panel"}
+      >
+        <Button
+          variant="ghost"
+          class="titlebar-icon w-8 h-6 p-0 box-border"
+          onClick={() => {
+            const review = view().reviewPanel
+            if (review.opened()) {
+              review.close()
+            } else {
+              review.open()
+            }
+          }}
+          aria-label={language.t("session.panel.reviewAndFiles") || "Toggle Right Panel"}
+          aria-expanded={reviewOpened()}
+        >
+          <IconV2
+            name="sidebar-right"
+            class="size-4"
+            classList={{
+              "text-v2-text-text-strong": reviewOpened(),
+              "text-v2-text-text-weak": !reviewOpened(),
+            }}
+          />
+        </Button>
+      </Tooltip>
     </div>
   )
 }

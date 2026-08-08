@@ -493,6 +493,19 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
       slash: "terminal",
       onSelect: () => view().terminal.toggle(),
     }),
+    viewCommand({
+      id: "reviewPanel.toggle",
+      title: language.t("session.panel.reviewAndFiles") || "Toggle Right Panel",
+      keybind: "mod+shift+r",
+      onSelect: () => {
+        const review = view().reviewPanel
+        if (review.opened()) {
+          review.close()
+        } else {
+          review.open()
+        }
+      },
+    }),
     ...(shown()
       ? [
           viewCommand({

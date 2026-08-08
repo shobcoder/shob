@@ -430,9 +430,7 @@ export default function Page() {
   const [browserPanelVisible, setBrowserPanelVisible] = createSignal(false)
   const [browserStackOpen, setBrowserStackOpen] = createSignal(false)
   const [browserStackWidth, setBrowserStackWidth] = createSignal(390)
-  // Review renders full repository diffs and retains their virtualized previews.
-  // It is intentionally disabled in the desktop build to keep the session view light.
-  const desktopReviewOpen = () => false
+  const desktopReviewOpen = createMemo(() => isDesktop() && view().reviewPanel.opened())
   const desktopFileTreeOpen = createMemo(
     () =>
       isDesktop() &&
@@ -2235,7 +2233,7 @@ export default function Page() {
           empty={reviewEmptyText}
           hasReview={hasReview}
           reviewCount={reviewCount}
-          reviewPanel={() => <></>}
+          reviewPanel={reviewPanel}
           activeDiff={tree.activeDiff}
           focusReviewDiff={focusReviewDiff}
           reviewSnap={ui.reviewSnap}

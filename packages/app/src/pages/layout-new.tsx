@@ -53,29 +53,16 @@ const CodexDotsGlyph = () => (
   </svg>
 )
 
-const CodexComposeGlyph = () => (
-  <svg viewBox="0 0 24 24" class="size-4 shrink-0" fill="none" aria-hidden="true">
-    <path
-      d="M10 4C8.136 4 7.204 4 6.469 4.304C5.489 4.71 4.71 5.489 4.304 6.469C4 7.204 4 8.136 4 10V13.6C4 15.84 4 16.96 4.436 17.816C4.819 18.569 5.431 19.181 6.184 19.564C7.04 20 8.16 20 10.4 20H14C15.864 20 16.796 20 17.531 19.696C18.511 19.29 19.29 18.511 19.696 17.531C20 16.796 20 15.864 20 14"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="square"
-      stroke-linejoin="miter"
-    />
-    <path
-      d="M19.5 7.5L12.44 14.56C12.159 14.841 11.777 15 11.379 15H9V12.621C9 12.223 9.159 11.841 9.44 11.56L16.5 4.5C17.328 3.672 18.672 3.672 19.5 4.5C20.328 5.328 20.328 6.672 19.5 7.5Z"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="square"
-      stroke-linejoin="miter"
-    />
+const SynaraComposePencilGlyph = () => (
+  <svg viewBox="0 0 24 24" class="size-4 shrink-0" fill="currentColor" aria-hidden="true">
+    <path d="M10.938 4.5H9.9c-1.136 0-1.929 0-2.546.05-.605.05-.953.143-1.216.277-.564.288-1.023.747-1.31 1.31-.135.264-.228.612-.277 1.218C4.5 7.97 4.5 8.765 4.5 9.9v4.2c0 1.136 0 1.929.05 2.546.05.605.143.953.277 1.216.288.565.747 1.023 1.31 1.31.264.135.612.228 1.217.277.617.05 1.41.051 2.546.051h4.2c1.136 0 1.929 0 2.545-.05.606-.05.954-.143 1.217-.277.565-.288 1.023-.746 1.31-1.31.135-.264.228-.612.277-1.217.05-.617.051-1.41.051-2.546v-1.037h2V14.1c0 1.103.001 1.992-.058 2.709-.06.728-.185 1.368-.487 1.96-.48.941-1.245 1.707-2.185 2.186-.593.302-1.233.428-1.961.488-.718.058-1.606.057-2.71.057H9.9c-1.103 0-1.991.001-2.709-.058-.728-.06-1.368-.185-1.96-.487-.941-.48-1.707-1.245-2.186-2.185-.302-.593-.428-1.233-.487-1.961-.059-.718-.058-1.606-.058-2.71V9.9c0-1.103-.001-1.991.058-2.709.06-.728.185-1.368.487-1.96.48-.941 1.245-1.707 2.185-2.186.593-.302 1.233-.428 1.961-.487.718-.059 1.606-.058 2.71-.058h1.037v2z"/>
+    <path clip-rule="evenodd" fill-rule="evenodd" d="M16.293 3.293c1.219-1.219 3.195-1.219 4.414 0 1.219 1.219 1.219 3.195 0 4.414l-5.491 5.491c-.533.533-.896.896-1.31 1.179-.356.24-.742.433-1.148.574-.478.167-.983.234-1.729.341l-2.708.387.387-2.708c.107-.746.174-1.25.34-1.729.142-.405.335-.792.575-1.148.283-.42.646-.777 1.179-1.31l5.491-5.491zm3 1.414c-.438-.438-1.148-.438-1.586 0l-5.491 5.491c-.587.587-.784.79-.934 1.013-.144.214-.26.445-.345.688-.088.254-.131.533-.248 1.354l-.01.067.068-.008c.82-.118 1.1-.161 1.354-.25.243-.084.474-.2.688-.344.223-.15.426-.347 1.013-.934l5.491-5.491c.438-.438.438-1.148 0-1.586z"/>
   </svg>
 )
 
-const CodexProjectAddGlyph = () => (
-  <svg viewBox="0 0 24 24" class="size-5 shrink-0" fill="currentColor" aria-hidden="true">
-    <path d="M6 12c0 1.492.065 2.787.16 3.883.094 1.078.149 1.601.278 2.022.097.312.25.612.699 1.06.46.458.755.606 1.043.696.394.123.879.173 1.916.26a23 23 0 0 0 2.905.06 1 1 0 0 1 1 1c0 .552-.456 1-1.008 1a25 25 0 0 1-3.063-.068c-1.94-.161-2.911-.242-4.205-1.532-1.294-1.289-1.381-2.301-1.557-4.325A47 47 0 0 1 4 12c0-1.549.068-2.901.168-4.054.175-2.025.263-3.038 1.557-4.327s2.265-1.37 4.207-1.532a25 25 0 0 1 4.137 0c1.941.162 2.912.242 4.206 1.532s1.382 2.302 1.557 4.327a46 46 0 0 1 .165 3.468L20 11.5a1 1 0 0 1-1 1 1 1 0 0 1-1.002-.996 44 44 0 0 0-.158-3.385c-.094-1.079-.149-1.602-.278-2.023-.097-.313-.25-.613-.699-1.06-.46-.458-.755-.607-1.043-.697-.394-.122-.88-.173-1.917-.259a23 23 0 0 0-3.805 0c-1.038.086-1.524.137-1.918.26-.288.09-.584.238-1.043.696-.449.447-.602.747-.699 1.06-.13.42-.184.944-.278 2.023A45 45 0 0 0 6 12" />
-    <path d="M18 22a1 1 0 0 1-1-1v-2h-2a1 1 0 1 1 0-2h2v-2a1 1 0 1 1 2 0v2h2a1 1 0 1 1 0 2h-2v2a1 1 0 0 1-1 1M14 8a1 1 0 0 1-1 1H9a1 1 0 1 1 0-2h4a1 1 0 0 1 1 1m-3 5a1 1 0 1 0 0-2H9a1 1 0 1 0 0 2z" />
+const SynaraPlusMediumGlyph = () => (
+  <svg viewBox="0 0 24 24" class="size-4 shrink-0" fill="none" aria-hidden="true">
+    <path d="M12 5.25V12M12 12V18.75M12 12H5.25M12 12H18.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
   </svg>
 )
 
@@ -408,7 +395,7 @@ export default function NewLayout(props: ParentProps) {
             aria-label="New session"
             title="New session"
           >
-            <CodexComposeGlyph />
+            <SynaraComposePencilGlyph />
           </button>
         </div>
         <Show when={!isCollapsed()}>
@@ -639,7 +626,7 @@ export default function NewLayout(props: ParentProps) {
     >
       <div class="flex-1 min-h-0 overflow-y-auto px-2 py-3 no-scrollbar">
         <div class="mb-5 flex flex-col gap-0.5">
-          <SidebarAction glyph={<CodexComposeGlyph />} label="New chat" onClick={newChat} />
+          <SidebarAction glyph={<SynaraComposePencilGlyph />} label="New chat" onClick={newChat} />
           <SidebarAction icon="grid-plus" label={language.t("home.title")} onClick={openHome} />
           <SidebarAction icon="magnifying-glass" label="Search" onClick={() => command.show()} />
           <SidebarAction icon="settings-gear" label={language.t("sidebar.settings")} onClick={openSettings} />
@@ -659,7 +646,7 @@ export default function NewLayout(props: ParentProps) {
                 aria-label="Open project"
                 title="Open project"
               >
-                <CodexProjectAddGlyph />
+                <SynaraPlusMediumGlyph />
               </button>
             </div>
           </div>
