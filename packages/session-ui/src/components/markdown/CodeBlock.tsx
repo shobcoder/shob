@@ -58,8 +58,8 @@ export function CodeBlock(props: CodeBlockProps) {
     }, 1000)
   }
 
-  const copyText = () => props.copyLabel ?? "复制"
-  const copiedText = () => props.copiedLabel ?? "复制成功"
+  const copyText = () => props.copyLabel ?? "Copy"
+  const copiedText = () => props.copiedLabel ?? "Copied"
 
   return (
     <div class={clsx("md-code-block", props.class)}>
