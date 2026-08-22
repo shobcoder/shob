@@ -1,7 +1,6 @@
 /*
- * Markdown formatting system — 100% parity with DeepSeek Harness:
- * - Visual baseline: deepsuite @deepseek/md markdown.css + code-block.css
- * - Fine-grained typography, responsive headings, lists, tables, code blocks, KaTeX, images, footnotes
+ * Markdown formatting system — 100% parity with DeepSeek Harness
+ * Optimized for clean desktop rendering, dark/light themes, and crisp layout
  */
 
 .markdown,
@@ -9,43 +8,67 @@
   min-width: 0;
   max-width: 100%;
   overflow-wrap: anywhere;
-  font: var(--dsw-font-markdown-base);
+  font-family: var(--dsw-font-family);
+  font-size: 15px;
+  line-height: 26px;
   color: var(--dsw-alias-label-primary, inherit);
 }
 
 .markdown strong,
 [data-component="markdown"] strong {
   font-weight: 600;
+  color: var(--dsw-alias-label-primary, inherit);
+}
+
+.markdown em,
+[data-component="markdown"] em {
+  font-style: italic;
+}
+
+.markdown del,
+[data-component="markdown"] del {
+  text-decoration: line-through;
+  opacity: 0.7;
 }
 
 .markdown h1,
 [data-component="markdown"] h1 {
-  font: var(--dsw-font-markdown-h1);
-  margin: 32px 0 16px;
+  font-size: 22px;
+  line-height: 30px;
+  font-weight: 700;
+  margin: 24px 0 12px;
+  color: var(--dsw-alias-label-primary, inherit);
 }
 
 .markdown h2,
 [data-component="markdown"] h2 {
-  font: var(--dsw-font-markdown-h2);
-  margin: 32px 0 16px;
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 700;
+  margin: 20px 0 10px;
+  color: var(--dsw-alias-label-primary, inherit);
 }
 
 .markdown h3,
 [data-component="markdown"] h3 {
-  font: var(--dsw-font-markdown-h3);
-  margin: 32px 0 16px;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  margin: 16px 0 8px;
+  color: var(--dsw-alias-label-primary, inherit);
 }
 
 .markdown h4,
-[data-component="markdown"] h4 {
-  font: var(--dsw-font-markdown-h4);
-  margin: 16px 0;
-}
-
-.markdown :where(h5, h6),
-[data-component="markdown"] :where(h5, h6) {
-  font: var(--dsw-font-markdown-base-strong);
-  margin: 16px 0;
+.markdown h5,
+.markdown h6,
+[data-component="markdown"] h4,
+[data-component="markdown"] h5,
+[data-component="markdown"] h6 {
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 600;
+  margin: 14px 0 6px;
+  color: var(--dsw-alias-label-primary, inherit);
 }
 
 .markdown :where(h1, h2, h3, h4, h5, h6) strong,
@@ -55,32 +78,19 @@
 
 .markdown p,
 [data-component="markdown"] p {
-  margin: 16px 0;
+  margin: 12px 0;
 }
 
-/* Tighten h4–h6 against a following list (design: 8px gap). */
 .markdown :where(h4, h5, h6) + :where(ul, ol),
 [data-component="markdown"] :where(h4, h5, h6) + :where(ul, ol) {
-  margin-top: 8px;
-}
-
-.markdown :where(h4, h5, h6):has(+ :where(ul, ol)),
-[data-component="markdown"] :where(h4, h5, h6):has(+ :where(ul, ol)) {
-  margin-bottom: 8px;
+  margin-top: 6px;
 }
 
 .markdown a,
 [data-component="markdown"] a {
-  color: var(--dsw-alias-state-business-primary);
-  transition: box-shadow 0.15s ease-in-out;
-  position: relative;
+  color: var(--dsw-alias-state-business-primary, #4d93f8);
   text-decoration: none;
-  border-left: 3px solid rgb(255 255 255 / 0);
-  border-right: 3px solid rgb(255 255 255 / 0);
-  border-top: 2px solid rgb(255 255 255 / 0);
-  border-bottom: 2px solid rgb(255 255 255 / 0);
-  margin-left: -3px;
-  margin-right: -3px;
+  transition: opacity 0.15s ease, text-decoration 0.15s ease;
 }
 
 .markdown a:hover,
@@ -88,98 +98,84 @@
 [data-component="markdown"] a:hover,
 [data-component="markdown"] a:focus {
   outline: none;
-  text-decoration: underline var(--dsw-alias-state-business-primary);
-}
-
-.markdown a:focus-visible,
-[data-component="markdown"] a:focus-visible {
-  box-shadow: 0 0 0 2px var(--dsw-alias-state-business-primary);
+  text-decoration: underline;
 }
 
 .markdown :where(ul, ol),
 [data-component="markdown"] :where(ul, ol) {
-  margin: 16px 0;
-  padding-left: 18px;
+  margin: 12px 0;
+  padding-left: 22px;
 }
 
-.markdown li:not(:first-child),
-[data-component="markdown"] li:not(:first-child) {
-  margin-top: 6px;
+.markdown ul,
+[data-component="markdown"] ul {
+  list-style-type: disc;
 }
 
-.markdown li > :where(ul, ol),
-[data-component="markdown"] li > :where(ul, ol) {
+.markdown ol,
+[data-component="markdown"] ol {
+  list-style-type: decimal;
+}
+
+.markdown li,
+[data-component="markdown"] li {
   margin-top: 4px;
 }
 
 .markdown li::marker,
 [data-component="markdown"] li::marker {
-  line-height: 28px;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--dsw-alias-label-secondary, rgba(255, 255, 255, 0.6));
 }
 
-/* Nested ol under ul/ol: markers inside (models sometimes emit this shape). */
-.markdown :where(ul, ol) ol,
-[data-component="markdown"] :where(ul, ol) ol {
-  list-style-position: inside;
-  padding-left: 0;
-}
-
-.markdown :where(ul, ol) ol li p,
-[data-component="markdown"] :where(ul, ol) ol li p {
-  display: inline;
+.markdown li > :where(ul, ol),
+[data-component="markdown"] li > :where(ul, ol) {
+  margin-top: 4px;
+  margin-bottom: 4px;
 }
 
 .markdown li > p,
 [data-component="markdown"] li > p {
-  margin: 8px 0;
-}
-
-.markdown li > *:first-child,
-[data-component="markdown"] li > *:first-child {
-  margin-top: 0;
-}
-
-.markdown li > *:last-child:not(.md-code-block),
-[data-component="markdown"] li > *:last-child:not(.md-code-block) {
-  margin-bottom: 0;
+  margin: 4px 0;
 }
 
 .markdown hr,
 [data-component="markdown"] hr {
   display: block;
   border: none;
-  height: 1px;
-  margin: 32px 0;
-  background: var(--dsw-alias-border-l2);
+  border-top: 1px solid var(--dsw-alias-border-l2, rgba(255, 255, 255, 0.12));
+  height: 0;
+  margin: 20px 0;
 }
 
 .markdown blockquote,
 [data-component="markdown"] blockquote {
-  border-left: 2px solid var(--dsw-alias-label-caption);
-  margin: 16px 0 0;
+  border-left: 3px solid var(--dsw-alias-border-l3, rgba(255, 255, 255, 0.25));
+  margin: 14px 0;
   padding-left: 14px;
+  color: var(--dsw-alias-label-secondary, inherit);
 }
 
 .markdown pre,
 [data-component="markdown"] pre {
-  margin: 16px 0;
+  margin: 14px 0;
   font-family: var(--ds-font-family-code);
   overflow: auto;
 }
 
+/* Inline Code */
 .markdown :not(pre) > code,
 [data-component="markdown"] :not(pre) > code {
-  display: inline-flex;
-  align-items: center;
+  display: inline-block;
+  vertical-align: baseline;
   box-sizing: border-box;
-  font: var(--dsw-font-markdown-code);
   font-family: var(--ds-font-family-code);
   font-size: 0.875em !important;
+  line-height: 1.4;
   color: inherit;
-  background-color: var(--dsw-alias-markdown-inline-code, color-mix(in srgb, currentColor 10%, transparent));
-  border-radius: 6px;
-  padding: 0 5px;
+  background-color: var(--dsw-alias-markdown-inline-code, rgba(255, 255, 255, 0.1));
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin: 0 1px;
 }
 
 .markdown :where(h1, h2, h3, h4, h5, h6) code,
@@ -193,77 +189,72 @@
   max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
+  margin: 14px 0;
 }
 
 .markdown input[type="checkbox"],
 [data-component="markdown"] input[type="checkbox"] {
   margin: 0 8px 0 0;
-  accent-color: var(--dsw-alias-label-secondary);
+  vertical-align: middle;
+  accent-color: var(--dsw-alias-state-business-primary, #4d93f8);
 }
 
-/* Tables */
+/* Tables — clean, beautiful GFM table layout with visible borders and header */
 .md-table-scroll {
+  margin: 14px 0;
   max-width: 100%;
   overflow-x: auto;
-  overscroll-behavior-x: contain;
-}
-
-.md-table-scroll.md-table-wide {
-  overflow-x: hidden;
-  padding-bottom: var(--dsh-scrollbar-width, 8px);
-}
-
-.md-table-scroll.md-table-wide:hover,
-.md-table-scroll.md-table-wide:focus-visible {
-  overflow-x: auto;
-  padding-bottom: 0;
-}
-
-.md-table-scroll:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--dsw-alias-state-business-primary);
+  border-radius: 6px;
+  border: 1px solid var(--dsw-alias-border-l2, rgba(255, 255, 255, 0.12));
 }
 
 .md-table-scroll table {
   border-collapse: collapse;
-  width: max-content;
-  max-width: max-content;
-}
-
-.md-table-fill table {
   width: 100%;
-  max-width: none;
+  min-width: 100%;
+  font-size: 14px;
+  line-height: 22px;
+  text-align: left;
 }
 
 .md-table-scroll th {
-  text-align: start;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--dsw-alias-border-l3);
-  border-top: none;
-  font: var(--dsw-font-markdown-table-head);
-  max-width: min(30vw, 320px);
-  min-width: 100px;
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 20px;
+  padding: 8px 12px;
+  text-align: inherit;
+  color: var(--dsw-alias-label-primary, inherit);
+  background: var(--dsw-alias-markdown-code-block-banner, rgba(255, 255, 255, 0.05));
+  border-bottom: 1px solid var(--dsw-alias-border-l2, rgba(255, 255, 255, 0.12));
+  border-right: 1px solid var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.06));
+}
+
+.md-table-scroll th:last-child {
+  border-right: none;
 }
 
 .md-table-scroll td {
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--dsw-alias-border-l2);
-  font: var(--dsw-font-markdown-table);
-  max-width: min(30vw, 320px);
-  min-width: 100px;
+  padding: 8px 12px;
+  text-align: inherit;
+  color: var(--dsw-alias-label-primary, inherit);
+  border-bottom: 1px solid var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.06));
+  border-right: 1px solid var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.06));
 }
 
-.md-table-scroll th:first-child,
-.md-table-scroll td:first-child {
-  padding-left: 0;
+.md-table-scroll tr:last-child td {
+  border-bottom: none;
 }
 
 .md-table-scroll td:last-child {
-  padding-right: 0;
+  border-right: none;
+}
+
+.md-table-scroll tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .md-table-scroll table code {
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .markdown > *:first-child,
@@ -281,7 +272,7 @@
 }
 
 .md-image-alt {
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--dsw-alias-label-tertiary, rgba(255, 255, 255, 0.5));
   font-style: italic;
 }
 
@@ -290,7 +281,7 @@
   width: auto;
   max-width: 100%;
   height: auto;
-  margin: 0;
+  margin: 12px 0;
   border-radius: 8px;
   background: var(--dsw-alias-markdown-code-block);
   object-fit: contain;
@@ -302,7 +293,7 @@
   border: none;
   background: none;
   font: inherit;
-  color: var(--dsw-alias-state-business-primary);
+  color: var(--dsw-alias-state-business-primary, #4d93f8);
   text-decoration: none;
   cursor: pointer;
 }
@@ -310,52 +301,45 @@
 .md-file-mention:hover,
 .md-file-mention:focus {
   outline: none;
-  text-decoration: underline var(--dsw-alias-state-business-primary);
-  text-underline-offset: 3px;
+  text-decoration: underline;
 }
 
-/* CodeBlock */
+/* CodeBlock — clean sticky banner with language & copy button */
 .md-code-block {
-  --dsl-code-block-banner-background-color: var(--dsw-alias-markdown-code-block-banner);
-  --dsl-code-block-border-radius: 12px;
-  --dsl-code-block-banner-font: var(--dsw-font-xs-13);
-  --dsl-code-block-content-font: var(--dsw-font-markdown-code-block);
-
   position: relative;
-  margin: 16px 0;
+  margin: 14px 0;
   color: var(--dsw-alias-label-primary, inherit);
-  background: var(--dsw-alias-markdown-code-block);
-  border-radius: var(--dsl-code-block-border-radius);
-  border: 1px solid var(--dsw-alias-border-l1, transparent);
+  background: var(--dsw-alias-markdown-code-block, #18181b);
+  border-radius: 8px;
+  border: 1px solid var(--dsw-alias-border-l2, rgba(255, 255, 255, 0.1));
+  overflow: hidden;
 }
 
 .md-code-block:not(:last-child) {
-  margin-bottom: 11px;
+  margin-bottom: 12px;
 }
 
 .md-code-banner-wrap {
   position: sticky;
   top: 0;
   z-index: 6;
-  background-color: var(--dsw-alias-markdown-code-block);
-  border-top-left-radius: var(--dsl-code-block-border-radius);
-  border-top-right-radius: var(--dsl-code-block-border-radius);
+  background-color: var(--dsw-alias-markdown-code-block, #18181b);
 }
 
 .md-code-banner {
-  background: var(--dsl-code-block-banner-background-color);
-  padding: 9px 14px;
+  background: var(--dsw-alias-markdown-code-block-banner, rgba(255, 255, 255, 0.05));
+  padding: 6px 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  font: var(--dsl-code-block-banner-font);
-  border-top-left-radius: var(--dsl-code-block-border-radius);
-  border-top-right-radius: var(--dsl-code-block-border-radius);
+  font-size: 12px;
+  line-height: 18px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.06));
 }
 
 .md-code-infostring {
-  color: var(--dsw-alias-label-secondary, currentColor);
+  color: var(--dsw-alias-label-secondary, rgba(255, 255, 255, 0.7));
   font-family: var(--ds-font-family-code);
   font-size: 12px;
   line-height: 18px;
@@ -372,35 +356,38 @@
 }
 
 .md-code-copy-button {
-  background-color: rgb(255 255 255 / 0);
+  background-color: transparent;
   border: none;
-  padding: 0;
+  padding: 2px 6px;
   margin: 0;
-  color: inherit;
+  color: var(--dsw-alias-label-secondary, inherit);
   cursor: pointer;
-  font: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  border-radius: 4px;
   opacity: 0.8;
-  transition: opacity 0.15s ease;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
 }
 
 .md-code-copy-button:hover {
   opacity: 1;
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
 .md-code-block :where(pre) {
-  font: var(--dsl-code-block-content-font);
-  padding: 16px;
+  font-family: var(--ds-font-family-code);
+  font-size: 13px;
+  line-height: 20px;
+  padding: 12px 14px;
   margin: 0 !important;
   overflow-x: auto;
   white-space: pre-wrap;
   word-break: break-all;
-  background: var(--dsw-alias-markdown-code-block);
-  border-bottom-left-radius: var(--dsl-code-block-border-radius);
-  border-bottom-right-radius: var(--dsl-code-block-border-radius);
+  background: var(--dsw-alias-markdown-code-block, #18181b);
 }
 
 .md-code-block :where(pre.shiki) {
-  background: var(--dsw-alias-markdown-code-block) !important;
+  background: var(--dsw-alias-markdown-code-block, #18181b) !important;
 }
 
 .md-code-block :where(pre) code {
@@ -416,18 +403,18 @@
 /* Footnotes */
 .markdown .footnotes,
 [data-component="markdown"] .footnotes {
-  margin-top: 32px;
-  padding-top: 16px;
-  border-top: 1px solid var(--dsw-alias-border-l2);
+  margin-top: 24px;
+  padding-top: 14px;
+  border-top: 1px solid var(--dsw-alias-border-l2, rgba(255, 255, 255, 0.1));
   font-size: 13px;
   line-height: 20px;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--dsw-alias-label-secondary, inherit);
 }
 
 .markdown .footnotes ol,
 [data-component="markdown"] .footnotes ol {
   padding-left: 18px;
-  margin: 8px 0;
+  margin: 6px 0;
 }
 
 .markdown .footnotes li,
