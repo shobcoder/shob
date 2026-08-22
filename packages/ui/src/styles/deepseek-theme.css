@@ -1,13 +1,12 @@
 /*
  * DeepSeek Design System Theme & Root Tokens
  * Exact port of DeepSeek Harness base.css, design-platform.css, gradient-shadow-text.css, and shiki.css
- * Theme-aware: dynamically binds to Shob's light and dark themes
  */
 
 :root,
 html,
 body {
-  /* Font Stacks */
+  /* Font Stacks (exact DeepSeek font stack) */
   --dsw-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
     'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --ds-font-family-code: 'SF Mono', 'JetBrains Mono', 'Fira Code', Consolas,
@@ -18,7 +17,7 @@ body {
   --ds-transition-duration-fast: 0.1s;
   --ds-transition-duration-slow: 0.3s;
 
-  /* Font Scale Definitions */
+  /* Font Scale Definitions (exact DeepSeek scale) */
   --dsw-font-markdown-h1: 700 24px/34px var(--dsw-font-family);
   --dsw-font-markdown-h1-font-family: var(--dsw-font-family);
   --dsw-font-markdown-h1-font-weight: 700;
@@ -124,47 +123,36 @@ body {
   --dsw-font-markdown-code-block-small-font-size: 12px;
   --dsw-font-markdown-code-block-small-font-style: normal;
 
-  --dsw-font-xl-24: 600 24px/32px var(--dsw-font-family);
-  --dsw-font-l-20: 500 20px/28px var(--dsw-font-family);
-  --dsw-font-m-18: 500 16px/28px var(--dsw-font-family);
-  --dsw-font-base-16: 16px/24px var(--dsw-font-family);
-  --dsw-font-base-strong-16: 500 16px/24px var(--dsw-font-family);
-  --dsw-font-s-14: 14px/22px var(--dsw-font-family);
-  --dsw-font-s-strong-14: 500 14px/22px var(--dsw-font-family);
   --dsw-font-xs-13: 13px/20px var(--dsw-font-family);
-  --dsw-font-xs-strong-13: 500 13px/20px var(--dsw-font-family);
-  --dsw-font-xxs-12: 12px/18px var(--dsw-font-family);
-  --dsw-font-xxs-strong-12: 500 12px/18px var(--dsw-font-family);
-  --dsw-font-xxxs-11: 11px/14px var(--dsw-font-family);
-  --dsw-font-xxxs-strong-11: 500 11px/14px var(--dsw-font-family);
 
-  /* Theme-aware Aliases: adapts to whatever theme is active (light or dark) */
-  --dsw-alias-bg-base: var(--background-base, var(--v2-background-bg-base, #111113));
-  --dsw-alias-bg-layer-1: var(--background-layer-1, var(--v2-background-bg-layer-01, #18191d));
-  --dsw-alias-bg-layer-2: var(--background-layer-2, var(--v2-background-bg-layer-02, #212226));
-  --dsw-alias-bg-layer-3: var(--background-layer-3, var(--v2-background-bg-layer-03, #2a2b30));
-  --dsw-alias-bg-overlay: var(--surface-raised-base, var(--v2-background-bg-contrast, rgba(255, 255, 255, 0.08)));
+  /* DeepSeek Dark Mode Default Theme Aliases */
+  --dsw-alias-bg-base: rgb(21, 21, 23);
+  --dsw-alias-bg-layer-1: rgb(27, 27, 28);
+  --dsw-alias-bg-layer-2: rgb(35, 35, 36);
+  --dsw-alias-bg-layer-3: rgb(44, 44, 46);
+  --dsw-alias-bg-overlay: rgb(97, 102, 107);
 
-  --dsw-alias-border-l1: var(--border-weak-base, var(--v2-border-border-muted, rgba(255, 255, 255, 0.06)));
-  --dsw-alias-border-l2: var(--border-base, var(--v2-border-border-base, rgba(255, 255, 255, 0.12)));
-  --dsw-alias-border-l3: var(--border-strong-base, var(--v2-border-border-strong, rgba(255, 255, 255, 0.18)));
-  --dsw-alias-border-l4: var(--border-strong-base, var(--v2-border-border-strong, rgba(255, 255, 255, 0.24)));
+  --dsw-alias-border-l1: rgba(255, 255, 255, 0.06);
+  --dsw-alias-border-l2: rgba(255, 255, 255, 0.12);
+  --dsw-alias-border-l3: rgba(255, 255, 255, 0.16);
+  --dsw-alias-border-l4: rgba(255, 255, 255, 0.2);
 
-  --dsw-alias-label-primary: var(--text-strong, var(--v2-text-text-base, inherit));
-  --dsw-alias-label-secondary: var(--text-base, var(--v2-text-text-muted, inherit));
-  --dsw-alias-label-tertiary: var(--text-weak, var(--v2-text-text-faint, inherit));
-  --dsw-alias-label-caption: var(--text-faint, var(--v2-text-text-faint, inherit));
+  --dsw-alias-brand-primary: rgb(249, 250, 251);
+  --dsw-alias-brand-text: rgb(249, 250, 251);
+  --dsw-alias-label-primary: rgb(249, 250, 251);
+  --dsw-alias-label-secondary: rgb(207, 211, 214);
+  --dsw-alias-label-tertiary: rgb(173, 178, 184);
+  --dsw-alias-label-caption: rgb(129, 133, 140);
 
-  --dsw-alias-markdown-code-block: var(--color-background-stronger, var(--background-stronger, var(--v2-background-bg-layer-02, #1b1b1d)));
-  --dsw-alias-markdown-code-block-banner: var(--color-background-strong, var(--background-strong, var(--v2-background-bg-layer-01, #242428)));
-  --dsw-alias-markdown-inline-code: color-mix(in srgb, currentColor 10%, transparent);
-  --dsw-alias-markdown-citation: var(--v2-background-bg-layer-03, rgba(255, 255, 255, 0.1));
+  --dsw-alias-markdown-citation: rgb(53, 54, 56);
+  --dsw-alias-markdown-code-block-banner: rgb(44, 44, 46);
+  --dsw-alias-markdown-code-block: rgb(27, 27, 28);
+  --dsw-alias-markdown-inline-code: rgb(44, 44, 46);
+  --dsw-alias-state-business-primary: rgb(103, 158, 254);
 
-  --dsw-alias-state-business-primary: var(--text-interactive-base, var(--v2-text-text-accent, #4d93f8));
-
-  /* Syntax Highlighting Default (Dark Mode Palette) */
-  --shiki-foreground: var(--dsw-alias-label-primary, #f4f4f5);
-  --shiki-background: var(--dsw-alias-markdown-code-block, #18181b);
+  /* DeepSeek Shiki Dark Mode */
+  --shiki-foreground: rgb(249, 250, 251);
+  --shiki-background: rgb(27, 27, 28);
   --shiki-token-constant: #4dabf7;
   --shiki-token-string: #69db7c;
   --shiki-token-comment: #868e96;
@@ -175,40 +163,41 @@ body {
   --shiki-token-punctuation: #ced4da;
   --shiki-token-link: #74c0fc;
 
-  --dsh-scrollbar-thumb: var(--border-weak-base, var(--v2-border-border-base, rgba(255, 255, 255, 0.15)));
-  --dsh-scrollbar-thumb-hover: var(--border-strong-base, var(--v2-border-border-strong, rgba(255, 255, 255, 0.25)));
+  --dsh-scrollbar-thumb: rgb(60, 60, 61);
+  --dsh-scrollbar-thumb-hover: rgb(84, 85, 87);
   --dsh-scrollbar-width: 8px;
 }
 
-/* Explicit Light Mode */
+/* Explicit Light Mode (matches DeepSeek light theme exactly) */
 [data-theme="light"],
 [data-color-scheme="light"],
 .light {
-  --dsw-alias-bg-base: var(--background-base, var(--v2-background-bg-base, #ffffff));
-  --dsw-alias-bg-layer-1: var(--background-layer-1, var(--v2-background-bg-layer-01, #f9fafb));
-  --dsw-alias-bg-layer-2: var(--background-layer-2, var(--v2-background-bg-layer-02, #f4f5f7));
-  --dsw-alias-bg-layer-3: var(--background-layer-3, var(--v2-background-bg-layer-03, #ebeef2));
-  --dsw-alias-bg-overlay: var(--surface-raised-base, var(--v2-background-bg-contrast, rgba(0, 0, 0, 0.06)));
+  --dsw-alias-bg-base: rgb(255, 255, 255);
+  --dsw-alias-bg-layer-1: rgb(255, 255, 255);
+  --dsw-alias-bg-layer-2: rgb(255, 255, 255);
+  --dsw-alias-bg-layer-3: rgb(255, 255, 255);
+  --dsw-alias-bg-overlay: rgb(233, 236, 242);
 
-  --dsw-alias-border-l1: var(--border-weak-base, var(--v2-border-border-muted, rgba(0, 0, 0, 0.04)));
-  --dsw-alias-border-l2: var(--border-base, var(--v2-border-border-base, rgba(0, 0, 0, 0.1)));
-  --dsw-alias-border-l3: var(--border-strong-base, var(--v2-border-border-strong, rgba(0, 0, 0, 0.16)));
-  --dsw-alias-border-l4: var(--border-strong-base, var(--v2-border-border-strong, rgba(0, 0, 0, 0.2)));
+  --dsw-alias-border-l1: rgba(0, 0, 0, 0.04);
+  --dsw-alias-border-l2: rgba(0, 0, 0, 0.1);
+  --dsw-alias-border-l3: rgba(0, 0, 0, 0.12);
+  --dsw-alias-border-l4: rgba(0, 0, 0, 0.16);
 
-  --dsw-alias-label-primary: var(--text-strong, var(--v2-text-text-base, #111113));
-  --dsw-alias-label-secondary: var(--text-base, var(--v2-text-text-muted, #55575c));
-  --dsw-alias-label-tertiary: var(--text-weak, var(--v2-text-text-faint, #7f8288));
-  --dsw-alias-label-caption: var(--text-faint, var(--v2-text-text-faint, #a0a3a8));
+  --dsw-alias-brand-primary: rgb(15, 17, 21);
+  --dsw-alias-brand-text: rgb(15, 17, 21);
+  --dsw-alias-label-primary: rgb(15, 17, 21);
+  --dsw-alias-label-secondary: rgb(97, 102, 107);
+  --dsw-alias-label-tertiary: rgb(129, 133, 140);
+  --dsw-alias-label-caption: rgb(173, 178, 184);
 
-  --dsw-alias-markdown-code-block: var(--color-background-stronger, var(--background-stronger, var(--v2-background-bg-layer-01, #f4f5f7)));
-  --dsw-alias-markdown-code-block-banner: var(--color-background-strong, var(--background-strong, var(--v2-background-bg-layer-02, #ebeef2)));
-  --dsw-alias-markdown-inline-code: color-mix(in srgb, currentColor 8%, transparent);
-  --dsw-alias-markdown-citation: var(--v2-background-bg-layer-02, rgba(0, 0, 0, 0.06));
+  --dsw-alias-markdown-citation: rgb(235, 238, 242);
+  --dsw-alias-markdown-code-block-banner: rgb(249, 250, 251);
+  --dsw-alias-markdown-code-block: rgb(249, 250, 251);
+  --dsw-alias-markdown-inline-code: rgb(235, 238, 242);
+  --dsw-alias-state-business-primary: rgb(65, 118, 230);
 
-  --dsw-alias-state-business-primary: var(--text-interactive-base, var(--v2-text-text-accent, #2563eb));
-
-  --shiki-foreground: var(--dsw-alias-label-primary, #18181b);
-  --shiki-background: var(--dsw-alias-markdown-code-block, #f4f4f5);
+  --shiki-foreground: rgb(15, 17, 21);
+  --shiki-background: rgb(249, 250, 251);
   --shiki-token-constant: #1c7ed6;
   --shiki-token-string: #2f9e44;
   --shiki-token-comment: #868e96;
@@ -219,50 +208,6 @@ body {
   --shiki-token-punctuation: #495057;
   --shiki-token-link: #1971c2;
 
-  --dsh-scrollbar-thumb: var(--border-weak-base, var(--v2-border-border-base, rgba(0, 0, 0, 0.15)));
-  --dsh-scrollbar-thumb-hover: var(--border-strong-base, var(--v2-border-border-strong, rgba(0, 0, 0, 0.25)));
-}
-
-/* Explicit Dark Mode */
-[data-theme="dark"],
-[data-color-scheme="dark"],
-.dark,
-body[data-ds-dark-theme] {
-  --dsw-alias-bg-base: var(--background-base, var(--v2-background-bg-base, #111113));
-  --dsw-alias-bg-layer-1: var(--background-layer-1, var(--v2-background-bg-layer-01, #18191d));
-  --dsw-alias-bg-layer-2: var(--background-layer-2, var(--v2-background-bg-layer-02, #212226));
-  --dsw-alias-bg-layer-3: var(--background-layer-3, var(--v2-background-bg-layer-03, #2a2b30));
-  --dsw-alias-bg-overlay: var(--surface-raised-base, var(--v2-background-bg-contrast, rgba(255, 255, 255, 0.08)));
-
-  --dsw-alias-border-l1: var(--border-weak-base, var(--v2-border-border-muted, rgba(255, 255, 255, 0.06)));
-  --dsw-alias-border-l2: var(--border-base, var(--v2-border-border-base, rgba(255, 255, 255, 0.12)));
-  --dsw-alias-border-l3: var(--border-strong-base, var(--v2-border-border-strong, rgba(255, 255, 255, 0.18)));
-  --dsw-alias-border-l4: var(--border-strong-base, var(--v2-border-border-strong, rgba(255, 255, 255, 0.24)));
-
-  --dsw-alias-label-primary: var(--text-strong, var(--v2-text-text-base, #f4f4f5));
-  --dsw-alias-label-secondary: var(--text-base, var(--v2-text-text-muted, #a1a1aa));
-  --dsw-alias-label-tertiary: var(--text-weak, var(--v2-text-text-faint, #71717a));
-  --dsw-alias-label-caption: var(--text-faint, var(--v2-text-text-faint, #52525b));
-
-  --dsw-alias-markdown-code-block: var(--color-background-stronger, var(--background-stronger, var(--v2-background-bg-layer-02, #18181b)));
-  --dsw-alias-markdown-code-block-banner: var(--color-background-strong, var(--background-strong, var(--v2-background-bg-layer-01, #27272a)));
-  --dsw-alias-markdown-inline-code: color-mix(in srgb, currentColor 10%, transparent);
-  --dsw-alias-markdown-citation: var(--v2-background-bg-layer-03, rgba(255, 255, 255, 0.1));
-
-  --dsw-alias-state-business-primary: var(--text-interactive-base, var(--v2-text-text-accent, #4d93f8));
-
-  --shiki-foreground: var(--dsw-alias-label-primary, #f4f4f5);
-  --shiki-background: var(--dsw-alias-markdown-code-block, #18181b);
-  --shiki-token-constant: #4dabf7;
-  --shiki-token-string: #69db7c;
-  --shiki-token-comment: #868e96;
-  --shiki-token-keyword: #faa2c1;
-  --shiki-token-parameter: #ffa94d;
-  --shiki-token-function: #b197fc;
-  --shiki-token-string-expression: #8ce99a;
-  --shiki-token-punctuation: #ced4da;
-  --shiki-token-link: #74c0fc;
-
-  --dsh-scrollbar-thumb: var(--border-weak-base, var(--v2-border-border-base, rgba(255, 255, 255, 0.15)));
-  --dsh-scrollbar-thumb-hover: var(--border-strong-base, var(--v2-border-border-strong, rgba(255, 255, 255, 0.25)));
+  --dsh-scrollbar-thumb: rgb(229, 229, 229);
+  --dsh-scrollbar-thumb-hover: rgb(212, 212, 212);
 }
