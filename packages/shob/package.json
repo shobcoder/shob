@@ -8,7 +8,12 @@
   "scripts": {
     "typecheck": "tsgo --noEmit",
     "test": "bun test --timeout 30000 --only-failures",
-    "build": "bun run script/build-node.ts"
+    "build": "bun run script/build-node.ts",
+    "dev": "bun run --conditions=browser ./src/index.ts",
+    "dev:temporary": "bun run --conditions=browser ./src/temporary.ts"
+  },
+  "bin": {
+    "shob": "./bin/shob"
   },
   "exports": {
     "./*": "./src/*.ts"
@@ -83,6 +88,7 @@
     "@shob/script": "workspace:*",
     "@shob/sdk": "workspace:*",
     "@shob/server": "workspace:*",
+    "@shob/tui": "workspace:*",
     "@openrouter/ai-sdk-provider": "2.9.0",
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/context-async-hooks": "2.6.1",

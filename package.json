@@ -6,6 +6,7 @@
   "type": "module",
   "packageManager": "bun@1.3.14",
   "scripts": {
+    "dev": "bun run --cwd packages/shob --conditions=browser src/index.ts",
     "dev:desktop": "bun --cwd packages/desktop dev",
     "lint": "oxlint",
     "typecheck": "bun turbo typecheck",
