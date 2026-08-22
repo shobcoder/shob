@@ -1,4 +1,4 @@
-﻿import {
+import {
   batch,
   createContext,
   createEffect,
@@ -23,6 +23,7 @@ import { useSync } from "../../context/sync"
 import { useEvent } from "../../context/event"
 import { SplitBorder } from "../../ui/border"
 import { useTuiPaths, useTuiTerminalEnvironment } from "../../context/runtime"
+import { Logo } from "../../component/logo"
 import { Spinner } from "../../component/spinner"
 import { createSyntaxStyleMemo, generateSubtleSyntax, selectedForeground, useTheme } from "../../context/theme"
 import { BoxRenderable, ScrollBoxRenderable, addDefaultParsers, TextAttributes, RGBA } from "@opentui/core"
@@ -254,7 +255,7 @@ export function Session() {
   })
 
   const dimensions = useTerminalDimensions()
-  const [sidebar, setSidebar] = kv.signal<"auto" | "hide">("sidebar", "auto")
+  const [sidebar, setSidebar] = kv.signal<"auto" | "hide" | "show">("sidebar", "hide")
   const [sidebarOpen, setSidebarOpen] = createSignal(false)
   const [conceal, setConceal] = createSignal(true)
   const thinking = useThinkingMode()
@@ -272,7 +273,7 @@ export function Session() {
   const sidebarVisible = createMemo(() => {
     if (session()?.parentID) return false
     if (sidebarOpen()) return true
-    if (sidebar() === "auto" && wide()) return true
+    if (sidebar() === "show") return true
     return false
   })
   const showTimestamps = createMemo(() => timestamps() === "show")
@@ -286,6 +287,7 @@ export function Session() {
 
   createEffect(() => {
     const sessionID = route.sessionID
+    if (!sessionID || !sessionID.startsWith("ses_")) return
     void (async () => {
       const previousWorkspace = untrack(() => project.workspace.current())
       const result = await sdk.client.session.get({ sessionID }, { throwOnError: true })
@@ -295,7 +297,9 @@ export function Session() {
           variant: "error",
           duration: 5000,
         })
-        navigate({ type: "home" })
+        void sdk.client.session.create({}).then((res) => {
+          if (res.data?.id) navigate({ type: "session", sessionID: res.data.id })
+        })
         return
       }
 
@@ -320,7 +324,9 @@ export function Session() {
         variant: "error",
         duration: 5000,
       })
-      navigate({ type: "home" })
+      void sdk.client.session.create({}).then((res) => {
+        if (res.data?.id) navigate({ type: "session", sessionID: res.data.id })
+      })
     })
   })
 
@@ -677,7 +683,7 @@ export function Session() {
       run: () => {
         batch(() => {
           const isVisible = sidebarVisible()
-          setSidebar(() => (isVisible ? "hide" : "auto"))
+          setSidebar(() => (isVisible ? "hide" : "show"))
           setSidebarOpen(!isVisible)
         })
         dialog.clear()
@@ -1196,7 +1202,13 @@ export function Session() {
                 flexGrow={1}
                 scrollAcceleration={scrollAcceleration()}
               >
-                <box height={1} />
+                <box paddingBottom={1} paddingTop={1} gap={0}>
+                  <Logo />
+                  <box height={1} />
+                  <text fg={theme.textMuted}># SHOB v0.0.93</text>
+                  <text fg={theme.textMuted}># models: {local.model.parsed().model || "deepseek-v4-flash"}</text>
+                  <text fg={theme.textMuted}># {paths.cwd || "~"}</text>
+                </box>
                 <For each={messages()}>
                   {(message, index) => (
                     <Switch>
@@ -1398,60 +1410,44 @@ function UserMessage(props: {
         <box
           id={props.message.id}
           ref={(el: BoxRenderable) => alwaysSeparate.add(el)}
-          border={["left"]}
-          borderColor={color()}
-          customBorderChars={SplitBorder.customBorderChars}
-          marginTop={props.index === 0 ? 0 : 1}
+          marginTop={props.index === 0 ? 1 : 2}
+          marginBottom={1}
+          flexDirection="row"
+          alignItems="flex-start"
+          flexShrink={0}
         >
           <box
-            onMouseOver={() => {
-              setHover(true)
-            }}
-            onMouseOut={() => {
-              setHover(false)
-            }}
+            backgroundColor={RGBA.fromInts(0, 188, 125, 45)}
+            paddingLeft={1}
+            paddingRight={1}
+            flexDirection="row"
+            gap={1}
             onMouseUp={props.onMouseUp}
-            paddingTop={1}
-            paddingBottom={1}
-            paddingLeft={2}
-            backgroundColor={hover() ? theme.backgroundElement : theme.backgroundPanel}
-            flexShrink={0}
           >
-            <text fg={theme.text}>{text()}</text>
-            <Show when={files().length}>
-              <box flexDirection="row" paddingBottom={metadataVisible() ? 1 : 0} paddingTop={1} gap={1} flexWrap="wrap">
-                <For each={files()}>
-                  {(file) => {
-                    const directory = file.mime === "application/x-directory"
-                    return (
-                      <text fg={theme.text}>
-                        <span style={{ bg: theme.secondary, fg: theme.background }}>
-                          {directory ? " Directory " : " File "}
-                        </span>
-                        <span style={{ bg: theme.backgroundElement, fg: theme.textMuted }}> {file.filename} </span>
-                      </text>
-                    )
-                  }}
-                </For>
-              </box>
-            </Show>
-            <Show
-              when={queued()}
-              fallback={
-                <Show when={ctx.showTimestamps()}>
-                  <text fg={theme.textMuted}>
-                    <span style={{ fg: theme.textMuted }}>
-                      {Locale.todayTimeOrDateTime(props.message.time.created)}
-                    </span>
-                  </text>
-                </Show>
-              }
-            >
-              <text fg={theme.textMuted}>
-                <span style={{ bg: color(), fg: queuedFg(), bold: true }}> QUEUED </span>
-              </text>
-            </Show>
+            <text fg="#00bc7d" attributes={TextAttributes.BOLD}>
+              ❯
+            </text>
+            <text fg="#ffffff" attributes={TextAttributes.BOLD}>
+              {text()}
+            </text>
           </box>
+          <Show when={files().length}>
+            <box flexDirection="row" paddingLeft={1} gap={1} flexWrap="wrap">
+              <For each={files()}>
+                {(file) => {
+                  const directory = file.mime === "application/x-directory"
+                  return (
+                    <text fg={theme.text}>
+                      <span style={{ bg: theme.secondary, fg: theme.background }}>
+                        {directory ? " Directory " : " File "}
+                      </span>
+                      <span style={{ bg: theme.backgroundElement, fg: theme.textMuted }}> {file.filename} </span>
+                    </text>
+                  )
+                }}
+              </For>
+            </box>
+          </Show>
         </box>
       </Show>
       <Show when={compaction()}>
@@ -1548,26 +1544,9 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
       </Show>
       <Switch>
         <Match when={props.last || final() || props.message.error?.name === "MessageAbortedError"}>
-          <box ref={(el: BoxRenderable) => alwaysSeparate.add(el)} paddingLeft={3}>
-            <text marginTop={1}>
-              <span
-                style={{
-                  fg:
-                    props.message.error?.name === "MessageAbortedError"
-                      ? theme.textMuted
-                      : local.agent.color(props.message.agent),
-                }}
-              >
-                ▣{" "}
-              </span>{" "}
-              <span style={{ fg: theme.text }}>{Locale.titlecase(props.message.mode)}</span>
-              <span style={{ fg: theme.textMuted }}> · {model()}</span>
-              <Show when={duration()}>
-                <span style={{ fg: theme.textMuted }}> · {Locale.duration(duration())}</span>
-              </Show>
-              <Show when={props.message.error?.name === "MessageAbortedError"}>
-                <span style={{ fg: theme.textMuted }}> · interrupted</span>
-              </Show>
+          <box ref={(el: BoxRenderable) => alwaysSeparate.add(el)} paddingLeft={1} marginTop={1}>
+            <text fg={theme.textMuted}>
+              ✱ Worked for {Locale.duration(duration() || 1000)}
             </text>
           </box>
         </Match>
@@ -1616,7 +1595,6 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
     <Show when={content() || opaque()}>
       <box
         ref={(el: BoxRenderable) => alwaysSeparate.add(el)}
-        paddingLeft={3}
         marginTop={1}
         flexDirection="column"
         flexShrink={0}
@@ -1663,9 +1641,8 @@ function ReasoningHeader(props: {
       ? RGBA.fromValues(theme.warning.r, theme.warning.g, theme.warning.b, theme.thinkingOpacity)
       : theme.warning
   const completed = () => {
-    if (props.encrypted) return `Thought${props.duration ? ` · ${props.duration}` : ""}`
-    const detail = [props.title, props.duration].filter(Boolean).join(" · ")
-    return `${props.toggleable ? (props.open ? "- " : "+ ") : ""}Thought${detail ? `: ${detail}` : ""}`
+    const dur = props.duration || "1 second"
+    return `✱ Thought for ${dur} [ctrl+o to expand]`
   }
 
   return (
@@ -1676,7 +1653,7 @@ function ReasoningHeader(props: {
         </box>
       </Match>
       <Match when={true}>
-        <text fg={fg()} wrapMode="none">
+        <text fg={theme.textMuted} wrapMode="none">
           {completed()}
         </text>
       </Match>
@@ -1689,17 +1666,22 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
   const { theme, syntax } = useTheme()
   return (
     <Show when={props.part.text.trim()}>
-      <box ref={(el: BoxRenderable) => alwaysSeparate.add(el)} paddingLeft={3} marginTop={1} flexShrink={0}>
-        <markdown
-          syntaxStyle={syntax()}
-          streaming={true}
-          internalBlockMode="top-level"
-          content={props.part.text.trim()}
-          tableOptions={{ style: "grid" }}
-          conceal={ctx.conceal()}
-          fg={theme.markdownText}
-          bg={theme.background}
-        />
+      <box ref={(el: BoxRenderable) => alwaysSeparate.add(el)} paddingLeft={1} marginTop={1} flexShrink={0}>
+        <box flexDirection="row" gap={1} alignItems="flex-start">
+          <text fg="#818cf8">⠶</text>
+          <box flexGrow={1}>
+            <markdown
+              syntaxStyle={syntax()}
+              streaming={true}
+              internalBlockMode="top-level"
+              content={props.part.text.trim()}
+              tableOptions={{ style: "grid" }}
+              conceal={ctx.conceal()}
+              fg={theme.markdownText}
+              bg={theme.background}
+            />
+          </box>
+        </box>
       </box>
     </Show>
   )
@@ -1933,7 +1915,6 @@ export function InlineToolRow(props: {
 }) {
   return (
     <box
-      paddingLeft={3}
       onMouseOver={props.onMouseOver}
       onMouseOut={props.onMouseOut}
       onMouseUp={props.onMouseUp}
@@ -1955,7 +1936,6 @@ export function InlineToolRow(props: {
           <Show
             fallback={
               <text
-                paddingLeft={3}
                 fg={props.color}
                 attributes={props.denied ? TextAttributes.STRIKETHROUGH : undefined}
               >

@@ -1,4 +1,4 @@
-﻿import { render, TimeToFirstDraw, useRenderer, useTerminalDimensions } from "@opentui/solid"
+import { render, TimeToFirstDraw, useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { registerOpencodeSpinner } from "./component/register-spinner"
 import { createDefaultOpenTuiKeymap } from "@opentui/keymap/opentui"
 import { Deferred, Effect } from "effect"
@@ -33,7 +33,6 @@ import { ProjectProvider, useProject } from "./context/project"
 import { EditorContextProvider } from "./context/editor"
 import { useEvent } from "./context/event"
 import { SDKProvider, useSDK } from "./context/sdk"
-import { StartupLoading } from "./component/startup-loading"
 import { SyncProvider, useSync } from "./context/sync"
 import { DataProvider } from "./context/data"
 import { LocationProvider } from "./context/location"
@@ -275,7 +274,7 @@ export const run = Effect.fn("Tui.run")(function* (input: TuiInput) {
                       <TuiStartupProvider
                         value={{
                           initialRoute: process.env.SHOB_ROUTE ? JSON.parse(process.env.SHOB_ROUTE) : undefined,
-                          skipInitialLoading: Boolean(process.env.SHOB_FAST_BOOT),
+                          skipInitialLoading: true,
                         }}
                       >
                         <ClipboardProvider>
@@ -363,7 +362,6 @@ export const run = Effect.fn("Tui.run")(function* (input: TuiInput) {
 })
 
 function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPluginHost }) {
-  const startup = useTuiStartup()
   const tuiConfig = useTuiConfig()
   const route = useRoute()
   const dimensions = useTerminalDimensions()
@@ -537,6 +535,22 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
     })
   })
 
+  let autoCreated = false
+  createEffect(() => {
+    if (autoCreated || sync.status === "loading" || args.continue || args.sessionID) return
+    if (route.data.type === "home") {
+      autoCreated = true
+      void sdk.client.session.create({}).then((result) => {
+        if (result.data?.id) {
+          route.navigate({
+            type: "session",
+            sessionID: result.data.id,
+          })
+        }
+      })
+    }
+  })
+
   createEffect(
     on(
       () => sync.status === "complete" && sync.data.provider.length === 0,
@@ -585,10 +599,14 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
         category: "Session",
         slashName: "new",
         slashAliases: ["clear"],
-        run: () => {
-          route.navigate({
-            type: "home",
-          })
+        run: async () => {
+          const result = await sdk.client.session.create({})
+          if (result.data?.id) {
+            route.navigate({
+              type: "session",
+              sessionID: result.data.id,
+            })
+          }
           dialog.clear()
         },
       },
@@ -1005,9 +1023,12 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
     })
   })
 
-  event.on("session.deleted", (evt) => {
+  event.on("session.deleted", async (evt) => {
     if (route.data.type === "session" && route.data.sessionID === evt.properties.info.id) {
-      route.navigate({ type: "home" })
+      const result = await sdk.client.session.create({})
+      if (result.data?.id) {
+        route.navigate({ type: "session", sessionID: result.data.id })
+      }
       toast.show({
         variant: "info",
         message: "The current session was deleted",
@@ -1110,10 +1131,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
       <Show when={ready()}>
         <box flexGrow={1} minHeight={0} flexDirection="column">
           <Switch>
-            <Match when={route.data.type === "home"}>
-              <Home />
-            </Match>
-            <Match when={route.data.type === "session"}>
+            <Match when={route.data.type === "session" && route.data.sessionID && route.data.sessionID.startsWith("ses_")}>
               <Show when={route.data.type === "session" ? route.data.sessionID : undefined} keyed>
                 {(_) => <Session />}
               </Show>
@@ -1125,9 +1143,6 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
           <pluginRuntime.Slot name="app_bottom" />
         </box>
         <pluginRuntime.Slot name="app" />
-      </Show>
-      <Show when={!startup.skipInitialLoading}>
-        <StartupLoading ready={ready} />
       </Show>
     </box>
   )

@@ -245,7 +245,7 @@ export const SessionHandler = HttpApiBuilder.group(Api, "server.session", (handl
                   Effect.andThen(
                     Effect.fail(
                       new UnknownError({
-                        message: "Unexpected server error. Check server logs for details.",
+                        message: `Failed to stage session revert: ${error.message || "Snapshot error"}`,
                         ref,
                       }),
                     ),
@@ -274,7 +274,7 @@ export const SessionHandler = HttpApiBuilder.group(Api, "server.session", (handl
                 Effect.andThen(
                   Effect.fail(
                     new UnknownError({
-                      message: "Unexpected server error. Check server logs for details.",
+                      message: `Failed to clear session revert: ${error.message || "Snapshot error"}`,
                       ref,
                     }),
                   ),
@@ -320,7 +320,7 @@ export const SessionHandler = HttpApiBuilder.group(Api, "server.session", (handl
                   Effect.annotateLogs({ ref, sessionID: error.sessionID, messageID: error.messageID }),
                   Effect.andThen(
                     Effect.fail(
-                      new UnknownError({ message: "Unexpected server error. Check server logs for details.", ref }),
+                      new UnknownError({ message: `Failed to decode session message: ${error.messageID}`, ref }),
                     ),
                   ),
                 )

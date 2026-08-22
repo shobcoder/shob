@@ -1,4 +1,4 @@
-﻿import type {
+import type {
   Message,
   Agent,
   Provider,
@@ -592,6 +592,7 @@ export const {
           return last.time.completed ? "idle" : "working"
         },
         async sync(sessionID: string) {
+          if (!sessionID || !sessionID.startsWith("ses_")) return
           if (fullSyncedSessions.has(sessionID)) return
           const syncing = syncingSessions.get(sessionID)
           if (syncing) return syncing

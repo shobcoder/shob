@@ -164,7 +164,8 @@ export function DialogSessionList() {
           await refetchBrowse()
           if (search()) await refetch()
           if (info?.workspaceID === session.workspaceID) {
-            route.navigate({ type: "home" })
+            const res = await sdk.client.session.create({})
+            if (res.data?.id) route.navigate({ type: "session", sessionID: res.data.id })
           }
           return true
         }}

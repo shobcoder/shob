@@ -1,4 +1,4 @@
-﻿import type { TuiPlugin, TuiPluginApi } from "@shob/plugin/tui"
+import type { TuiPlugin, TuiPluginApi } from "@shob/plugin/tui"
 import type { BuiltinTuiPlugin } from "../builtins"
 import { createMemo, Match, Show, Switch } from "solid-js"
 import { abbreviateHome } from "../../runtime"
@@ -62,6 +62,8 @@ function Version(props: { api: TuiPluginApi }) {
 }
 
 function View(props: { api: TuiPluginApi }) {
+  const theme = () => props.api.theme.current
+
   return (
     <box
       width="100%"
@@ -72,11 +74,16 @@ function View(props: { api: TuiPluginApi }) {
       flexDirection="row"
       flexShrink={0}
       gap={2}
+      alignItems="center"
     >
-      <Directory api={props.api} />
-      <Mcp api={props.api} />
+      <box flexDirection="row" gap={1} alignItems="center">
+        <text fg={theme().textMuted}>? for help</text>
+        <text fg={theme().textMuted}>|</text>
+        <text fg="#f43f5e">IDE</text>
+        <text fg={theme().textMuted}>◌</text>
+      </box>
       <box flexGrow={1} />
-      <Version api={props.api} />
+      <Mcp api={props.api} />
     </box>
   )
 }

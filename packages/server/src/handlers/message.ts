@@ -60,7 +60,7 @@ export const MessageHandler = HttpApiBuilder.group(Api, "server.message", (handl
                 Effect.annotateLogs({ ref, sessionID: error.sessionID, messageID: error.messageID }),
                 Effect.andThen(
                   Effect.fail(
-                    new UnknownError({ message: "Unexpected server error. Check server logs for details.", ref }),
+                    new UnknownError({ message: `Failed to decode session message: ${error.messageID}`, ref }),
                   ),
                 ),
               )
