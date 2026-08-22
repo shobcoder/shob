@@ -1,0 +1,272 @@
+/*
+ * DeepSeek Design System Theme & Root Tokens
+ * Exact port of DeepSeek Harness base.css, design-platform.css, gradient-shadow-text.css, and shiki.css
+ */
+
+:root,
+html,
+body {
+  /* Font Stacks */
+  --dsw-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --ds-font-family-code: 'SF Mono', 'JetBrains Mono', 'Fira Code', Consolas,
+    'Liberation Mono', Menlo, Courier, 'PingFang SC', 'Microsoft YaHei';
+
+  --ds-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ds-transition-duration: 0.2s;
+  --ds-transition-duration-fast: 0.1s;
+  --ds-transition-duration-slow: 0.3s;
+
+  /* Font Scale Definitions */
+  --dsw-font-markdown-h1: 700 24px/34px var(--dsw-font-family);
+  --dsw-font-markdown-h1-font-family: var(--dsw-font-family);
+  --dsw-font-markdown-h1-font-weight: 700;
+  --dsw-font-markdown-h1-line-height: 34px;
+  --dsw-font-markdown-h1-font-size: 24px;
+  --dsw-font-markdown-h1-font-style: normal;
+
+  --dsw-font-markdown-h2: 700 22px/32px var(--dsw-font-family);
+  --dsw-font-markdown-h2-font-family: var(--dsw-font-family);
+  --dsw-font-markdown-h2-font-weight: 700;
+  --dsw-font-markdown-h2-line-height: 32px;
+  --dsw-font-markdown-h2-font-size: 22px;
+  --dsw-font-markdown-h2-font-style: normal;
+
+  --dsw-font-markdown-h3: 700 20px/30px var(--dsw-font-family);
+  --dsw-font-markdown-h3-font-family: var(--dsw-font-family);
+  --dsw-font-markdown-h3-font-weight: 700;
+  --dsw-font-markdown-h3-line-height: 30px;
+  --dsw-font-markdown-h3-font-size: 20px;
+  --dsw-font-markdown-h3-font-style: normal;
+
+  --dsw-font-markdown-h4: 600 16px/28px var(--dsw-font-family);
+  --dsw-font-markdown-h4-font-family: var(--dsw-font-family);
+  --dsw-font-markdown-h4-font-weight: 600;
+  --dsw-font-markdown-h4-line-height: 28px;
+  --dsw-font-markdown-h4-font-size: 16px;
+  --dsw-font-markdown-h4-font-style: normal;
+
+  --dsw-font-markdown-base: 16px/28px var(--dsw-font-family);
+  --dsw-font-markdown-base-font-family: var(--dsw-font-family);
+  --dsw-font-markdown-base-font-weight: 400;
+  --dsw-font-markdown-base-line-height: 28px;
+  --dsw-font-markdown-base-font-size: 16px;
+  --dsw-font-markdown-base-font-style: normal;
+
+  --dsw-font-markdown-base-strong: 600 16px/28px var(--dsw-font-family);
+  --dsw-font-markdown-base-strong-font-family: var(--dsw-font-family);
+  --dsw-font-markdown-base-strong-font-weight: 600;
+  --dsw-font-markdown-base-strong-line-height: 28px;
+  --dsw-font-markdown-base-strong-font-size: 16px;
+  --dsw-font-markdown-base-strong-font-style: normal;
+
+  --dsw-font-markdown-base-italic: italic 16px/28px var(--dsw-font-family);
+  --dsw-font-markdown-base-italic-font-family: var(--dsw-font-family);
+  --dsw-font-markdown-base-italic-font-weight: 400;
+  --dsw-font-markdown-base-italic-line-height: 28px;
+  --dsw-font-markdown-base-italic-font-size: 16px;
+  --dsw-font-markdown-base-italic-font-style: italic;
+
+  --dsw-font-markdown-base-strong-italic: italic 600 16px/28px var(--dsw-font-family);
+  --dsw-font-markdown-base-strong-italic-font-family: var(--dsw-font-family);
+  --dsw-font-markdown-base-strong-italic-font-weight: 600;
+  --dsw-font-markdown-base-strong-italic-line-height: 28px;
+  --dsw-font-markdown-base-strong-italic-font-size: 16px;
+  --dsw-font-markdown-base-strong-italic-font-style: italic;
+
+  --dsw-font-markdown-table: 15px/25px var(--dsw-font-family);
+  --dsw-font-markdown-table-font-family: var(--dsw-font-family);
+  --dsw-font-markdown-table-font-weight: 400;
+  --dsw-font-markdown-table-line-height: 25px;
+  --dsw-font-markdown-table-font-size: 15px;
+  --dsw-font-markdown-table-font-style: normal;
+
+  --dsw-font-markdown-table-head: 500 15px/25px var(--dsw-font-family);
+  --dsw-font-markdown-table-head-font-family: var(--dsw-font-family);
+  --dsw-font-markdown-table-head-font-weight: 500;
+  --dsw-font-markdown-table-head-line-height: 25px;
+  --dsw-font-markdown-table-head-font-size: 15px;
+  --dsw-font-markdown-table-head-font-style: normal;
+
+  --dsw-font-markdown-small: 14px/24px var(--dsw-font-family);
+  --dsw-font-markdown-small-font-family: var(--dsw-font-family);
+  --dsw-font-markdown-small-font-weight: 400;
+  --dsw-font-markdown-small-line-height: 24px;
+  --dsw-font-markdown-small-font-size: 14px;
+  --dsw-font-markdown-small-font-style: normal;
+
+  --dsw-font-markdown-small-strong: 600 14px/24px var(--dsw-font-family);
+  --dsw-font-markdown-small-strong-font-family: var(--dsw-font-family);
+  --dsw-font-markdown-small-strong-font-weight: 600;
+  --dsw-font-markdown-small-strong-line-height: 24px;
+  --dsw-font-markdown-small-strong-font-size: 14px;
+  --dsw-font-markdown-small-strong-font-style: normal;
+
+  --dsw-font-markdown-code: 14px/22px var(--ds-font-family-code);
+  --dsw-font-markdown-code-font-family: var(--ds-font-family-code);
+  --dsw-font-markdown-code-font-weight: 400;
+  --dsw-font-markdown-code-line-height: 22px;
+  --dsw-font-markdown-code-font-size: 14px;
+  --dsw-font-markdown-code-font-style: normal;
+
+  --dsw-font-markdown-code-block: 13px/22px var(--ds-font-family-code);
+  --dsw-font-markdown-code-block-font-family: var(--ds-font-family-code);
+  --dsw-font-markdown-code-block-font-weight: 400;
+  --dsw-font-markdown-code-block-line-height: 22px;
+  --dsw-font-markdown-code-block-font-size: 13px;
+  --dsw-font-markdown-code-block-font-style: normal;
+
+  --dsw-font-markdown-code-block-small: 12px/18px var(--ds-font-family-code);
+  --dsw-font-markdown-code-block-small-font-family: var(--ds-font-family-code);
+  --dsw-font-markdown-code-block-small-font-weight: 400;
+  --dsw-font-markdown-code-block-small-line-height: 18px;
+  --dsw-font-markdown-code-block-small-font-size: 12px;
+  --dsw-font-markdown-code-block-small-font-style: normal;
+
+  --dsw-font-xl-24: 600 24px/32px var(--dsw-font-family);
+  --dsw-font-l-20: 500 20px/28px var(--dsw-font-family);
+  --dsw-font-m-18: 500 16px/28px var(--dsw-font-family);
+  --dsw-font-base-16: 16px/24px var(--dsw-font-family);
+  --dsw-font-base-strong-16: 500 16px/24px var(--dsw-font-family);
+  --dsw-font-s-14: 14px/22px var(--dsw-font-family);
+  --dsw-font-s-strong-14: 500 14px/22px var(--dsw-font-family);
+  --dsw-font-xs-13: 13px/20px var(--dsw-font-family);
+  --dsw-font-xs-strong-13: 500 13px/20px var(--dsw-font-family);
+  --dsw-font-xxs-12: 12px/18px var(--dsw-font-family);
+  --dsw-font-xxs-strong-12: 500 12px/18px var(--dsw-font-family);
+  --dsw-font-xxxs-11: 11px/14px var(--dsw-font-family);
+  --dsw-font-xxxs-strong-11: 500 11px/14px var(--dsw-font-family);
+
+  /* Static Color Palette */
+  --dsw-static-neutral-00: rgb(255, 255, 255);
+  --dsw-static-neutral-50: rgb(250, 250, 250);
+  --dsw-static-neutral-100: rgb(245, 245, 245);
+  --dsw-static-neutral-150: rgb(237, 237, 237);
+  --dsw-static-neutral-200: rgb(229, 229, 229);
+  --dsw-static-neutral-250: rgb(220, 220, 220);
+  --dsw-static-neutral-300: rgb(212, 212, 212);
+  --dsw-static-neutral-400: rgb(162, 164, 166);
+  --dsw-static-neutral-500: rgb(127, 130, 135);
+  --dsw-static-neutral-550: rgb(101, 103, 107);
+  --dsw-static-neutral-600: rgb(84, 85, 87);
+  --dsw-static-neutral-700: rgb(60, 60, 61);
+  --dsw-static-neutral-800: rgb(41, 41, 41);
+  --dsw-static-neutral-850: rgb(33, 33, 35);
+  --dsw-static-neutral-900: rgb(15, 15, 15);
+  --dsw-static-neutral-1000: rgb(0, 0, 0);
+
+  --dsw-static-neutral-bluish-00: rgb(255, 255, 255);
+  --dsw-static-neutral-bluish-50: rgb(249, 250, 251);
+  --dsw-static-neutral-bluish-60: rgb(245, 246, 247);
+  --dsw-static-neutral-bluish-75: rgb(241, 243, 245);
+  --dsw-static-neutral-bluish-100: rgb(235, 238, 242);
+  --dsw-static-neutral-bluish-150: rgb(233, 236, 242);
+  --dsw-static-neutral-bluish-200: rgb(225, 229, 238);
+  --dsw-static-neutral-bluish-300: rgb(207, 211, 214);
+  --dsw-static-neutral-bluish-400: rgb(173, 178, 184);
+  --dsw-static-neutral-bluish-500: rgb(151, 157, 166);
+  --dsw-static-neutral-bluish-600: rgb(129, 133, 140);
+  --dsw-static-neutral-bluish-700: rgb(97, 102, 107);
+  --dsw-static-neutral-bluish-750: rgb(67, 69, 74);
+  --dsw-static-neutral-bluish-800: rgb(53, 54, 56);
+  --dsw-static-neutral-bluish-850: rgb(44, 44, 46);
+  --dsw-static-neutral-bluish-875: rgb(35, 35, 36);
+  --dsw-static-neutral-bluish-900: rgb(27, 27, 28);
+  --dsw-static-neutral-bluish-950: rgb(21, 21, 23);
+  --dsw-static-neutral-bluish-1000: rgb(15, 17, 21);
+
+  --dsw-static-deepseek-50: rgb(237, 243, 254);
+  --dsw-static-deepseek-100: rgb(228, 237, 253);
+  --dsw-static-deepseek-200: rgb(211, 226, 255);
+  --dsw-static-deepseek-300: rgb(183, 200, 254);
+  --dsw-static-deepseek-400: rgb(103, 158, 254);
+  --dsw-static-deepseek-450: rgb(86, 134, 254);
+  --dsw-static-deepseek-500: rgb(65, 118, 230);
+  --dsw-static-deepseek-600: rgb(72, 104, 178);
+  --dsw-static-deepseek-800: rgb(52, 65, 91);
+  --dsw-static-deepseek-900: rgb(40, 49, 66);
+
+  /* Light mode aliases */
+  --dsw-alias-bg-base: var(--dsw-static-neutral-bluish-00);
+  --dsw-alias-bg-layer-1: var(--dsw-static-neutral-bluish-00);
+  --dsw-alias-bg-layer-2: var(--dsw-static-neutral-bluish-00);
+  --dsw-alias-bg-layer-3: var(--dsw-static-neutral-bluish-00);
+  --dsw-alias-bg-module-platform: var(--dsw-static-neutral-bluish-60);
+  --dsw-alias-bg-overlay: var(--dsw-static-neutral-bluish-150);
+  --dsw-alias-border-l1: rgba(0, 0, 0, 0.04);
+  --dsw-alias-border-l2: rgba(0, 0, 0, 0.1);
+  --dsw-alias-border-l3: rgba(0, 0, 0, 0.12);
+  --dsw-alias-border-l4: rgba(0, 0, 0, 0.16);
+  --dsw-alias-brand-primary: var(--dsw-static-neutral-bluish-1000);
+  --dsw-alias-brand-text: var(--dsw-static-neutral-bluish-1000);
+  --dsw-alias-label-primary: var(--dsw-static-neutral-bluish-1000);
+  --dsw-alias-label-secondary: var(--dsw-static-neutral-bluish-700);
+  --dsw-alias-label-tertiary: var(--dsw-static-neutral-bluish-600);
+  --dsw-alias-label-caption: var(--dsw-static-neutral-bluish-400);
+  --dsw-alias-markdown-citation: var(--dsw-static-neutral-bluish-100);
+  --dsw-alias-markdown-code-block-banner: var(--dsw-static-neutral-bluish-50);
+  --dsw-alias-markdown-code-block: var(--dsw-static-neutral-bluish-50);
+  --dsw-alias-markdown-inline-code: var(--dsw-static-neutral-bluish-100);
+  --dsw-alias-state-business-primary: var(--dsw-static-deepseek-500);
+
+  /* Shiki Light Mode */
+  --shiki-foreground: var(--dsw-alias-label-primary);
+  --shiki-background: var(--dsw-alias-markdown-code-block);
+  --shiki-token-constant: #1c7ed6;
+  --shiki-token-string: #2f9e44;
+  --shiki-token-comment: #868e96;
+  --shiki-token-keyword: #d6336c;
+  --shiki-token-parameter: #e8590c;
+  --shiki-token-function: #6741d9;
+  --shiki-token-string-expression: #2b8a3e;
+  --shiki-token-punctuation: #495057;
+  --shiki-token-link: #1971c2;
+
+  --dsh-scrollbar-thumb: var(--dsw-static-neutral-200);
+  --dsh-scrollbar-thumb-hover: var(--dsw-static-neutral-300);
+  --dsh-scrollbar-width: 8px;
+}
+
+[data-theme="dark"],
+[data-color-scheme="dark"],
+.dark,
+body[data-ds-dark-theme] {
+  /* Dark mode aliases */
+  --dsw-alias-bg-base: var(--dsw-static-neutral-bluish-950);
+  --dsw-alias-bg-layer-1: var(--dsw-static-neutral-bluish-875);
+  --dsw-alias-bg-layer-2: var(--dsw-static-neutral-bluish-850);
+  --dsw-alias-bg-layer-3: var(--dsw-static-neutral-bluish-800);
+  --dsw-alias-bg-module-platform: var(--dsw-static-neutral-bluish-800);
+  --dsw-alias-bg-overlay: var(--dsw-static-neutral-bluish-700);
+  --dsw-alias-border-l1: rgba(255, 255, 255, 0.06);
+  --dsw-alias-border-l2: rgba(255, 255, 255, 0.12);
+  --dsw-alias-border-l3: rgba(255, 255, 255, 0.16);
+  --dsw-alias-border-l4: rgba(255, 255, 255, 0.2);
+  --dsw-alias-brand-primary: var(--dsw-static-neutral-bluish-50);
+  --dsw-alias-brand-text: var(--dsw-static-neutral-bluish-50);
+  --dsw-alias-label-primary: var(--dsw-static-neutral-bluish-50);
+  --dsw-alias-label-secondary: var(--dsw-static-neutral-bluish-300);
+  --dsw-alias-label-tertiary: var(--dsw-static-neutral-bluish-400);
+  --dsw-alias-label-caption: var(--dsw-static-neutral-bluish-600);
+  --dsw-alias-markdown-citation: var(--dsw-static-neutral-bluish-800);
+  --dsw-alias-markdown-code-block-banner: var(--dsw-static-neutral-bluish-850);
+  --dsw-alias-markdown-code-block: var(--dsw-static-neutral-bluish-900);
+  --dsw-alias-markdown-inline-code: var(--dsw-static-neutral-bluish-850);
+  --dsw-alias-state-business-primary: var(--dsw-static-deepseek-400);
+
+  /* Shiki Dark Mode */
+  --shiki-foreground: var(--dsw-alias-label-primary);
+  --shiki-background: var(--dsw-alias-markdown-code-block);
+  --shiki-token-constant: #4dabf7;
+  --shiki-token-string: #69db7c;
+  --shiki-token-comment: #adb5bd;
+  --shiki-token-keyword: #faa2c1;
+  --shiki-token-parameter: #ffa94d;
+  --shiki-token-function: #b197fc;
+  --shiki-token-string-expression: #8ce99a;
+  --shiki-token-punctuation: #ced4da;
+  --shiki-token-link: #74c0fc;
+
+  --dsh-scrollbar-thumb: var(--dsw-static-neutral-700);
+  --dsh-scrollbar-thumb-hover: var(--dsw-static-neutral-600);
+}
