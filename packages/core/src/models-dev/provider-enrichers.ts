@@ -9,6 +9,7 @@ const clineModelsURL = "https://api.cline.bot/api/v1/ai/cline/models"
 const clineAPIBaseURL = "https://api.cline.bot/api/v1"
 const commandCodeBaseURL = "https://api.commandcode.ai/provider/v1"
 const commandCodeGenerateURL = "https://api.commandcode.ai/alpha/generate"
+const atlasCloudBaseURL = "https://api.atlascloud.ai/v1"
 const kiloModelsURL = "https://app.kilo.ai/api/openrouter/models"
 const kiloAPIBaseURL = "https://api.kilo.ai/api/gateway"
 const cacheTTL = 5 * 60 * 1000
@@ -53,7 +54,8 @@ let cachedKiloModels: Record<string, CatalogModel> | undefined
 export async function enrichProviders(input: Catalog) {
   const withCline = await withClineModels(input)
   const withCommandCode = withCommandCodeModels(withCline)
-  const withAntigravity = withAntigravityModels(withCommandCode)
+  const withAtlasCloud = withAtlasCloudModels(withCommandCode)
+  const withAntigravity = withAntigravityModels(withAtlasCloud)
   return await withKiloModels(withAntigravity)
 }
 
@@ -110,6 +112,48 @@ export function withCommandCodeModels(result: Catalog): Catalog {
         "Qwen/Qwen3.6-Max-Preview": commandCodeModel("Qwen/Qwen3.6-Max-Preview", "Qwen 3.6 Max Preview"),
         "Qwen/Qwen3.6-Plus": commandCodeModel("Qwen/Qwen3.6-Plus", "Qwen 3.6 Plus"),
         "stepfun/Step-3.5-Flash": commandCodeModel("stepfun/Step-3.5-Flash", "Step 3.5 Flash"),
+      },
+    },
+  }
+}
+
+export function withAtlasCloudModels(result: Catalog): Catalog {
+  return {
+    ...result,
+    atlascloud: {
+      id: "atlascloud",
+      name: "Atlas Cloud",
+      env: ["ATLASCLOUD_API_KEY"],
+      api: atlasCloudBaseURL,
+      npm: openAICompatible,
+      models: {
+        "openai/gpt-4.1-mini": {
+          id: "openai/gpt-4.1-mini",
+          name: "GPT-4.1 mini",
+          release_date: "2025-04-14",
+          attachment: false,
+          reasoning: false,
+          temperature: true,
+          tool_call: true,
+          cost: {
+            input: 0.4,
+            output: 1.6,
+            cache_read: 0.1,
+          },
+          limit: {
+            context: 1_047_576,
+            input: 1_047_576,
+            output: 32_768,
+          },
+          modalities: {
+            input: ["text"],
+            output: ["text"],
+          },
+          provider: {
+            npm: openAICompatible,
+            api: atlasCloudBaseURL,
+          },
+        },
       },
     },
   }
