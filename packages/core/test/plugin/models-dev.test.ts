@@ -159,6 +159,18 @@ describe("ModelsDevPlugin", () => {
               connections: [],
             }),
             new Integration.Info({
+              id: Integration.ID.make("atlascloud"),
+              name: "Atlas Cloud",
+              methods: [
+                { type: "key" },
+                {
+                  type: "env",
+                  names: ["ATLASCLOUD_API_KEY"],
+                },
+              ],
+              connections: [],
+            }),
+            new Integration.Info({
               id: Integration.ID.make("cline"),
               name: "Cline",
               methods: [
@@ -183,6 +195,28 @@ describe("ModelsDevPlugin", () => {
               connections: [],
             }),
           ])
+
+          expect(
+            yield* catalog.model.get(ProviderV2.ID.make("atlascloud"), ModelV2.ID.make("openai/gpt-4.1-mini")),
+          ).toMatchObject({
+            id: "openai/gpt-4.1-mini",
+            providerID: "atlascloud",
+            api: {
+              type: "aisdk",
+              package: "@ai-sdk/openai-compatible",
+              url: "https://api.atlascloud.ai/v1",
+            },
+            capabilities: {
+              tools: true,
+              input: ["text"],
+              output: ["text"],
+            },
+            limit: {
+              context: 1_047_576,
+              input: 1_047_576,
+              output: 32_768,
+            },
+          })
         }).pipe(Effect.provide(AppNodeBuilder.build(ModelsDev.node))),
       (previous) =>
         Effect.sync(() => {
